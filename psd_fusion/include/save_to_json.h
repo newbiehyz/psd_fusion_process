@@ -5,13 +5,14 @@
 #include <string>
 #include <fstream>
 #include "json.hpp"
-
+#include "psd_fusion_process_header.h"
 #include "apa_define.h"
 
 using json = nlohmann::json;
 
 class SaveFileToJson{
  public:
-    void SaveapaSlotListInfoToJson(apaSlotListInfo &info, const std::string &filename, json& j);
+    void SaveapaSlotListInfoToJson(apaSlotListInfo &info, const std::string &filename);
+    void SaveQuadParkingSlotsInfoToJson(rd::QuadParkingSlots &info,const std::string &filename);
 };
 

@@ -90,6 +90,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     //frameid
     rd::QuadParkingSlots rd_info;
     EMC_TROS_Bridge_Parking_GetFieldQuadParkingSlots(rd_info); //rd::Header, rd::QuadParkingSlot
+    filetojson.SaveQuadParkingSlotsInfoToJson(rd_info, "RDinfo.json");
     LOGT("[_test rd_info timestampNs] J5 SEND timestampNs: %llu",rd_info.frameTimeStampNs);
     //emos -> 358-2
     //@TODO 时间戳作为frameid的risk
@@ -175,9 +176,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     //输出车位列表
     apaSlotListInfo outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     
-    json j;
-    SaveFileToJson filetojson;
-    filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"apaSlotListInfo.json", j);
+    filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"VISapaSlotListInfo.json");
 
     LOGT("[_test apastatus]: %d", apa_states);
     // 当泊车完成或者中断，清空车位列表
@@ -297,10 +296,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     }
     printf("\n");
     EMC_psd_fusion_process_SetFieldSfusionSlots(psd2perception);
-
-
-
-
 
     //**********VCU
     //11.18 测试
@@ -560,6 +555,8 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
             outputSlot_USS.WorldoutRect.push_back(slotInfo);
         }
 
+        filetojson.SaveapaSlotListInfoToJson(outputSlot_USS,"USSapaSlotListInfo.json");
+        filetojson.SaveapaSlotListInfoToJson(outputSlot_FUSED,"FusedapaSlotListInfo.json");
         // 打印USS车位列表
         for (auto& psd_m_output : outputSlot_USS.WorldoutRect)
         {
@@ -706,7 +703,3 @@ tResult cpsd_fusion_process::OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch
 }
 
 
-tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
-{
-    RETURN_NOERROR;
-}
