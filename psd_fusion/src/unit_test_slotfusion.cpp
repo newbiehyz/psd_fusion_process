@@ -313,13 +313,15 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
         outputSlot_VIS.WorldoutRect.push_back({createRect(-4620, 3100 , -4687, 6281, -10379, 6147, -10279, 2999)});
     }
     
-    std::vector<json> allData;
-    loadAllData("output.json", allData);
+
+    //Draw RD info
+    std::vector<json> allRDData;
+    loadAllData("RDinfo.json", allRDData);
     // 创建一个 rd::QuadParkingSlots 对象
     rd::QuadParkingSlots quadParkingSlots;
 
     // 遍历所有数据
-    for (const auto& data : allData) {
+    for (const auto& data : allRDData) {
         // 提取顶层字段
         quadParkingSlots.frameTimeStampNs = data["frameTimeStampNs"];
         quadParkingSlots.sensorId = data["sensorId"];
@@ -376,19 +378,6 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
             slot.length = slotJson["length"];
             slot.isVisited = slotJson["isVisited"];
 
-            // 提取 pTl、pTr、pBl、pBr（假设 rd::ApproxBoxPoints 有 x 和 y）
-            // slot.pTl = slotJson["pTl"];
-            // slot.pTl = slotJson["pTl"];
-
-            // slot.pTr = slotJson["pTr"];
-            // slot.pTr = slotJson["pTr"];
-
-            // slot.pBl = slotJson["pBl"];
-            // slot.pBl = slotJson["pBl"];
-
-            // slot.pBr = slotJson["pBr"];
-            // slot.pBr = slotJson["pBr"];
-
             // 将 slot 添加到 quadParkingSlotList
             quadParkingSlots.quadParkingSlotList.push_back(slot);
         }
@@ -410,18 +399,77 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
         }
 
         int i = 0;
-        std::string jpg = "output_" + std::to_string(i) + ".jpg";
+        std::string jpg = "RD_" + std::to_string(i) + ".jpg";
         drawRDslotToJPG(jpg, quadParkingSlots);
         i++;
     }
 
+    // Draw Vison slot
+    std::vector<json> allVisonData;
+    loadAllData("VISapaSlotListInfo.json", allVisonData);
 
+    // 遍历所有数据
+    for (const auto& data : allVisonData) {
+        // 创建一个 std::vector<apaSlotInfo> 容器
+        std::vector<apaSlotInfo> apaSlotInfos;
+
+        // 提取 slots_in_cur_frame 数组（根据您的 JSON 结构调整字段名）
+        const auto& slotListArray = data["WorldoutRect"];
+        for (const auto& slotJson : slotListArray) {
+            // 创建一个 apaSlotInfo 对象
+            apaSlotInfo slot;
+
+            // 提取 rectInfo 信息
+            slot.rectInfo.label = slotJson["rectInfo"]["label"];
+            slot.rectInfo.PStype = slotJson["rectInfo"]["PStype"];
+
+            // 提取坐标点信息
+            for (int idx = 0; idx < RECTPointNum; ++idx) {
+                slot.rectInfo.pt[idx].x = slotJson["rectInfo"]["points"][idx]["x"];
+                slot.rectInfo.pt[idx].y = slotJson["rectInfo"]["points"][idx]["y"];
+            }
+
+            // 提取其他字段
+            slot.detect_frame_count = slotJson["detect_frame_count"];
+            slot.detect_as_occupy_count = slotJson["detect_as_occupy_count"];
+            slot.is_reliable = slotJson["is_reliable"];
+
+            // 将 slot 添加到 apaSlotInfos
+            apaSlotInfos.push_back(slot);
+        }
+
+        // 示例：输出信息
+        std::cout << "Total slots: " << apaSlotInfos.size() << std::endl;
+
+        // 遍历并输出每个 apaSlotInfo 的信息
+        for (const auto& slot : apaSlotInfos) {
+            std::cout << "Slot label: " << slot.rectInfo.label << std::endl;
+            std::cout << "PStype: " << slot.rectInfo.PStype << std::endl;
+            std::cout << "First corner: (" << slot.rectInfo.pt[0].x << ", " << slot.rectInfo.pt[0].y << ")" << std::endl;
+            // ... 输出其他需要的信息
+        }
+
+        // 生成唯一的文件名，例如 "RD_0.jpg", "RD_1.jpg", ...
+        int i = 0;
+        std::string jpg = "RD_" + std::to_string(i) + ".jpg";
+        drawsingleRectanglesToJPG(jpg, apaSlotInfos);
+        i++;
+    }
+
+    // drawsingleRectanglesToJPG("slot_fusion.jpg",outputSlot_FUSION.WorldoutRect);
+
+    //Draw Fusion slot
+    drawRectanglesToJPG("slots_vis& slots_uss.jpg", outputSlot_USS.WorldoutRect, outputSlot_VIS.WorldoutRect);
+
+    
+    
+    
+    
+    
+    
     // 调用 mergeSlotLists
     slotfusion.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSION);
 
-    // 输出到 SVG 文件
-    drawRectanglesToJPG("slots_vis& slots_uss.jpg", outputSlot_USS.WorldoutRect, outputSlot_VIS.WorldoutRect);
-    drawsingleRectanglesToJPG("slot_fusion.jpg",outputSlot_FUSION.WorldoutRect);
     // 验证融合后的车位数量是否正确
     EXPECT_EQ(outputSlot_FUSION.WorldoutRect.size(), 5); // 应该有3个车位
 }
