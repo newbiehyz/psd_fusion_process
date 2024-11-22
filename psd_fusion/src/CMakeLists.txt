@@ -5,6 +5,9 @@ project(UnitTestExample)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# 定义项目根目录变量
+set(PROJECT_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../..)
+
 # 如果在 Linux 平台
 add_definitions(-D_ON_LINUX_)
 
@@ -17,18 +20,18 @@ set(SOURCES fusion.cpp)
 # 头文件路径
 include_directories(
     ${OpenCV_INCLUDE_DIRS}
-    /home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/include/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/em_swc/psd_fusion_process/stub/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/include/emc/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/include/emc/c_utils/kernel/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/em_swc/comintf/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/em_swc/comintf/MCore_Bridge/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/em_swc/comintf/perception_fusion_process/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/em_swc/comintf/TROS_Bridge_Parking/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/em_swc/comintf/planning_process/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/em_swc/comintf/SoAd_Bridge/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/src/psd_fusion_process/
-    /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/include/
+     ${PROJECT_ROOT_DIR}/CodeRoot/src/psd_fusion_process/psd_fusion/include/
+     ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/psd_fusion_process/stub/
+     ${PROJECT_ROOT_DIR}/CodeRoot/include/emc/
+     ${PROJECT_ROOT_DIR}/CodeRoot/include/emc/c_utils/kernel/
+     ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/comintf/
+     ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/comintf/MCore_Bridge/
+     ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/comintf/perception_fusion_process/
+     ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/comintf/TROS_Bridge_Parking/
+     ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/comintf/planning_process/
+     ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/comintf/SoAd_Bridge/
+     ${PROJECT_ROOT_DIR}/CodeRoot/src/psd_fusion_process/
+     ${PROJECT_ROOT_DIR}/CodeRoot/src/psd_fusion_process/psd_fusion/include/
 )
 
 # 添加可执行文件
