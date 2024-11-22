@@ -316,14 +316,18 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
 
     //Draw RD info
     std::vector<json> allRDData;
-    loadAllData("RDinfo.json", allRDData);
+    std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+    // loadAllData(filepath, allRDData);
     // 创建一个 rd::QuadParkingSlots 对象
     rd::QuadParkingSlots quadParkingSlots;
-
+    int rd_time = 0;
     // 遍历所有数据
     for (const auto& data : allRDData) {
         // 提取顶层字段
         quadParkingSlots.frameTimeStampNs = data["frameTimeStampNs"];
+        if (data["frameTimeStampNs"] == rd_time){
+            break;
+        }
         quadParkingSlots.sensorId = data["sensorId"];
 
         // 提取 header 信息（根据实际的字段）
@@ -380,6 +384,7 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
 
             // 将 slot 添加到 quadParkingSlotList
             quadParkingSlots.quadParkingSlotList.push_back(slot);
+            rd_time = data["frameTimeStampNs"];
         }
 
         // 此时，您已经将 JSON 数据还原为 QuadParkingSlots 对象
@@ -398,16 +403,15 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
             // ... 输出其他需要的信息
         }
 
-        int i = 0;
-        std::string jpg = "RD_" + std::to_string(i) + ".jpg";
+        std::string jpg = "RD_" + std::to_string(rd_time) + ".jpg";
         drawRDslotToJPG(jpg, quadParkingSlots);
-        i++;
     }
 
     // Draw Vison slot
     std::vector<json> allVisonData;
-    loadAllData("VISapaSlotListInfo.json", allVisonData);
-
+    std::string visonslotpath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/VISapaSlotListInfo.json";
+    loadAllData(visonslotpath, allVisonData);
+    int timestamp = 0;
     // 遍历所有数据
     for (const auto& data : allVisonData) {
         // 创建一个 std::vector<apaSlotInfo> 容器
@@ -415,6 +419,12 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
 
         // 提取 slots_in_cur_frame 数组（根据您的 JSON 结构调整字段名）
         const auto& slotListArray = data["WorldoutRect"];
+        const auto& ullFrameId = data["ullFrameId"];
+        std::cout<<"hello"<<std::endl;
+        if (data["ullFrameId"] == timestamp){
+            continue;
+        }
+
         for (const auto& slotJson : slotListArray) {
             // 创建一个 apaSlotInfo 对象
             apaSlotInfo slot;
@@ -431,11 +441,11 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
 
             // 提取其他字段
             slot.detect_frame_count = slotJson["detect_frame_count"];
-            slot.detect_as_occupy_count = slotJson["detect_as_occupy_count"];
             slot.is_reliable = slotJson["is_reliable"];
 
             // 将 slot 添加到 apaSlotInfos
             apaSlotInfos.push_back(slot);
+            timestamp = data["ullFrameId"];  
         }
 
         // 示例：输出信息
@@ -446,26 +456,16 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
             std::cout << "Slot label: " << slot.rectInfo.label << std::endl;
             std::cout << "PStype: " << slot.rectInfo.PStype << std::endl;
             std::cout << "First corner: (" << slot.rectInfo.pt[0].x << ", " << slot.rectInfo.pt[0].y << ")" << std::endl;
-            // ... 输出其他需要的信息
-        }
-
-        // 生成唯一的文件名，例如 "RD_0.jpg", "RD_1.jpg", ...
-        int i = 0;
-        std::string jpg = "RD_" + std::to_string(i) + ".jpg";
-        drawsingleRectanglesToJPG(jpg, apaSlotInfos);
-        i++;
+            
+            std::string jpg = "VISION_SLOT_" + std::to_string(timestamp) + ".jpg";
+            drawsingleRectanglesToJPG(jpg, apaSlotInfos);
+        }      
     }
 
     // drawsingleRectanglesToJPG("slot_fusion.jpg",outputSlot_FUSION.WorldoutRect);
 
     //Draw Fusion slot
     drawRectanglesToJPG("slots_vis& slots_uss.jpg", outputSlot_USS.WorldoutRect, outputSlot_VIS.WorldoutRect);
-
-    
-    
-    
-    
-    
     
     // 调用 mergeSlotLists
     slotfusion.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSION);

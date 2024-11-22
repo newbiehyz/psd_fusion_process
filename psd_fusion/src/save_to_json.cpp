@@ -166,3 +166,49 @@ void SaveFileToJson::SaveQuadParkingSlotsInfoToJson(rd::QuadParkingSlots &info,c
         std::cerr << "无法打开文件进行写入：" << filename << std::endl;
     }
 }
+
+void SaveFileToJson::SaveDRInfoToJson(Loc::App2emap_DR &info,const std::string &filename){
+    // 构建新的数据对象 j_new
+    json j_dr;
+
+    j_dr["x"] = info.x;
+    j_dr["y"] = info.y;
+    j_dr["canAng"] = info.canAng;
+    j_dr["DRStatus"] = info.DRStatus;
+    j_dr["timeStamp"] = info.timeStamp;
+
+    // 读取已有的 JSON 文件
+    json j_existing;
+    std::ifstream inFile(filename);
+    if (inFile.is_open()) {
+        try {
+            inFile >> j_existing;
+        } catch (json::parse_error& e) {
+            std::cerr << "JSON 解析错误：" << e.what() << std::endl;
+            j_existing = json::array(); // 如果解析失败，初始化为空数组
+        }
+        inFile.close();
+    } else {
+        // 文件不存在，初始化为空数组
+        j_existing = json::array();
+    }
+
+    // 如果不是数组，可能是第一次保存，需要将 j_existing 转换为数组
+    if (!j_existing.is_array()) {
+        json temp = j_existing;
+        j_existing = json::array();
+        j_existing.push_back(temp);
+    }
+
+    // 将新的数据对象追加到数组中
+    j_existing.push_back(j_dr);
+
+    // 将更新后的数据写回文件
+    std::ofstream outFile(filename);
+    if (outFile.is_open()){
+        outFile << j_existing.dump(4); // 缩进4个空格，格式化输出
+        outFile.close();
+    } else {
+        std::cerr << "无法打开文件进行写入：" << filename << std::endl;
+    }
+}

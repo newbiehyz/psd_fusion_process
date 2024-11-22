@@ -14,5 +14,6 @@ class SaveFileToJson{
  public:
     void SaveapaSlotListInfoToJson(apaSlotListInfo &info, const std::string &filename);
     void SaveQuadParkingSlotsInfoToJson(rd::QuadParkingSlots &info,const std::string &filename);
+    void SaveDRInfoToJson(Loc::App2emap_DR &info,const std::string &filename);
 };
 
