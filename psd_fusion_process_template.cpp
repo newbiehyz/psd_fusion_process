@@ -4,6 +4,8 @@
 #include <iostream>
 #include <typeinfo>
 
+#define DEBUG true
+
 int apa_states;
 StatusDecFusionInput psd2statemachine;
 Sfus::Sfsuion2DecPlan psd2planning;
@@ -90,7 +92,10 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     //frameid
     rd::QuadParkingSlots rd_info;
     EMC_TROS_Bridge_Parking_GetFieldQuadParkingSlots(rd_info); //rd::Header, rd::QuadParkingSlot
-    filetojson.SaveQuadParkingSlotsInfoToJson(rd_info, "RDinfo.json");
+    if (DEBUG == true){
+        filetojson.SaveQuadParkingSlotsInfoToJson(rd_info, "RDinfo.json");
+    }
+    
     LOGT("[_test rd_info timestampNs] J5 SEND timestampNs: %llu",rd_info.frameTimeStampNs);
     //emos -> 358-2
     //@TODO 时间戳作为frameid的risk
@@ -176,8 +181,10 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     //输出车位列表
     apaSlotListInfo outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     
-    filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"VISapaSlotListInfo.json");
-
+    if (DEBUG == true){
+        filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"VISapaSlotListInfo.json");
+    }
+    
     LOGT("[_test apastatus]: %d", apa_states);
     // 当泊车完成或者中断，清空车位列表
     if (apa_states == 6 || apa_states == 7){
@@ -555,8 +562,11 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
             outputSlot_USS.WorldoutRect.push_back(slotInfo);
         }
 
-        filetojson.SaveapaSlotListInfoToJson(outputSlot_USS,"USSapaSlotListInfo.json");
-        filetojson.SaveapaSlotListInfoToJson(outputSlot_FUSED,"FusedapaSlotListInfo.json");
+        if (DEBUG == true){
+            filetojson.SaveapaSlotListInfoToJson(outputSlot_USS,"USSapaSlotListInfo.json");
+            filetojson.SaveapaSlotListInfoToJson(outputSlot_FUSED,"FusedapaSlotListInfo.json");
+        }
+        
         // 打印USS车位列表
         for (auto& psd_m_output : outputSlot_USS.WorldoutRect)
         {

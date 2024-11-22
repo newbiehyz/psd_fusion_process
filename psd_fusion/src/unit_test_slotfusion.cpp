@@ -4,10 +4,33 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include <gtest/gtest.h>
+#include "json.hpp"
+#include "psd_fusion_process_header.h"
 #include "fusion.h" // 替换为你的实际头文件
 
 #define TESTCASE 0
 slotfusion slotfusion;
+using json = nlohmann::json;
+
+void loadAllData(const std::string& filename, std::vector<json>& dataArray) {
+    std::ifstream inFile(filename);
+    if (inFile.is_open()) {
+        json j;
+        try {
+            inFile >> j;
+            inFile.close();
+            if (j.is_array()) {
+                dataArray = j.get<std::vector<json>>();
+            } else {
+                std::cerr << "JSON 数据不是数组格式。" << std::endl;
+            }
+        } catch (json::parse_error& e) {
+            std::cerr << "JSON 解析错误：" << e.what() << std::endl;
+        }
+    } else {
+        std::cerr << "无法打开文件进行读取：" << filename << std::endl;
+    }
+}
 
 // 定义一个辅助函数来创建矩形
 apaSlotInfo createRect(int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4) {
@@ -175,6 +198,70 @@ void drawsingleRectanglesToJPG(const std::string &filename, std::vector<apaSlotI
     std::cout << "Image saved to: " << filename << std::endl;
 }
 
+void drawRDslotToJPG(const std::string &filename, const rd::QuadParkingSlots &data) {
+    // 创建空白图像
+    cv::Mat image(800, 800, CV_8UC3, cv::Scalar(255, 255, 255));
+
+    // 计算输入的全局坐标范围
+    float minX = std::numeric_limits<float>::max();
+    float maxX = std::numeric_limits<float>::lowest();
+    float minY = std::numeric_limits<float>::max();
+    float maxY = std::numeric_limits<float>::lowest();
+
+    // 更新范围
+    for (const auto &slot : data.quadParkingSlotList) {
+        std::vector<rd::Point2f> points = {slot.tl, slot.tr, slot.bl, slot.br};
+        for (const auto &pt : points) {
+            minX = std::min(minX, pt.x);
+            maxX = std::max(maxX, pt.x);
+            minY = std::min(minY, pt.y);
+            maxY = std::max(maxY, pt.y);
+        }
+    }
+
+    // 如果没有有效的坐标，避免除零错误
+    if (minX == maxX || minY == maxY) {
+        std::cerr << "无法绘制矩形，坐标范围无效。" << std::endl;
+        return;
+    }
+
+    // 图像中心点
+    double center_img_x = image.cols / 2.0;
+    double center_img_y = image.rows / 2.0;
+
+    // 矩形的中心点
+    double center_slots_x = (minX + maxX) / 2.0;
+    double center_slots_y = (minY + maxY) / 2.0;
+
+    // 缩放因子，保持宽高比例并留边距
+    double scale_x = (image.cols * 0.8) / (maxX - minX);  // 留 20% 边距
+    double scale_y = (image.rows * 0.8) / (maxY - minY);
+    double scale = std::min(scale_x, scale_y);
+
+    // 偏移量（将缩放后的矩形中心移到图像中心）
+    double translate_x = center_img_x - center_slots_x * scale;
+    double translate_y = center_img_y - center_slots_y * scale;
+
+    // 绘制矩形
+    for (const auto &slot : data.quadParkingSlotList) {
+        std::vector<cv::Point> pts;
+        pts.push_back(cv::Point(slot.tl.x * scale + translate_x, slot.tl.y * scale + translate_y));
+        pts.push_back(cv::Point(slot.tr.x * scale + translate_x, slot.tr.y * scale + translate_y));
+        pts.push_back(cv::Point(slot.br.x * scale + translate_x, slot.br.y * scale + translate_y));
+        pts.push_back(cv::Point(slot.bl.x * scale + translate_x, slot.bl.y * scale + translate_y));
+
+        // 使用多边形绘制矩形
+        std::vector<std::vector<cv::Point>> contours;
+        contours.push_back(pts);
+        cv::polylines(image, contours, true, cv::Scalar(0, 0, 255), 2);
+    }
+
+    // 保存图像
+    cv::imwrite(filename, image);
+    std::cout << "图像已保存到: " << filename << std::endl;
+}
+
+
 
 // 测试用例：测试 mergeSlotLists 函数
 TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
@@ -226,14 +313,108 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
         outputSlot_VIS.WorldoutRect.push_back({createRect(-4620, 3100 , -4687, 6281, -10379, 6147, -10279, 2999)});
     }
     
-    
-    
-    
-    // outputSlot_VIS.WorldoutRect.push_back({createRect(-4654,3502,-4754,6649,-10412,6515,-10345,3368)});
-    // outputSlot_VIS.WorldoutRect.push_back({createRect(1875,-1888, 1808,790, 7500,1091, 7600,-1587)});
-    
-    // outputSlot_VIS.WorldoutRect.push_back({createRect(-4419,10663,-4520,13877,-10145,13040,-10078,9792)});
-    // outputSlot_VIS.WorldoutRect.push_back({createRect(2343,11858,1875,14436,7600,14939,8069,12394)});
+    std::vector<json> allData;
+    loadAllData("output.json", allData);
+    // 创建一个 rd::QuadParkingSlots 对象
+    rd::QuadParkingSlots quadParkingSlots;
+
+    // 遍历所有数据
+    for (const auto& data : allData) {
+        // 提取顶层字段
+        quadParkingSlots.frameTimeStampNs = data["frameTimeStampNs"];
+        quadParkingSlots.sensorId = data["sensorId"];
+
+        // 提取 header 信息（根据实际的字段）
+        quadParkingSlots.header.seq = data["header"]["seq"];
+        quadParkingSlots.header.frameId = data["header"]["frameId"];
+        // 如果有其他需要的字段，继续提取
+
+        // 提取 quadParkingSlotList 数组
+        const auto& slotListArray = data["quadParkingSlotList"];
+        for (const auto& slotJson : slotListArray) {
+            // 创建一个 QuadParkingSlot 对象
+            rd::QuadParkingSlot slot;
+
+            // 提取四个顶点坐标
+            slot.tl.x = slotJson["tl"]["x"];
+            slot.tl.y = slotJson["tl"]["y"];
+
+            slot.tr.x = slotJson["tr"]["x"];
+            slot.tr.y = slotJson["tr"]["y"];
+
+            slot.bl.x = slotJson["bl"]["x"];
+            slot.bl.y = slotJson["bl"]["y"];
+
+            slot.br.x = slotJson["br"]["x"];
+            slot.br.y = slotJson["br"]["y"];
+
+            // 提取其他字段
+            slot.confidence = slotJson["confidence"];
+            slot.label = slotJson["label"];
+            slot.filtered = slotJson["filtered"];
+            slot.slotType = slotJson["slotType"];
+            slot.sTl = slotJson["sTl"];
+            slot.sTr = slotJson["sTr"];
+            slot.sBl = slotJson["sBl"];
+            slot.sBr = slotJson["sBr"];
+
+            slot.dirIn.x = slotJson["dirIn"]["x"];
+            slot.dirIn.y = slotJson["dirIn"]["y"];
+
+            slot.dirWidth.x = slotJson["dirWidth"]["x"];
+            slot.dirWidth.y = slotJson["dirWidth"]["y"];
+
+            slot.dirLength.x = slotJson["dirLength"]["x"];
+            slot.dirLength.y = slotJson["dirLength"]["y"];
+
+            slot.center.x = slotJson["center"]["x"];
+            slot.center.y = slotJson["center"]["y"];
+
+            slot.oppModify = slotJson["oppModify"];
+            slot.isComplete = slotJson["isComplete"];
+            slot.width = slotJson["width"];
+            slot.length = slotJson["length"];
+            slot.isVisited = slotJson["isVisited"];
+
+            // 提取 pTl、pTr、pBl、pBr（假设 rd::ApproxBoxPoints 有 x 和 y）
+            // slot.pTl = slotJson["pTl"];
+            // slot.pTl = slotJson["pTl"];
+
+            // slot.pTr = slotJson["pTr"];
+            // slot.pTr = slotJson["pTr"];
+
+            // slot.pBl = slotJson["pBl"];
+            // slot.pBl = slotJson["pBl"];
+
+            // slot.pBr = slotJson["pBr"];
+            // slot.pBr = slotJson["pBr"];
+
+            // 将 slot 添加到 quadParkingSlotList
+            quadParkingSlots.quadParkingSlotList.push_back(slot);
+        }
+
+        // 此时，您已经将 JSON 数据还原为 QuadParkingSlots 对象
+        // 可以根据需要对 quadParkingSlots 进行处理
+
+        // 示例：输出 frameTimeStampNs 和 sensorId
+        std::cout << "frameTimeStampNs: " << quadParkingSlots.frameTimeStampNs << std::endl;
+        std::cout << "sensorId: " << quadParkingSlots.sensorId << std::endl;
+
+        // 遍历并输出每个 QuadParkingSlot 的信息
+        for (const auto& slot : quadParkingSlots.quadParkingSlotList) {
+            std::cout << "Slot label: " << slot.label << std::endl;
+            std::cout << "Confidence: " << slot.confidence << std::endl;
+            std::cout << "Top-left corner: (" << slot.tl.x << ", " << slot.tl.y << ")" << std::endl;
+            std::cout << "Bottom-right corner: (" << slot.br.x << ", " << slot.br.y << ")" << std::endl;
+            // ... 输出其他需要的信息
+        }
+
+        int i = 0;
+        std::string jpg = "output_" + std::to_string(i) + ".jpg";
+        drawRDslotToJPG(jpg, quadParkingSlots);
+        i++;
+    }
+
 
     // 调用 mergeSlotLists
     slotfusion.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSION);
@@ -243,11 +424,6 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
     drawsingleRectanglesToJPG("slot_fusion.jpg",outputSlot_FUSION.WorldoutRect);
     // 验证融合后的车位数量是否正确
     EXPECT_EQ(outputSlot_FUSION.WorldoutRect.size(), 5); // 应该有3个车位
-
-    // 验证具体车位
-    // EXPECT_EQ(outputSlot_FUSION.WorldoutRect[0].rectInfo.pt[0].x, 5);  // 验证 VIS 的第一个车位
-    // EXPECT_EQ(outputSlot_FUSION.WorldoutRect[1].rectInfo.pt[0].x, 50); // 验证 VIS 的第二个车位
-    // EXPECT_EQ(outputSlot_FUSION.WorldoutRect[2].rectInfo.pt[0].x, 0);  // 验证 USS 的独立车位
 }
 
 // 测试用例：测试完全没有重叠

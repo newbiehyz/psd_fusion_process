@@ -17,6 +17,7 @@ set(SOURCES fusion.cpp)
 # 头文件路径
 include_directories(
     ${OpenCV_INCLUDE_DIRS}
+    /home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/include/
     /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/em_swc/psd_fusion_process/stub/
     /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/include/emc/
     /data/slotfusion/code/patac-557e-emos_4.2.3_fusion/patac-557e-emos/CodeRoot/include/emc/c_utils/kernel/
