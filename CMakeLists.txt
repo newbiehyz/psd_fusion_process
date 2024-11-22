@@ -1,11 +1,14 @@
 #------------------------------------------------
 # Project files
 #------------------------------------------------
+
 project(psd_fusion_process)
 file(GLOB_RECURSE SOURCES "*.*")
 include(${CMAKE_SOURCE_DIR}/em_swc/${PROJECT_NAME}/${PROJECT_NAME}.cmake)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+# 移除不需要的文件
+list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/psd_fusion/src/unit_test_slotfusion.cpp)
 
 #------------------------------------------------
 # Include directories

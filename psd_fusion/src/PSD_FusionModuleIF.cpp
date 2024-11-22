@@ -584,23 +584,15 @@ void PSD_FusionModuleIF::UpdateVisionSlots(int frameid, std::vector<padVisionSlo
     //check updatevisionslots' input
     printf("[_test updatevisionslots] start!!\n");
     printf("[_test updatevisionslots check] timestamp:%d, RD's singelframe slots have: %d\n",frameid,slots.size());
-    // for (const auto& slot : slots)
-    // {
-    //     printf("[_test updatevisionslots] A:(%d,%d)\n",slot.a.x,slot.a.y);
-    //     printf("[_test updatevisionslots] A's bayType: 0x%02X\n",slot.bayType);
-    //     // for (int i = 0; i < RECTPointNum; ++i) 
-    //     // {
-    //     //     printf("[_test updatevisionslots] A:(%d,%d)",slot.a.x,slot.a.y);
-    //     // }
-    // }
+
     std::lock_guard<std::mutex> lock(m_psinfo_mutex);
     
     if(slots.size() <= 0) {
         return;
     }
 
+    //清空上一帧车位
     m_frame_id = frameid;
-
     m_output_slot.padRealTimeLocation.x = m_vehicle_pose.coord.x;
     m_output_slot.padRealTimeLocation.y = m_vehicle_pose.coord.y;
     m_output_slot.padRealTimeLocation.yaw = m_vehicle_pose.yaw;
@@ -612,16 +604,16 @@ void PSD_FusionModuleIF::UpdateVisionSlots(int frameid, std::vector<padVisionSlo
 
     for (auto slot : slots) 
     {
-        //排除 slot.a 和 slot.b 坐标在鸟瞰图中的位置无效或重合的车位。
-        //排除车位的纵向坐标不在有效的区间范围内（EFFECTIVE_SLOT_Y_1 到 EFFECTIVE_SLOT_Y_2）。
+        //过滤以下车位：
+        //超过鸟瞰图长宽
         if(slot.a.x > BIRD_VIEW_HEIGHT && slot.a.y > BIRD_VIEW_HEIGHT && slot.b.x > BIRD_VIEW_HEIGHT && slot.b.y > BIRD_VIEW_HEIGHT) {
             continue;
         }
-
+        //一条线车位
         if((slot.a.x == slot.b.x && slot.a.y == slot.b.y) || (slot.a.x == slot.d.x && slot.a.y == slot.d.y)) {
             continue;
         }
-
+        //中心点不在有效范围
         if((slot.a.y + slot.b.y) / 2 < EFFECTIVE_SLOT_Y_1 || (slot.a.y + slot.b.y) / 2 > EFFECTIVE_SLOT_Y_2) {
             continue;
         }
@@ -733,27 +725,34 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
     }
 
     double iou = 0;;
+
     if(m_apa_psinfo.WorldoutRect.size() == 0) {
         auto it = m_apa_psinfo.WorldoutRect.end();
         return it;
     }
 
-    //size>0时，反向遍历psinfo。IOU>0.4重复，0.2-0.4misdetect，<0.2认为没有相同车位继续循环
-    auto it = m_apa_psinfo.WorldoutRect.end() - 1;
+    //size>0时，反向遍历psinfo
+    //从倒数第一个向前遍历
+    auto it = m_apa_psinfo.WorldoutRect.end() - 1; 
     for( ; it >= m_apa_psinfo.WorldoutRect.begin(); it--) 
     {
+        //把rect_new转换成Vertexes格式的vert_new
         Vertexes vert_new, vert;
         changePoint(rect_new, vert_new);
         changePoint(*it, vert);
-        iou = iouEx(vert_new, vert);
+        iou = iouEx(vert_new, vert); //当前帧和上一帧的矩形框IOU
         
-        //APA_Debug_Log(APA_MODULE_ID_PSD_FUSION, "iou=%f, size=%d", iou, m_apa_psinfo.WorldoutRect.size());
+        //IOU>0.4重复
         if (iou >= 0.4) {
             break;
         }
+
+        //0.2-0.4misdetect
         else if (iou >= 0.2 && iou < 0.4) {
             mis_detect_flag = false;
         }
+
+        //<0.2认为没有相同车位继续循环
         
     }
     if(iou < 0.4) 

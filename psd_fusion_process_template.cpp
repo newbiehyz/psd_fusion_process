@@ -712,4 +712,7 @@ tResult cpsd_fusion_process::OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch
     RETURN_NOERROR;
 }
 
-
+tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
+{
+    RETURN_NOERROR;
+}
