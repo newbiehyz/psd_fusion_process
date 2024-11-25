@@ -270,69 +270,69 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
     apaSlotListInfo outputSlot_VIS;
     apaSlotListInfo outputSlot_FUSION;
 
-    // USS 的车位列表
-    if (TESTCASE == 0){
-        outputSlot_USS.WorldoutRect.push_back({createRect(2263, -11523, 2263, -8067, 8124, -8067,8123, -11523)}); // 车位1
-        outputSlot_USS.WorldoutRect.push_back({createRect(2257, -5615, 2110, -2378, 7971, -2378, 8116, -5615)}); // 车位2
-        outputSlot_USS.WorldoutRect.push_back({createRect(2092, -90, 2091, 3909, 7950, 3909, 7950, -90)});
-    }else if (TESTCASE == 1){
-        outputSlot_USS.WorldoutRect.push_back({createRect(2244, -13365,2122, -10030, 7981, -10030, 8103, -13365)});
-    }else if (TESTCASE == 2){
-        outputSlot_USS.WorldoutRect.push_back({createRect(2237, 5952, 2075, 9633, 7934, 9633, 8097, 5952)}); // 车位1
-        outputSlot_USS.WorldoutRect.push_back({createRect(2075, 11317, 2075, 14347, 7935, 14347, 7934, 11317)}); 
-    }else if(TESTCASE == 3){
-        outputSlot_USS.WorldoutRect.push_back({createRect(2216,-5399, 2064,-2030, 7924,-2030, 8076,-5399)}); 
-    }
+    // // USS 的车位列表
+    // if (TESTCASE == 0){
+    //     outputSlot_USS.WorldoutRect.push_back({createRect(2263, -11523, 2263, -8067, 8124, -8067,8123, -11523)}); // 车位1
+    //     outputSlot_USS.WorldoutRect.push_back({createRect(2257, -5615, 2110, -2378, 7971, -2378, 8116, -5615)}); // 车位2
+    //     outputSlot_USS.WorldoutRect.push_back({createRect(2092, -90, 2091, 3909, 7950, 3909, 7950, -90)});
+    // }else if (TESTCASE == 1){
+    //     outputSlot_USS.WorldoutRect.push_back({createRect(2244, -13365,2122, -10030, 7981, -10030, 8103, -13365)});
+    // }else if (TESTCASE == 2){
+    //     outputSlot_USS.WorldoutRect.push_back({createRect(2237, 5952, 2075, 9633, 7934, 9633, 8097, 5952)}); // 车位1
+    //     outputSlot_USS.WorldoutRect.push_back({createRect(2075, 11317, 2075, 14347, 7935, 14347, 7934, 11317)}); 
+    // }else if(TESTCASE == 3){
+    //     outputSlot_USS.WorldoutRect.push_back({createRect(2216,-5399, 2064,-2030, 7924,-2030, 8076,-5399)}); 
+    // }
     
-    // VIS 的车位列表
-    if (TESTCASE == 0){
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1975, -2424, 1875 ,220, 7600, 622, 7667, -2022)}); 
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1808, 2966, 1774, 5578, 7466, 5511, 7500, 2866)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1800, 220, 1875, 2966, 7500, 3033, 7600, 287)});
-    }else if(TESTCASE == 1){
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1607.0, 3837.0, 1573.0, 6448.0,7265.0, 6180.0, 7299.0, 3535.0)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1640.0, 1024.0, 1607.0, 3837.0,7332.0, 3837.0, 7366.0, 1024.0)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1741.0, -1620.0, 1640.0, 1057.0, 7366.0, 1325.0, 7433.0, -1352.0)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1808.0, -3596.0, 1741.0, -850.0, 7433.0, -281.0, 7533.0, -2993.0)}); 
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1908.0, -3596.0, 1841.0, -850.0, 7533.0, -381.0, 7600.0, -3127.0)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1975.0, -3462.0, 1908.0, -817.0, 7600.0, -214.0, 7667.0, -2892.0)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(2075.0, -3395.0, 1941.0, -716.0, 7667.0, -716.0, 7801.0, -3395.0)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(2142.0, -3328.0, 2075.0, -649.0, 7767.0, -113.0, 7834.0, -2792.0)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(2209.0, -2524.0, 2142.0, 20.0, 7834.0, 488.0, 7901.0, -2089.0)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(2310.0, -3361.0, 2209.0, -783.0, 7901.0, -247.0, 8002.0, -2859.0)});
-    }else if(TESTCASE == 2){
-        outputSlot_VIS.WorldoutRect.push_back({createRect(2310.0, -2290.0 , 2209.0, 287.0, 7935.0, 689.0, 8035.0, -1888.0)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(2142.0, 3033.0 , 2075.0, 5712.0, 7767.0, 5209.0, 7834.0, 2564.0)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(2209.0, 287.0, 2142.0, 3033.0, 7834.0, 3133.0, 7935.0, 388.0)});
-    }else if(TESTCASE == 3){
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1941, -2189 , 1875, 488, 7566, 823, 7633, -1854)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1875, 488 , 1741, 3200, 7466, 3301, 7566, 555)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(-4486, -3328 , -4553, -46, -10178, -817, -10145, -4098)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(1741, 3200 , 1741, 5845, 7433, 5678, 7466, 3033)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(-4553, -46 , -4620, 3100, -10279, 2598, -10212, -582)});
-        outputSlot_VIS.WorldoutRect.push_back({createRect(-4620, 3100 , -4687, 6281, -10379, 6147, -10279, 2999)});
-    }
+    // // VIS 的车位列表
+    // if (TESTCASE == 0){
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1975, -2424, 1875 ,220, 7600, 622, 7667, -2022)}); 
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1808, 2966, 1774, 5578, 7466, 5511, 7500, 2866)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1800, 220, 1875, 2966, 7500, 3033, 7600, 287)});
+    // }else if(TESTCASE == 1){
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1607.0, 3837.0, 1573.0, 6448.0,7265.0, 6180.0, 7299.0, 3535.0)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1640.0, 1024.0, 1607.0, 3837.0,7332.0, 3837.0, 7366.0, 1024.0)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1741.0, -1620.0, 1640.0, 1057.0, 7366.0, 1325.0, 7433.0, -1352.0)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1808.0, -3596.0, 1741.0, -850.0, 7433.0, -281.0, 7533.0, -2993.0)}); 
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1908.0, -3596.0, 1841.0, -850.0, 7533.0, -381.0, 7600.0, -3127.0)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1975.0, -3462.0, 1908.0, -817.0, 7600.0, -214.0, 7667.0, -2892.0)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(2075.0, -3395.0, 1941.0, -716.0, 7667.0, -716.0, 7801.0, -3395.0)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(2142.0, -3328.0, 2075.0, -649.0, 7767.0, -113.0, 7834.0, -2792.0)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(2209.0, -2524.0, 2142.0, 20.0, 7834.0, 488.0, 7901.0, -2089.0)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(2310.0, -3361.0, 2209.0, -783.0, 7901.0, -247.0, 8002.0, -2859.0)});
+    // }else if(TESTCASE == 2){
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(2310.0, -2290.0 , 2209.0, 287.0, 7935.0, 689.0, 8035.0, -1888.0)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(2142.0, 3033.0 , 2075.0, 5712.0, 7767.0, 5209.0, 7834.0, 2564.0)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(2209.0, 287.0, 2142.0, 3033.0, 7834.0, 3133.0, 7935.0, 388.0)});
+    // }else if(TESTCASE == 3){
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1941, -2189 , 1875, 488, 7566, 823, 7633, -1854)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1875, 488 , 1741, 3200, 7466, 3301, 7566, 555)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(-4486, -3328 , -4553, -46, -10178, -817, -10145, -4098)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(1741, 3200 , 1741, 5845, 7433, 5678, 7466, 3033)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(-4553, -46 , -4620, 3100, -10279, 2598, -10212, -582)});
+    //     outputSlot_VIS.WorldoutRect.push_back({createRect(-4620, 3100 , -4687, 6281, -10379, 6147, -10279, 2999)});
+    // }
     
 
     //Draw RD info
     std::vector<json> allRDData;
     std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
-    // loadAllData(filepath, allRDData);
+    loadAllData(filepath, allRDData);
     // 创建一个 rd::QuadParkingSlots 对象
-    rd::QuadParkingSlots quadParkingSlots;
+    rd::QuadParkingSlots rd_info;
     int rd_time = 0;
     // 遍历所有数据
     for (const auto& data : allRDData) {
         // 提取顶层字段
-        quadParkingSlots.frameTimeStampNs = data["frameTimeStampNs"];
+        rd_info.frameTimeStampNs = data["frameTimeStampNs"];
         if (data["frameTimeStampNs"] == rd_time){
             break;
         }
-        quadParkingSlots.sensorId = data["sensorId"];
+        rd_info.sensorId = data["sensorId"];
 
         // 提取 header 信息（根据实际的字段）
-        quadParkingSlots.header.seq = data["header"]["seq"];
-        quadParkingSlots.header.frameId = data["header"]["frameId"];
+        rd_info.header.seq = data["header"]["seq"];
+        rd_info.header.frameId = data["header"]["frameId"];
         // 如果有其他需要的字段，继续提取
 
         // 提取 quadParkingSlotList 数组
@@ -383,7 +383,7 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
             slot.isVisited = slotJson["isVisited"];
 
             // 将 slot 添加到 quadParkingSlotList
-            quadParkingSlots.quadParkingSlotList.push_back(slot);
+            rd_info.quadParkingSlotList.push_back(slot);
             rd_time = data["frameTimeStampNs"];
         }
 
@@ -391,11 +391,11 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
         // 可以根据需要对 quadParkingSlots 进行处理
 
         // 示例：输出 frameTimeStampNs 和 sensorId
-        std::cout << "frameTimeStampNs: " << quadParkingSlots.frameTimeStampNs << std::endl;
-        std::cout << "sensorId: " << quadParkingSlots.sensorId << std::endl;
+        std::cout << "frameTimeStampNs: " << rd_info.frameTimeStampNs << std::endl;
+        std::cout << "sensorId: " << rd_info.sensorId << std::endl;
 
         // 遍历并输出每个 QuadParkingSlot 的信息
-        for (const auto& slot : quadParkingSlots.quadParkingSlotList) {
+        for (const auto& slot : rd_info.quadParkingSlotList) {
             std::cout << "Slot label: " << slot.label << std::endl;
             std::cout << "Confidence: " << slot.confidence << std::endl;
             std::cout << "Top-left corner: (" << slot.tl.x << ", " << slot.tl.y << ")" << std::endl;
@@ -404,7 +404,75 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
         }
 
         std::string jpg = "RD_" + std::to_string(rd_time) + ".jpg";
-        drawRDslotToJPG(jpg, quadParkingSlots);
+        drawRDslotToJPG(jpg, rd_info);
+    }
+
+    // TODO: Draw DR info
+    std::vector<json> allDRData;
+    // std::string dr_filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+    // loadAllData(dr_filepath, allDRData);
+    Loc::App2emap_DR dr_pose;
+    int dr_time;
+    
+    // 遍历所有数据
+    for(const auto &data : allDRData){
+        if(dr_time == data["timeStamp"]){
+            break;
+        }
+        dr_pose.x = data["x"];
+        dr_pose.y = data["y"];
+        dr_pose.canAng = data["canAng"];
+        dr_pose.DRStatus = data["DRStatus"];
+        dr_pose.timeStamp = data["timeStamp"];
+        dr_time = dr_pose.timeStamp;
+    }
+
+
+    unsigned long long singleframeslotsID;
+    singleframeslotsID = rd_info.frameTimeStampNs;
+    // LOGT("[_test rd_info timestampNs] S32G RECEIVE timestampNs: %llu",singleframeslotsID);
+
+    //singleframeslot
+    std::vector<padVisionSlotCoord> singleframeslots;
+    if (!rd_info.quadParkingSlotList.empty())
+    {
+        // LOGT("[_test rd_info singleframeslots] J5 SEND RD output slots size: %d",rd_info.quadParkingSlotList.size());
+        for (const auto& parkingSlot : rd_info.quadParkingSlotList)
+        {
+            //emos -> 358-2
+            padVisionSlotCoord oneslot; //中间结构体，转存rd单帧车位列表
+
+            // 0xFF 作为默认值
+            oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : 0xFF;  
+            
+            //@TODO 左右判断优化,按规划ABCD顺序输出车位角点
+            if (parkingSlot.tl.x < 224 && parkingSlot.tr.x < 224)
+            {
+                oneslot.slotSide = 0x01; //x小于图像中心，判断为左
+                oneslot.a.x = int(parkingSlot.tr.x);
+                oneslot.a.y = int(parkingSlot.tr.y);
+                oneslot.b.x = int(parkingSlot.tl.x);
+                oneslot.b.y = int(parkingSlot.tl.y);
+                oneslot.c.x = int(parkingSlot.bl.x);
+                oneslot.c.y = int(parkingSlot.bl.y);
+                oneslot.d.x = int(parkingSlot.br.x);
+                oneslot.d.y = int(parkingSlot.br.y);
+            }
+            else 
+            {
+                oneslot.slotSide = 0x00;
+                oneslot.a.x = int(parkingSlot.tl.x);
+                oneslot.a.y = int(parkingSlot.tl.y);
+                oneslot.b.x = int(parkingSlot.tr.x);
+                oneslot.b.y = int(parkingSlot.tr.y);
+                oneslot.c.x = int(parkingSlot.br.x);
+                oneslot.c.y = int(parkingSlot.br.y);
+                oneslot.d.x = int(parkingSlot.bl.x);
+                oneslot.d.y = int(parkingSlot.bl.y);
+
+            }
+            singleframeslots.push_back(oneslot);
+        }
     }
 
     // Draw Vison slot
@@ -465,52 +533,15 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
     // drawsingleRectanglesToJPG("slot_fusion.jpg",outputSlot_FUSION.WorldoutRect);
 
     //Draw Fusion slot
-    drawRectanglesToJPG("slots_vis& slots_uss.jpg", outputSlot_USS.WorldoutRect, outputSlot_VIS.WorldoutRect);
+    // drawRectanglesToJPG("slots_vis& slots_uss.jpg", outputSlot_USS.WorldoutRect, outputSlot_VIS.WorldoutRect);
     
     // 调用 mergeSlotLists
-    slotfusion.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSION);
+    // slotfusion.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSION);
 
     // 验证融合后的车位数量是否正确
     EXPECT_EQ(outputSlot_FUSION.WorldoutRect.size(), 5); // 应该有3个车位
 }
 
-// 测试用例：测试完全没有重叠
-// TEST(MergeSlotListsTest, HandlesNoOverlap) {
-//     apaSlotListInfo outputSlot_USS;
-//     apaSlotListInfo outputSlot_VIS;
-//     apaSlotListInfo outputSlot_FUSION;
-
-//     // USS 的车位列表
-//     outputSlot_USS.WorldoutRect.push_back({createRect(0, 0, 10, 10)});
-
-//     // VIS 的车位列表
-//     outputSlot_VIS.WorldoutRect.push_back({createRect(20, 20, 30, 30)});
-
-//     // 调用 mergeSlotLists
-//     slotfusion.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSION);
-
-//     // 验证融合后的车位数量是否正确
-//     EXPECT_EQ(outputSlot_FUSION.WorldoutRect.size(), 2); // 应该有2个车位
-// }
-
-// 测试用例：测试完全重叠
-// TEST(MergeSlotListsTest, HandlesFullOverlap) {
-//     apaSlotListInfo outputSlot_USS;
-//     apaSlotListInfo outputSlot_VIS;
-//     apaSlotListInfo outputSlot_FUSION;
-
-//     // USS 的车位列表
-//     outputSlot_USS.WorldoutRect.push_back({createRect(0, 0, 10, 10)});
-
-//     // VIS 的车位列表
-//     outputSlot_VIS.WorldoutRect.push_back({createRect(0, 0, 10, 10)}); // 完全重叠
-
-//     // 调用 mergeSlotLists
-//     slotfusion.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSION);
-
-//     // 验证融合后的车位数量是否正确
-//     EXPECT_EQ(outputSlot_FUSION.WorldoutRect.size(), 1); // 应该只有1个车位
-// }
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

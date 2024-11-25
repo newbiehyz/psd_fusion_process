@@ -5,6 +5,10 @@ project(UnitTestExample)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+set(DEFAULT_BUILD_TYPE "Debug")
+set(CMAKE_CXX_FLAGS_DEBUG "{CMAKE_CXX_FLAGS} -o0 -ggbd")
+add_compile_options(-g)
+
 # 定义项目根目录变量
 set(PROJECT_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../..)
 

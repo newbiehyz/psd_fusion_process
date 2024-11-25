@@ -162,6 +162,9 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     EMC_TROS_Bridge_Parking_GetFieldApp2emap_DR(dr_pose); //Loc::App2emap_DR
     LOGT("[_test dr_pose] J5 SEND x: %f, y: %f, yaw: %f, timestamp: %llu",dr_pose.x, dr_pose.y, dr_pose.canAng,dr_pose.timeStamp);
     //emos -> 358-2 @TODO dr_pose long int
+    if (DEBUG == true){
+        filetojson.SaveDRInfoToJson(dr_pose, "DR_POSE.json");
+    }
     padVehiclePose  pose_globaldata;
     pose_globaldata.coord.x = int(dr_pose.x);
     pose_globaldata.coord.y = int(dr_pose.y);
