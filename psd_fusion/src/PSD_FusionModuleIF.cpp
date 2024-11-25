@@ -633,13 +633,18 @@ void PSD_FusionModuleIF::UpdateVisionSlots(int frameid, std::vector<padVisionSlo
         rect.rectInfo.pt[2] = coordConvert_global_dr(slot.c, m_vehicle_pose);
         rect.rectInfo.pt[3] = coordConvert_global_dr(slot.d, m_vehicle_pose);
 
+        //重叠过滤
         bool mis_detect_flag = true;
         auto it = existed_in_psinfo(rect, mis_detect_flag); 
+
+        //IOU 0.2 - 0.4满足，continue
         if(!mis_detect_flag && it == m_apa_psinfo.WorldoutRect.end()) {
             continue;
-        }
+        } 
 
+        
         if (it == m_apa_psinfo.WorldoutRect.end()) {
+            //新增的车位没找到重叠，ID++。列表超固定长度，erase第一个
             rect.rectInfo.label = m_next_available_label_idx++;
             if(m_apa_psinfo.WorldoutRect.size() >= MAX_SLOT_NUM) {
                 m_apa_psinfo.WorldoutRect.erase(m_apa_psinfo.WorldoutRect.begin());
@@ -647,6 +652,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(int frameid, std::vector<padVisionSlo
             m_apa_psinfo.WorldoutRect.push_back(rect);
         }
         else {
+            //找到重叠
             rect.rectInfo.label = it->rectInfo.label;
             rect.detect_frame_count = it->detect_frame_count + 1;
             rect.is_reliable = rect.detect_frame_count >= 5;
@@ -724,7 +730,7 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
         printf("id=%d\n",m_frame_id); 
     }
 
-    double iou = 0;;
+    double iou = 0;
 
     if(m_apa_psinfo.WorldoutRect.size() == 0) {
         auto it = m_apa_psinfo.WorldoutRect.end();
@@ -732,7 +738,7 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
     }
 
     //size>0时，反向遍历psinfo
-    //从倒数第一个向前遍历
+    //从倒数第一个向前遍历，假设新增的车位和上一个最匹配。和之前的所有车位对比
     auto it = m_apa_psinfo.WorldoutRect.end() - 1; 
     for( ; it >= m_apa_psinfo.WorldoutRect.begin(); it--) 
     {
@@ -740,9 +746,9 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
         Vertexes vert_new, vert;
         changePoint(rect_new, vert_new);
         changePoint(*it, vert);
-        iou = iouEx(vert_new, vert); //当前帧和上一帧的矩形框IOU
+        iou = iouEx(vert_new, vert); //当前帧和上一帧的车位IOU
         
-        //IOU>0.4重复
+        //IOU>0.4重复，此时返回it是重叠的老车位
         if (iou >= 0.4) {
             break;
         }
