@@ -12,6 +12,10 @@
 slotfusion slotfusion;
 using json = nlohmann::json;
 
+std::filesystem::path currentPath = std::filesystem::current_path();
+std::filesystem::path parentPath = currentPath.parent_path();
+
+
 void loadAllData(const std::string& filename, std::vector<json>& dataArray) {
     std::ifstream inFile(filename);
     if (inFile.is_open()) {
@@ -316,7 +320,9 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
 
     //Draw RD info
     std::vector<json> allRDData;
-    std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+    //std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+    std::filesystem::path targetPath = parentPath / "RDinfo.json";
+    std::string filepath = targetPath.string();
     loadAllData(filepath, allRDData);
     // 创建一个 rd::QuadParkingSlots 对象
     rd::QuadParkingSlots rd_info;
@@ -410,7 +416,9 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
     // TODO: Draw DR info
     std::vector<json> allDRData;
     // std::string dr_filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
-    // loadAllData(dr_filepath, allDRData);
+    std::filesystem::path dr_targetPath = parentPath / "DR_POSE.json";
+    std::string dr_filepath = dr_targetPath.string();
+    loadAllData(dr_filepath, allDRData);
     Loc::App2emap_DR dr_pose;
     int dr_time;
     

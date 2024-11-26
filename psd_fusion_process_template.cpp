@@ -6,6 +6,9 @@
 
 #define DEBUG true
 
+#define VEHICLE_LENGTH 5259.9 
+#define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7 
+
 int apa_states;
 StatusDecFusionInput psd2statemachine;
 Sfus::Sfsuion2DecPlan psd2planning;
@@ -85,9 +88,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
 
     // 上游：statemachine, RD, DR
 
-    //***********get statemachine
-
-
     //***********get frameid and singleframeslot
     //frameid
     rd::QuadParkingSlots rd_info;
@@ -120,7 +120,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
             // 0xFF 作为默认值
             oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : 0xFF;  
             
-            //@TODO 左右判断优化,按规划ABCD顺序输出车位角点
+            //左右判断,按规划/定位ABCD顺序输出车位角点
             if (parkingSlot.tl.x < 224 && parkingSlot.tr.x < 224)
             {
                 oneslot.slotSide = 0x01; //x小于图像中心，判断为左
@@ -195,7 +195,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     }
 
     //psd输出的原始车位列表（原点为后轴中心）
-    //@TODO 优化取值方式，不要每次调用size()
     LOGT("[_test psd output origin slotlist] size is %d",outputSlot_VIS.WorldoutRect.size());
 
     for (auto& psd_m_output : outputSlot_VIS.WorldoutRect)
@@ -213,10 +212,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
 
     // 下游：APAHANDEL, VCU, PLANNING
 
-
-
-    //***********APAHANDEL
-    //11.18 测试
+    //***********APAHANDEL (ready)
     Fsm::FusionSlotInfo2Location psd2location;
     int tempsize;
     tempsize = outputSlot_FUSED.WorldoutRect.size();
@@ -224,8 +220,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     LOGT("[_test] tempsize:%d, slotnum: %d",tempsize,psd2location.slotNum);
     if (psd2location.slotNum > 0)
     {
-        // std::vector<Fsm::FusionSlotInfo> psd2location_slotlist;
-        // psd2location_slotlist.resize(tempsize);
         int j = 0;
 
         for (auto& psd_m_output : outputSlot_FUSED.WorldoutRect)
@@ -266,7 +260,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     }
 
     //**********perception_fusion_process
-    // 11.19 psd-perception
     Sfus::SfusionSlots psd2perception;
     int perception_slotnum = outputSlot_FUSED.WorldoutRect.size();
     int m = 0;
@@ -308,45 +301,55 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     EMC_psd_fusion_process_SetFieldSfusionSlots(psd2perception);
 
     //**********VCU
-    //11.18 测试
     Sfus::FusionSlotInfovector psd2vcu;
+    memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
     // int tempsize1 = outputSlot_VIS.WorldoutRect.size();
     psd2vcu.slotNum = tempsize;
-    int i = 0;
-    for (auto& psd_m_output : outputSlot_FUSED.WorldoutRect)
-    {
-        if (i >= tempsize)
-        {
-            break;
-        }
-        psd2vcu.FusionSlotInfo[i].slotType = slottype_rd2vcu(psd_m_output.rectInfo.PStype);
-        psd2vcu.FusionSlotInfo[i].slotLabel = psd_m_output.rectInfo.label; //ID
-        psd2vcu.FusionSlotInfo[i].pt[0].x = psd_m_output.rectInfo.pt[0].x;
-        psd2vcu.FusionSlotInfo[i].pt[0].y = psd_m_output.rectInfo.pt[0].y;
-        psd2vcu.FusionSlotInfo[i].pt[1].x = psd_m_output.rectInfo.pt[1].x;
-        psd2vcu.FusionSlotInfo[i].pt[1].y = psd_m_output.rectInfo.pt[1].y;
-        psd2vcu.FusionSlotInfo[i].pt[2].x = psd_m_output.rectInfo.pt[2].x;
-        psd2vcu.FusionSlotInfo[i].pt[2].y = psd_m_output.rectInfo.pt[2].y;
-        psd2vcu.FusionSlotInfo[i].pt[3].x = psd_m_output.rectInfo.pt[3].x;
-        psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[3].y;
-        LOGT("[SlotFusion vcu] TOTAL SLOT NUM: %d, Slot#%d, type: %d ",
-                psd2vcu.slotNum,
-                psd2vcu.FusionSlotInfo[i].slotLabel,
-                psd2vcu.FusionSlotInfo[i].slotType);
-        LOGT("(%.1f, %.1f , %.1f, %.1f, %.1f, %.1f, %.1f, %.1f)\n",
-                psd2vcu.FusionSlotInfo[i].pt[0].x,
-                psd2vcu.FusionSlotInfo[i].pt[0].y,
-                psd2vcu.FusionSlotInfo[i].pt[1].x,
-                psd2vcu.FusionSlotInfo[i].pt[1].y,
-                psd2vcu.FusionSlotInfo[i].pt[2].x,
-                psd2vcu.FusionSlotInfo[i].pt[2].y,
-                psd2vcu.FusionSlotInfo[i].pt[3].x,
-                psd2vcu.FusionSlotInfo[i].pt[3].y);
-        i++;
-    }
-    EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
+    if (psd2vcu.slotNum > 0){
+        int i = 0;
 
-    //***********PLANNING, HMI（已ready）
+        for (auto& psd_m_output : outputSlot_FUSED.WorldoutRect){
+            if (i >= tempsize){
+                break;
+            }
+            //psd2vcu.FusionSlotInfo[i].slotType = slottype_rd2vcu(psd_m_output.rectInfo.PStype);
+            psd2vcu.FusionSlotInfo[i].slotLabel = psd_m_output.rectInfo.label; //ID
+            psd2vcu.FusionSlotInfo[i].displayLabel = psd2vcu.FusionSlotInfo[i].slotLabel;
+            psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+
+            psd2vcu.FusionSlotInfo[i].pt[0].x = psd_m_output.rectInfo.pt[0].x / 1000; //mm 转 m
+            psd2vcu.FusionSlotInfo[i].pt[0].y = (psd_m_output.rectInfo.pt[0].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ 1000; //后轴中心转前保中心
+            psd2vcu.FusionSlotInfo[i].pt[0].z = 0;
+            psd2vcu.FusionSlotInfo[i].pt[1].x = psd_m_output.rectInfo.pt[1].x / 1000;
+            psd2vcu.FusionSlotInfo[i].pt[1].y = (psd_m_output.rectInfo.pt[1].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ 1000;
+            psd2vcu.FusionSlotInfo[i].pt[1].z = 0;
+            psd2vcu.FusionSlotInfo[i].pt[2].x = psd_m_output.rectInfo.pt[2].x / 1000;
+            psd2vcu.FusionSlotInfo[i].pt[2].y = (psd_m_output.rectInfo.pt[2].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ 1000;
+            psd2vcu.FusionSlotInfo[i].pt[2].z = 0;
+            psd2vcu.FusionSlotInfo[i].pt[3].x = psd_m_output.rectInfo.pt[3].x / 1000;
+            psd2vcu.FusionSlotInfo[i].pt[3].y = (psd_m_output.rectInfo.pt[3].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ 1000;
+            psd2vcu.FusionSlotInfo[i].pt[3].z = 0;
+            psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 0;
+            psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 0;
+            LOGT("[SlotFusion vcu] TOTAL SLOT NUM: %d, Slot#%d, Displaylabel: %d, slotstatus: %d (%.1f, %.1f , %.1f, %.1f, %.1f, %.1f, %.1f, %.1f)",
+                    psd2vcu.slotNum,
+                    psd2vcu.FusionSlotInfo[i].slotLabel,
+                    psd2vcu.FusionSlotInfo[i].displayLabel,
+                    psd2vcu.FusionSlotInfo[i].slotStatusType,
+                    psd2vcu.FusionSlotInfo[i].pt[0].x,
+                    psd2vcu.FusionSlotInfo[i].pt[0].y,
+                    psd2vcu.FusionSlotInfo[i].pt[1].x,
+                    psd2vcu.FusionSlotInfo[i].pt[1].y,
+                    psd2vcu.FusionSlotInfo[i].pt[2].x,
+                    psd2vcu.FusionSlotInfo[i].pt[2].y,
+                    psd2vcu.FusionSlotInfo[i].pt[3].x,
+                    psd2vcu.FusionSlotInfo[i].pt[3].y);
+            i++;
+        }
+        EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
+    }
+
+    //***********PLANNING, HMI（ready）
     //check psd output to planning(1 slot list)  
     //规划暂时不用车位列表，需等待预规划模块ready后。暂时用于HMI显示车位列表
     int planning_slotnum = outputSlot_FUSED.WorldoutRect.size();
@@ -536,6 +539,32 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
             }
         }
     }
+
+    // //@TODO 构建规则，缺少角度，缺少斜列车位构建
+    // if(PLV_total_slots.u8SlotNum  != 0){
+    //     for (auto& uss_oneslot : PLV_total_slots.UssIf_stSlotProperty){
+    //         if(uss_oneslot.enmSlotType == 1){
+    //             if (uss_oneslot.u16SlotLength <= 400)
+    //             {
+    //                 uss_oneslot.stSlotPt[0].x = uss_oneslot.stSlotPt[0].x;
+    //                 uss_oneslot.stSlotPt[0].y = uss_oneslot.stSlotPt[0].y - 300;
+    //                 uss_oneslot.stSlotPt[1].x = uss_oneslot.stSlotPt[1].x;
+    //                 uss_oneslot.stSlotPt[1].y = uss_oneslot.stSlotPt[1].y - 300;
+    //                 uss_oneslot.stSlotPt[2].x = uss_oneslot.stSlotPt[2].x;
+    //                 uss_oneslot.stSlotPt[1].y = uss_oneslot.stSlotPt[1].y - 300;
+    //             }
+    //         }
+
+    //     }
+        
+
+
+
+
+
+
+
+    // } 
     
 
     // 与视觉车位类型统一的PLV车位列表
@@ -582,6 +611,7 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
             printf("\n");
         }
     }
+
 
      //***融合
     slotfusion fusionslot;
