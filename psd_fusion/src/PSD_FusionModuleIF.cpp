@@ -633,11 +633,12 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
         rect.rectInfo.pt[2] = coordConvert_global_dr(slot.c, m_vehicle_pose);
         rect.rectInfo.pt[3] = coordConvert_global_dr(slot.d, m_vehicle_pose);
 
+        //重叠过滤
         bool mis_detect_flag = true;
         auto it = existed_in_psinfo(rect, mis_detect_flag); 
         if(!mis_detect_flag && it == m_apa_psinfo.WorldoutRect.end()) { // 当未发生误检测且当前车位在 m_apa_psinfo 中不存在，跳过循环，不对车位进行处理
             continue;
-        }
+        } 
 
         if (it == m_apa_psinfo.WorldoutRect.end()) { // 如果当前车位不在 m_apa_psinfo 中，将其视为新矩形，并加入 m_apa_psinfo
             rect.rectInfo.label = m_next_available_label_idx++;
@@ -647,6 +648,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             m_apa_psinfo.WorldoutRect.push_back(rect);
         }
         else {
+            //找到重叠
             rect.rectInfo.label = it->rectInfo.label;
             rect.detect_frame_count = it->detect_frame_count + 1;
             rect.is_reliable = rect.detect_frame_count >= 5; //如果连续出现5帧，则这个车位可信任，is_reliable 设为 true
@@ -732,7 +734,7 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
     }
 
     //size>0时，反向遍历psinfo
-    //从倒数第一个向前遍历
+    //从倒数第一个向前遍历，假设新增的车位和上一个最匹配。和之前的所有车位对比
     auto it = m_apa_psinfo.WorldoutRect.end() - 1; 
     for( ; it >= m_apa_psinfo.WorldoutRect.begin(); it--) 
     {
@@ -740,9 +742,9 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
         Vertexes vert_new, vert;
         changePoint(rect_new, vert_new);
         changePoint(*it, vert);
-        iou = iouEx(vert_new, vert); //当前帧和上一帧的矩形框IOU
+        iou = iouEx(vert_new, vert); //当前帧和上一帧的车位IOU
         
-        //IOU>0.4重复
+        //IOU>0.4重复，此时返回it是重叠的老车位
         if (iou >= 0.4) {
             break;
         }

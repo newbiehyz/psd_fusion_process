@@ -15,6 +15,8 @@ int slottype_uss2rd(UssIf_enmSlotType_t uss_type)
 {
     switch (uss_type) 
     {
+        default:
+            return 0; //20241125 switch屏蔽异常输入，默认统一输出垂直车位
         case USSIF_SLOT_TYPE_PERPENDICULAR_E:
             return 0; 
         case USSIF_SLOT_TYPE_PARALLEL_E:
@@ -22,7 +24,7 @@ int slottype_uss2rd(UssIf_enmSlotType_t uss_type)
         case USSIF_SLOT_TYPE_ANGULAR_E:
             return 2; 
         case USSIF_SLOT_TYPE_UNKNOW_E:
-            break;
+            return 0; //20241125 switch屏蔽异常输入，默认统一输出垂直车位
     }
 }
 
@@ -30,6 +32,9 @@ int slottype_rd2vcu(int rd_type)
 {
     switch (rd_type) 
     {
+        default:
+            printf("invalid rd_type: %d input!",rd_type);
+            return 1;  //20241125 switch屏蔽异常输入，默认统一输出垂直车位
         case 0:
             return 1; 
         case 1:

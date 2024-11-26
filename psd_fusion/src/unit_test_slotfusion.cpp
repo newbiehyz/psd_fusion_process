@@ -14,6 +14,10 @@
 
 using json = nlohmann::json;
 
+std::filesystem::path currentPath = std::filesystem::current_path();
+std::filesystem::path parentPath = currentPath.parent_path();
+
+
 void loadAllData(const std::string& filename, std::vector<json>& dataArray) {
     std::ifstream inFile(filename);
     if (inFile.is_open()) {
@@ -318,7 +322,9 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
 
     //Draw RD info
     std::vector<json> allRDData;
-    std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+    //std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+    std::filesystem::path targetPath = parentPath / "RDinfo.json";
+    std::string filepath = targetPath.string();
     loadAllData(filepath, allRDData);
     // 创建一个 rd::QuadParkingSlots 对象
     rd::QuadParkingSlots rd_info;
@@ -410,12 +416,26 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
     }
 
     // TODO: Draw DR info
-    // std::vector<json> allDRData;
-    // std::string dr_filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/DR_POSE.json";
-    // loadAllData(dr_filepath, allDRData);
-    // Loc::App2emap_DR dr_pose;
-    // uint64_t dr_time;
-    // padVehiclePose  pose_globaldata;
+    std::vector<json> allDRData;
+    // std::string dr_filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+    std::filesystem::path dr_targetPath = parentPath / "DR_POSE.json";
+    std::string dr_filepath = dr_targetPath.string();
+    loadAllData(dr_filepath, allDRData);
+    Loc::App2emap_DR dr_pose;
+    int dr_time;
+    
+    // 遍历所有数据
+    for(const auto &data : allDRData){
+        if(dr_time == data["timeStamp"]){
+            break;
+        }
+        dr_pose.x = data["x"];
+        dr_pose.y = data["y"];
+        dr_pose.canAng = data["canAng"];
+        dr_pose.DRStatus = data["DRStatus"];
+        dr_pose.timeStamp = data["timeStamp"];
+        dr_time = dr_pose.timeStamp;
+    }
 
     // unsigned long long singleframeslotsID;
     // singleframeslotsID = rd_info.frameTimeStampNs;
