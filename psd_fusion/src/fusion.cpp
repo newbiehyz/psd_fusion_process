@@ -4,7 +4,15 @@ using namespace std;
 
 const double IOU_THRESHOLD = 0.6;
 
+slotfusion::slotfusion()
+{
 
+}
+
+slotfusion::~slotfusion()
+{
+
+}
 
 void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION) 
 {

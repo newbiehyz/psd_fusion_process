@@ -95,7 +95,7 @@ public:
     void RegisterCallback(IFusionMapCallback* callback, Fusion_Error_Code& error_code);
     //void UpdateSonarSlots(const UssInfo& info);
     void UpdateVechiclePose(const padVehiclePose& pose_global);
-    void UpdateVisionSlots(int frameid, std::vector<padVisionSlotCoord> slots);
+    void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots);
     void UpdateUserSelectSlotId(int user_select_slot_id);
     //void UpdateSonarObstacle(const UssInfo& info);
     apaSlotListInfo GetOutputSlot()

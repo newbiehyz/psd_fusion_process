@@ -19,7 +19,11 @@ add_definitions(-D_ON_LINUX_)
 find_package(OpenCV REQUIRED)
 
 # 添加源文件
-set(SOURCES fusion.cpp)
+set(SOURCES 
+    fusion.cpp
+    PSD_FusionModuleIF.cpp
+    iou.cpp
+    )
 
 # 头文件路径
 include_directories(

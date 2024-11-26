@@ -579,11 +579,11 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
     return -1;
 }
 
-void PSD_FusionModuleIF::UpdateVisionSlots(int frameid, std::vector<padVisionSlotCoord> slots)
+void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots)
 {
     //check updatevisionslots' input
-    printf("[_test updatevisionslots] start!!\n");
-    printf("[_test updatevisionslots check] timestamp:%d, RD's singelframe slots have: %d\n",frameid,slots.size());
+    // printf("[_test updatevisionslots] start!!\n");
+    std::cout<<"[_test updatevisionslots check] timestamp: "<< frameid <<","<< "RD's singelframe slots have: " << slots.size() << std::endl;
 
     std::lock_guard<std::mutex> lock(m_psinfo_mutex);
     
@@ -635,11 +635,11 @@ void PSD_FusionModuleIF::UpdateVisionSlots(int frameid, std::vector<padVisionSlo
 
         bool mis_detect_flag = true;
         auto it = existed_in_psinfo(rect, mis_detect_flag); 
-        if(!mis_detect_flag && it == m_apa_psinfo.WorldoutRect.end()) {
+        if(!mis_detect_flag && it == m_apa_psinfo.WorldoutRect.end()) { // 当未发生误检测且当前车位在 m_apa_psinfo 中不存在，跳过循环，不对车位进行处理
             continue;
         }
 
-        if (it == m_apa_psinfo.WorldoutRect.end()) {
+        if (it == m_apa_psinfo.WorldoutRect.end()) { // 如果当前车位不在 m_apa_psinfo 中，将其视为新矩形，并加入 m_apa_psinfo
             rect.rectInfo.label = m_next_available_label_idx++;
             if(m_apa_psinfo.WorldoutRect.size() >= MAX_SLOT_NUM) {
                 m_apa_psinfo.WorldoutRect.erase(m_apa_psinfo.WorldoutRect.begin());
@@ -649,7 +649,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(int frameid, std::vector<padVisionSlo
         else {
             rect.rectInfo.label = it->rectInfo.label;
             rect.detect_frame_count = it->detect_frame_count + 1;
-            rect.is_reliable = rect.detect_frame_count >= 5;
+            rect.is_reliable = rect.detect_frame_count >= 5; //如果连续出现5帧，则这个车位可信任，is_reliable 设为 true
             rect.detect_as_occupy_count = it->detect_as_occupy_count + slot.occupy;
             rect.rectInfo.iSodType = float(rect.detect_as_occupy_count) / float(rect.detect_frame_count) > 0.5;
 
@@ -705,9 +705,9 @@ void PSD_FusionModuleIF::UpdateVisionSlots(int frameid, std::vector<padVisionSlo
         printf("\n");
     }
 
-    if (m_callback) {
-        m_callback->UpdateFusionMap(m_frame_id, m_output_slot);
-    }
+    // if (m_callback) {
+    //     m_callback->UpdateFusionMap(m_frame_id, m_output_slot);
+    // }
     printf("[_test updatevisionslots] end!!\n");
 }
 
@@ -724,7 +724,7 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
         printf("id=%d\n",m_frame_id); 
     }
 
-    double iou = 0;;
+    double iou = 0;
 
     if(m_apa_psinfo.WorldoutRect.size() == 0) {
         auto it = m_apa_psinfo.WorldoutRect.end();

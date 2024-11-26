@@ -1,5 +1,6 @@
 #include <vector>
 #include <fstream>
+#include <thread>
 #include <string>
 #include <vector>
 #include <opencv2/opencv.hpp>
@@ -7,9 +8,10 @@
 #include "json.hpp"
 #include "psd_fusion_process_header.h"
 #include "fusion.h" // 替换为你的实际头文件
+#include "PSD_FusionModuleIF.h"
 
 #define TESTCASE 0
-slotfusion slotfusion;
+
 using json = nlohmann::json;
 
 void loadAllData(const std::string& filename, std::vector<json>& dataArray) {
@@ -408,72 +410,89 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
     }
 
     // TODO: Draw DR info
-    std::vector<json> allDRData;
-    // std::string dr_filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+    // std::vector<json> allDRData;
+    // std::string dr_filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/DR_POSE.json";
     // loadAllData(dr_filepath, allDRData);
-    Loc::App2emap_DR dr_pose;
-    int dr_time;
-    
-    // 遍历所有数据
-    for(const auto &data : allDRData){
-        if(dr_time == data["timeStamp"]){
-            break;
-        }
-        dr_pose.x = data["x"];
-        dr_pose.y = data["y"];
-        dr_pose.canAng = data["canAng"];
-        dr_pose.DRStatus = data["DRStatus"];
-        dr_pose.timeStamp = data["timeStamp"];
-        dr_time = dr_pose.timeStamp;
-    }
+    // Loc::App2emap_DR dr_pose;
+    // uint64_t dr_time;
+    // padVehiclePose  pose_globaldata;
 
+    // unsigned long long singleframeslotsID;
+    // singleframeslotsID = rd_info.frameTimeStampNs;
 
-    unsigned long long singleframeslotsID;
-    singleframeslotsID = rd_info.frameTimeStampNs;
-    // LOGT("[_test rd_info timestampNs] S32G RECEIVE timestampNs: %llu",singleframeslotsID);
+    // //singleframeslot
+    // std::vector<padVisionSlotCoord> singleframeslots;
+    // if (!rd_info.quadParkingSlotList.empty())
+    // {
+    //     for (const auto& parkingSlot : rd_info.quadParkingSlotList)
+    //     {
+    //         //emos -> 358-2
+    //         padVisionSlotCoord oneslot; //中间结构体，转存rd单帧车位列表
 
-    //singleframeslot
-    std::vector<padVisionSlotCoord> singleframeslots;
-    if (!rd_info.quadParkingSlotList.empty())
-    {
-        // LOGT("[_test rd_info singleframeslots] J5 SEND RD output slots size: %d",rd_info.quadParkingSlotList.size());
-        for (const auto& parkingSlot : rd_info.quadParkingSlotList)
-        {
-            //emos -> 358-2
-            padVisionSlotCoord oneslot; //中间结构体，转存rd单帧车位列表
-
-            // 0xFF 作为默认值
-            oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : 0xFF;  
+    //         // 0xFF 作为默认值
+    //         oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : 0xFF;  
             
-            //@TODO 左右判断优化,按规划ABCD顺序输出车位角点
-            if (parkingSlot.tl.x < 224 && parkingSlot.tr.x < 224)
-            {
-                oneslot.slotSide = 0x01; //x小于图像中心，判断为左
-                oneslot.a.x = int(parkingSlot.tr.x);
-                oneslot.a.y = int(parkingSlot.tr.y);
-                oneslot.b.x = int(parkingSlot.tl.x);
-                oneslot.b.y = int(parkingSlot.tl.y);
-                oneslot.c.x = int(parkingSlot.bl.x);
-                oneslot.c.y = int(parkingSlot.bl.y);
-                oneslot.d.x = int(parkingSlot.br.x);
-                oneslot.d.y = int(parkingSlot.br.y);
-            }
-            else 
-            {
-                oneslot.slotSide = 0x00;
-                oneslot.a.x = int(parkingSlot.tl.x);
-                oneslot.a.y = int(parkingSlot.tl.y);
-                oneslot.b.x = int(parkingSlot.tr.x);
-                oneslot.b.y = int(parkingSlot.tr.y);
-                oneslot.c.x = int(parkingSlot.br.x);
-                oneslot.c.y = int(parkingSlot.br.y);
-                oneslot.d.x = int(parkingSlot.bl.x);
-                oneslot.d.y = int(parkingSlot.bl.y);
+    //         //@TODO 左右判断优化,按规划ABCD顺序输出车位角点
+    //         if (parkingSlot.tl.x < 224 && parkingSlot.tr.x < 224)
+    //         {
+    //             oneslot.slotSide = 0x01; //x小于图像中心，判断为左
+    //             oneslot.a.x = int(parkingSlot.tr.x);
+    //             oneslot.a.y = int(parkingSlot.tr.y);
+    //             oneslot.b.x = int(parkingSlot.tl.x);
+    //             oneslot.b.y = int(parkingSlot.tl.y);
+    //             oneslot.c.x = int(parkingSlot.bl.x);
+    //             oneslot.c.y = int(parkingSlot.bl.y);
+    //             oneslot.d.x = int(parkingSlot.br.x);
+    //             oneslot.d.y = int(parkingSlot.br.y);
+    //         }
+    //         else 
+    //         {
+    //             oneslot.slotSide = 0x00;
+    //             oneslot.a.x = int(parkingSlot.tl.x);
+    //             oneslot.a.y = int(parkingSlot.tl.y);
+    //             oneslot.b.x = int(parkingSlot.tr.x);
+    //             oneslot.b.y = int(parkingSlot.tr.y);
+    //             oneslot.c.x = int(parkingSlot.br.x);
+    //             oneslot.c.y = int(parkingSlot.br.y);
+    //             oneslot.d.x = int(parkingSlot.bl.x);
+    //             oneslot.d.y = int(parkingSlot.bl.y);
 
-            }
-            singleframeslots.push_back(oneslot);
-        }
-    }
+    //         }
+    //         singleframeslots.push_back(oneslot);
+    //     }
+    // }
+    
+    // PSD_FusionModuleIF PSD_FusionModuleIFrunable;
+    // PSD_FusionModuleIFrunable.Initialize();
+
+    // // 遍历所有数据
+    // for(const auto &data : allDRData){
+    //     if(dr_time == data["timeStamp"]){
+    //         break;
+    //     }
+    //     dr_pose.x = data["x"];
+    //     dr_pose.y = data["y"];
+    //     dr_pose.canAng = data["canAng"];
+    //     dr_pose.DRStatus = data["DRStatus"];
+    //     dr_pose.timeStamp = data["timeStamp"];
+    //     dr_time = dr_pose.timeStamp;
+
+    //     pose_globaldata.coord.x = int(dr_pose.x);
+    //     pose_globaldata.coord.y = int(dr_pose.y);
+    //     pose_globaldata.yaw = dr_pose.canAng;
+
+    //     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
+    //     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots);
+    // }
+
+    
+    
+
+    
+
+
+    
+   
 
     // Draw Vison slot
     std::vector<json> allVisonData;
@@ -542,8 +561,288 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
     EXPECT_EQ(outputSlot_FUSION.WorldoutRect.size(), 5); // 应该有3个车位
 }
 
+std::vector<json> allRDData;
+std::vector<json> allDRData;
+std::vector<json> allVisionData;
+std::vector<json> allUSSData;
+bool rd_dataloaded = false;
+bool dr_dataloaded = false;
+bool vison_dataloaded = false;
+bool uss_dataloaded = false;
+bool is_init = false;
+PSD_FusionModuleIF PSD_FusionModuleIFrunable;
+
+void TimeTrigger_Timer50(){
+    
+    //Get RD info
+    if (!rd_dataloaded){
+        std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+        loadAllData(filepath, allRDData);
+        rd_dataloaded = true;
+    }
+    static size_t currentIndex = 0;
+    if(currentIndex >= allRDData.size()){
+        // std::cout<<"所有数据已处理完毕"<<std::endl;
+        return;
+    }
+    const auto &data = allRDData[currentIndex];
+    // 创建一个 rd::QuadParkingSlots 对象
+    rd::QuadParkingSlots rd_info;
+    rd_info.frameTimeStampNs = data["frameTimeStampNs"];
+    rd_info.sensorId = data["sensorId"];
+
+        // 提取 header 信息（根据实际的字段）
+        rd_info.header.seq = data["header"]["seq"];
+        rd_info.header.frameId = data["header"]["frameId"];
+        // 如果有其他需要的字段，继续提取
+
+        // 提取 quadParkingSlotList 数组
+        const auto& slotListArray = data["quadParkingSlotList"];
+        for (const auto& slotJson : slotListArray) {
+            // 创建一个 QuadParkingSlot 对象
+            rd::QuadParkingSlot slot;
+
+            // 提取四个顶点坐标
+            slot.tl.x = slotJson["tl"]["x"];
+            slot.tl.y = slotJson["tl"]["y"];
+
+            slot.tr.x = slotJson["tr"]["x"];
+            slot.tr.y = slotJson["tr"]["y"];
+
+            slot.bl.x = slotJson["bl"]["x"];
+            slot.bl.y = slotJson["bl"]["y"];
+
+            slot.br.x = slotJson["br"]["x"];
+            slot.br.y = slotJson["br"]["y"];
+
+            // 提取其他字段
+            slot.confidence = slotJson["confidence"];
+            slot.label = slotJson["label"];
+            slot.filtered = slotJson["filtered"];
+            slot.slotType = slotJson["slotType"];
+            slot.sTl = slotJson["sTl"];
+            slot.sTr = slotJson["sTr"];
+            slot.sBl = slotJson["sBl"];
+            slot.sBr = slotJson["sBr"];
+
+            slot.dirIn.x = slotJson["dirIn"]["x"];
+            slot.dirIn.y = slotJson["dirIn"]["y"];
+
+            slot.dirWidth.x = slotJson["dirWidth"]["x"];
+            slot.dirWidth.y = slotJson["dirWidth"]["y"];
+
+            slot.dirLength.x = slotJson["dirLength"]["x"];
+            slot.dirLength.y = slotJson["dirLength"]["y"];
+
+            slot.center.x = slotJson["center"]["x"];
+            slot.center.y = slotJson["center"]["y"];
+
+            slot.oppModify = slotJson["oppModify"];
+            slot.isComplete = slotJson["isComplete"];
+            slot.width = slotJson["width"];
+            slot.length = slotJson["length"];
+            slot.isVisited = slotJson["isVisited"];
+
+            // 将 slot 添加到 quadParkingSlotList
+            rd_info.quadParkingSlotList.push_back(slot);
+        }
+    // Get DR info
+    if (!dr_dataloaded){
+        std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/DR_POSE.json";
+        loadAllData(filepath, allDRData);
+        dr_dataloaded = true;
+    }
+    static size_t currentDRIndex = 0;
+    if(currentDRIndex >= allDRData.size()){
+        // std::cout<<"所有数据已处理完毕"<<std::endl;
+        return;
+    }
+    const auto &dr_data = allDRData[currentDRIndex];
+    Loc::App2emap_DR dr_pose;
+    dr_pose.x = dr_data["x"];
+    dr_pose.y = dr_data["y"];
+    dr_pose.canAng = dr_data["canAng"];
+    dr_pose.DRStatus = dr_data["DRStatus"];
+    dr_pose.timeStamp = dr_data["timeStamp"];
+
+    padVehiclePose  pose_globaldata;
+
+    uint64_t singleframeslotsID;
+    singleframeslotsID = rd_info.frameTimeStampNs;
+
+    //singleframeslot
+    std::vector<padVisionSlotCoord> singleframeslots;
+    if (!rd_info.quadParkingSlotList.empty())
+    {
+        for (const auto& parkingSlot : rd_info.quadParkingSlotList)
+        {
+            //emos -> 358-2
+            padVisionSlotCoord oneslot; //中间结构体，转存rd单帧车位列表
+
+            // 0xFF 作为默认值
+            oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : 0xFF;  
+            
+            //@TODO 左右判断优化,按规划ABCD顺序输出车位角点
+            if (parkingSlot.tl.x < 224 && parkingSlot.tr.x < 224)
+            {
+                oneslot.slotSide = 0x01; //x小于图像中心，判断为左
+                oneslot.a.x = int(parkingSlot.tr.x);
+                oneslot.a.y = int(parkingSlot.tr.y);
+                oneslot.b.x = int(parkingSlot.tl.x);
+                oneslot.b.y = int(parkingSlot.tl.y);
+                oneslot.c.x = int(parkingSlot.bl.x);
+                oneslot.c.y = int(parkingSlot.bl.y);
+                oneslot.d.x = int(parkingSlot.br.x);
+                oneslot.d.y = int(parkingSlot.br.y);
+            }
+            else 
+            {
+                oneslot.slotSide = 0x00;
+                oneslot.a.x = int(parkingSlot.tl.x);
+                oneslot.a.y = int(parkingSlot.tl.y);
+                oneslot.b.x = int(parkingSlot.tr.x);
+                oneslot.b.y = int(parkingSlot.tr.y);
+                oneslot.c.x = int(parkingSlot.br.x);
+                oneslot.c.y = int(parkingSlot.br.y);
+                oneslot.d.x = int(parkingSlot.bl.x);
+                oneslot.d.y = int(parkingSlot.bl.y);
+
+            }
+            singleframeslots.push_back(oneslot);
+        }
+    }
+    
+    if (!is_init){
+        PSD_FusionModuleIFrunable.Initialize();
+        is_init = true;
+    }
+    
+
+    pose_globaldata.coord.x = int(dr_pose.x);
+    pose_globaldata.coord.y = int(dr_pose.y);
+    pose_globaldata.yaw = dr_pose.canAng;
+    std::cout<<"timestamp:"<<dr_pose.timeStamp<<std::endl;
+    std::cout<<"coord.x:"<<pose_globaldata.coord.x<<std::endl;
+    std::cout<<"coord.y:"<<pose_globaldata.coord.y<<std::endl;
+    std::cout<<"coord.yaw:"<<pose_globaldata.yaw<<std::endl;
+    PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
+    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots);
+
+    //Get Vison data
+    if (!vison_dataloaded){
+        std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/VISapaSlotListInfo.json";
+        loadAllData(filepath, allVisionData);
+        vison_dataloaded = true;
+    }
+    static size_t currentVisionIndex = 0;
+    if(currentVisionIndex >= allVisionData.size()){
+        // std::cout<<"所有数据已处理完毕"<<std::endl;
+        return;
+    }
+    const auto &vision_data = allVisionData[currentVisionIndex];
+    // 创建一个 std::vector<apaSlotInfo> 容器
+    apaSlotListInfo apaSlotlistInfos;
+
+    // 提取 slots_in_cur_frame 数组（根据您的 JSON 结构调整字段名）
+    const auto& visionslotListArray = vision_data["WorldoutRect"];
+    const auto& ullFrameId = vision_data["ullFrameId"];
+
+    for (const auto& slotJson : visionslotListArray) {
+        // 创建一个 apaSlotInfo 对象
+        apaSlotInfo slot;
+
+        // 提取 rectInfo 信息
+        slot.rectInfo.label = slotJson["rectInfo"]["label"];
+        slot.rectInfo.PStype = slotJson["rectInfo"]["PStype"];
+
+        // 提取坐标点信息
+        for (int idx = 0; idx < RECTPointNum; ++idx) {
+            slot.rectInfo.pt[idx].x = slotJson["rectInfo"]["points"][idx]["x"];
+            slot.rectInfo.pt[idx].y = slotJson["rectInfo"]["points"][idx]["y"];
+        }
+
+        // 提取其他字段
+        slot.detect_frame_count = slotJson["detect_frame_count"];
+        slot.is_reliable = slotJson["is_reliable"];
+
+        // 将 slot 添加到 apaSlotlistInfos
+        apaSlotlistInfos.WorldoutRect.push_back(slot);
+    }
+    std::cout<<"TEST vision slot size:"<<apaSlotlistInfos.WorldoutRect.size()<<std::endl;
+    
+    //Get USS data
+    if (!uss_dataloaded){
+        std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/USSapaSlotListInfo.json";
+        loadAllData(filepath, allUSSData);
+        uss_dataloaded = true;
+    }
+    static size_t currentUSSIndex = 0;
+    if(currentUSSIndex >= allUSSData.size()){
+        // std::cout<<"所有数据已处理完毕"<<std::endl;
+        return;
+    }
+    const auto &uss_data = allUSSData[currentVisionIndex];
+    // 创建一个 std::vector<apaSlotInfo> 容器
+    apaSlotListInfo apaUSSSlotlistInfos;
+
+    // 提取 slots_in_cur_frame 数组（根据您的 JSON 结构调整字段名）
+    const auto& ussslotListArray = uss_data["WorldoutRect"];
+    const auto& ussullFrameId = uss_data["ullFrameId"];
+
+    for (const auto& slotJson : ussslotListArray) {
+        // 创建一个 apaSlotInfo 对象
+        apaSlotInfo slot;
+
+        // 提取 rectInfo 信息
+        slot.rectInfo.label = slotJson["rectInfo"]["label"];
+        slot.rectInfo.PStype = slotJson["rectInfo"]["PStype"];
+
+        // 提取坐标点信息
+        for (int idx = 0; idx < RECTPointNum; ++idx) {
+            slot.rectInfo.pt[idx].x = slotJson["rectInfo"]["points"][idx]["x"];
+            slot.rectInfo.pt[idx].y = slotJson["rectInfo"]["points"][idx]["y"];
+        }
+
+        // 提取其他字段
+        slot.detect_frame_count = slotJson["detect_frame_count"];
+        slot.is_reliable = slotJson["is_reliable"];
+
+        // 将 slot 添加到 apaSlotlistInfos
+        apaUSSSlotlistInfos.WorldoutRect.push_back(slot);
+    }
+    std::cout<<"TEST USS slot size:"<<apaUSSSlotlistInfos.WorldoutRect.size()<<std::endl;
+    
+    apaSlotListInfo outputSlot_FUSED;
+    slotfusion sf;
+    sf.mergeSlotLists(apaUSSSlotlistInfos, apaSlotlistInfos, outputSlot_FUSED);
+
+    currentIndex++;
+    currentDRIndex++;
+    currentVisionIndex++;
+    currentUSSIndex++;
+}
 
 int main(int argc, char **argv) {
+    while (true) {
+        auto start = std::chrono::steady_clock::now();
+
+        TimeTrigger_Timer50();;  // 调用您的函数
+
+        // 计算已经消耗的时间
+        auto end = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+        // 计算需要等待的时间，确保每次循环间隔为50毫秒
+        auto sleepTime = std::chrono::milliseconds(50) - elapsed;
+        if (sleepTime > std::chrono::milliseconds(0)) {
+            std::this_thread::sleep_for(sleepTime);
+        } else {
+            // 如果函数执行时间超过50毫秒，立即进行下一次调用
+            std::cerr << "Warning: Function execution took longer than 50ms." << std::endl;
+        }
+    }
+
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
+    
 }

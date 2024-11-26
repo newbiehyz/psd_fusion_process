@@ -561,7 +561,7 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
             rectInfo.iDownSlotSOD = slotProperty.enmDownSlotSODType;
             rectInfo.iMinOtherSideDist = slotProperty.u16UssOppositeSpace;
             rectInfo.iRoadEdgeDist = slotProperty.u16ObjDistanceBetweenLineABToSlotBottom;
-
+            
             outputSlot_USS.WorldoutRect.push_back(slotInfo);
         }
 
@@ -586,6 +586,7 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
      //***融合
     slotfusion fusionslot;
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
+    outputSlot_USS.ullFrameId = outputSlot_VIS.ullFrameId;
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
    
 
