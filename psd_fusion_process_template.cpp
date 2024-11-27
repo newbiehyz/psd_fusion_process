@@ -4,7 +4,7 @@
 #include <iostream>
 #include <typeinfo>
 
-#define DEBUG true
+#define DEBUG false
 
 #define VEHICLE_LENGTH 5259.9 
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7 
@@ -55,6 +55,7 @@ tResult cpsd_fusion_process::ThreadTrigger_thread()
 }
 
 PSD_FusionModuleIF PSD_FusionModuleIFrunable;
+Sfus::SelectSlot VCU_select;
 
 tResult cpsd_fusion_process::TimeTrigger_Timer50()
 {
@@ -191,7 +192,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     
     LOGT("[_test apastatus]: %d", apa_states);
     // 当泊车完成或者中断，清空车位列表
-    if (apa_states == 6 && apa_states == 7){
+    if (apa_states == 6 || apa_states == 7){
         outputSlot_VIS.WorldoutRect.clear();
     }
 
@@ -408,11 +409,18 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     printf("\n");
     EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
 
+
     //用于接受HMI发送的选择车位ID。HMI只发送1s，跳转为0。通过aps_apaParkType使statemachine跳转
-    Sfus::SelectSlot VCU_select;
-    memset(&VCU_select, 0, sizeof(Sfus::SelectSlot));
     Fsm::Slotlabel psd2apahandel_targetID;
-    EMC_SoAd_Bridge_GetFieldSelectSlot(VCU_select);
+    memset(&psd2apahandel_targetID, 0, sizeof(Fsm::Slotlabel));
+
+    if (apa_states == 6 || apa_states == 7){
+        psd2statemachine.aps_apaParkType = 0;
+        VCU_select_ID = VCU_select.SelectSlotID;
+        memset(&psd2apahandel_targetID, 0, sizeof(Fsm::Slotlabel));
+        LOGT("select target slot clear!")
+    }
+
     //VCU - s32g
     if (VCU_select.SelectSlotID)
     {
@@ -423,13 +431,15 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     if (VCU_select_ID > 0)
     {
         psd2apahandel_targetID.targetSlotLabel = VCU_select_ID;
+        LOGT("[_test select target slot] send to ")
         EMC_psd_fusion_process_SetFieldSlotlabel(psd2apahandel_targetID);
+
         printf("[_test select target slot] #%d: ",VCU_select_ID);
-        for (int i = 0; i < RECTPointNum; ++i) 
-        {
-            printf(" (%d,%d)",outputSlot_VIS.WorldoutRect[VCU_select_ID-1].rectInfo.pt[i].x,outputSlot_VIS.WorldoutRect[VCU_select_ID-1].rectInfo.pt[i].y - 4123.2);
-        }
-        printf("\n");
+            for (int i = 0; i < RECTPointNum; ++i) 
+            {
+                printf(" (%d,%d)",outputSlot_VIS.WorldoutRect[VCU_select_ID-1].rectInfo.pt[i].x,outputSlot_VIS.WorldoutRect[VCU_select_ID-1].rectInfo.pt[i].y - 4123.2);
+            }
+            printf("\n");
     }
     LOGT("[_test S32G RECEIVE VCU] select slot ID is: #%d, %d",VCU_select_ID,VCU_select_ID-1);
     LOGT("[_test statemachine] send slottype:%d", psd2statemachine.aps_apaParkType);
@@ -765,5 +775,6 @@ tResult cpsd_fusion_process::OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch
 
 tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
 {
+    VCU_select.SelectSlotID = userData.SelectSlotID;
     RETURN_NOERROR;
 }
