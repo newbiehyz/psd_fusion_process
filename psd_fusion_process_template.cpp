@@ -412,12 +412,13 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
 
     //用于接受HMI发送的选择车位ID。HMI只发送1s，跳转为0。通过aps_apaParkType使statemachine跳转
     Fsm::Slotlabel psd2apahandel_targetID;
-    memset(&psd2apahandel_targetID, 0, sizeof(Fsm::Slotlabel));
+    //memset(&psd2apahandel_targetID, 0, sizeof(Fsm::Slotlabel));
 
     if (apa_states == 6 || apa_states == 7){
         psd2statemachine.aps_apaParkType = 0;
         VCU_select_ID = VCU_select.SelectSlotID;
-        memset(&psd2apahandel_targetID, 0, sizeof(Fsm::Slotlabel));
+        // VCU_select_ID = VCU_select.SelectSlotID; //考虑用VCU_select_ID = 0
+        // memset(&psd2apahandel_targetID, 0, sizeof(Fsm::Slotlabel));
         LOGT("select target slot clear!")
     }
 
@@ -431,15 +432,15 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     if (VCU_select_ID > 0)
     {
         psd2apahandel_targetID.targetSlotLabel = VCU_select_ID;
-        LOGT("[_test select target slot] send to ")
         EMC_psd_fusion_process_SetFieldSlotlabel(psd2apahandel_targetID);
 
-        printf("[_test select target slot] #%d: ",VCU_select_ID);
-            for (int i = 0; i < RECTPointNum; ++i) 
-            {
-                printf(" (%d,%d)",outputSlot_VIS.WorldoutRect[VCU_select_ID-1].rectInfo.pt[i].x,outputSlot_VIS.WorldoutRect[VCU_select_ID-1].rectInfo.pt[i].y - 4123.2);
-            }
-            printf("\n");
+        // @TODO states == 7 时 core dump
+        // printf("[_test select target slot] #%d: ",VCU_select_ID);
+        //     for (int i = 0; i < RECTPointNum; ++i) 
+        //     {
+        //         printf(" (%d,%d)",outputSlot_VIS.WorldoutRect[VCU_select_ID-1].rectInfo.pt[i].x,outputSlot_VIS.WorldoutRect[VCU_select_ID-1].rectInfo.pt[i].y - 4123.2);
+        //     }
+        //     printf("\n");
     }
     LOGT("[_test S32G RECEIVE VCU] select slot ID is: #%d, %d",VCU_select_ID,VCU_select_ID-1);
     LOGT("[_test statemachine] send slottype:%d", psd2statemachine.aps_apaParkType);
