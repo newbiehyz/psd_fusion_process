@@ -212,7 +212,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     }
 
 
-    // 下游：APAHANDEL, VCU, PLANNING
+    // 下游：APAHANDEL, PERCEPTION, VCU, PLANNING
 
     //***********APAHANDEL (ready)
     Fsm::FusionSlotInfo2Location psd2location;
@@ -261,7 +261,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
         EMC_psd_fusion_process_SetFieldFusionSlotInfo2Location(psd2location);
     }
 
-    //**********perception_fusion_process
+    //**********PERCEPTION
     Sfus::SfusionSlots psd2perception;
     int perception_slotnum = outputSlot_FUSED.WorldoutRect.size();
     int m = 0;
@@ -533,7 +533,7 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
     LOGT("[SlotFusion USS PLV] RIGHT slot num: %d",userData.UssIf_stSlotInfo[1].u8SlotNum);
     for (int i = 0; i < userData.UssIf_stSlotInfo[1].u8SlotNum; ++i)
     {
-        LOGT("[SlotFusionUSS PLV] RIGHT slot ID: %d, slot type: %d, slot bottom type: %d, slot length: %d, depth: %d, (%d, %d, %d, %d, %d, %d, %d, %d)"
+        LOGT("[SlotFusion USS PLV] RIGHT slot ID: %d, slot type: %d, slot bottom type: %d, slot length: %d, depth: %d, (%d, %d, %d, %d, %d, %d, %d, %d)"
                 ,userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[i].u16SlotID
                 ,userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[i].enmSlotType
                 ,userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[i].enmSlotBottomType
@@ -551,23 +551,46 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
     }
 
     //左右车位列表拼成一个
-    int SlotNum = userData.UssIf_stSlotInfo[0].u8SlotNum + userData.UssIf_stSlotInfo[1].u8SlotNum;
-    PLV_total_slots.u8SlotNum = SlotNum;
-    int index = 0;
-    if (userData.UssIf_stSlotInfo[0].u8SlotNum != 0){
-         for (int i = 0; i < userData.UssIf_stSlotInfo[0].u8SlotNum; ++i) 
+    int USS_total_slotnum = 0;
+    USS_total_slotnum = userData.UssIf_stSlotInfo[0].u8SlotNum + userData.UssIf_stSlotInfo[1].u8SlotNum;
+    PLV_total_slots.u8SlotNum = USS_total_slotnum;
+    if (PLV_total_slots.u8SlotNum > 0)
+    {
+        for (int USS_index = 0; USS_index < USS_total_slotnum; USS_index++)
         {
-            if (index < userData.UssIf_stSlotInfo[0].u8SlotNum) {
-                PLV_total_slots.UssIf_stSlotProperty[index++] = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i];
+            for (int i = 0; i < userData.UssIf_stSlotInfo[0].u8SlotNum; i++)
+            {
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].u16SlotID = 10000 + USS_index;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].enmSlotType = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].enmSlotType;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].enmSlotBottomType = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].enmSlotBottomType;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].u16SlotDepth = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].u16SlotDepth;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].u16SlotLength = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].u16SlotLength;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[0].x = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[0].x;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[0].y = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[0].y;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[1].x = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[1].x;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[1].y = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[1].y;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[2].x = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[2].x;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[2].y = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[2].y;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[3].x = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[3].x;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[3].y = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[3].y;
+                USS_index++;
             }
-        }
-    }
-   
-    if (userData.UssIf_stSlotInfo[1].u8SlotNum != 0){
-        for (int i = 0; i < userData.UssIf_stSlotInfo[1].u8SlotNum; ++i) 
-        {
-            if (index < userData.UssIf_stSlotInfo[1].u8SlotNum) {
-                PLV_total_slots.UssIf_stSlotProperty[index++] = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[i];
+            for (int j = 0; j < userData.UssIf_stSlotInfo[1].u8SlotNum; j++)
+            {
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].u16SlotID = 10000 + USS_index;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].enmSlotType = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].enmSlotType;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].enmSlotBottomType = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].enmSlotBottomType;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].u16SlotDepth = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].u16SlotDepth;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].u16SlotLength = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].u16SlotLength;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[0].x = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[0].x;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[0].y = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[0].y;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[1].x = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[1].x;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[1].y = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[1].y;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[2].x = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[2].x;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[2].y = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[2].y;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[3].x = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[3].x;
+                PLV_total_slots.UssIf_stSlotProperty[USS_index].stSlotPt[3].y = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[3].y;
+                USS_index++;
             }
         }
     }
@@ -599,9 +622,9 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
     // @TODO 数据类型统一，含义统一
     outputSlot_USS.WorldoutRect.clear();
     if(PLV_total_slots.u8SlotNum  != 0){
-        for (int i = 0; i < SlotNum; ++i) 
+        for (int i = 0; i < USS_total_slotnum; ++i) 
         {
-            const UssIf_stSlotProperty_t& slotProperty = PLV_total_slots.UssIf_stSlotProperty[i];
+            UssIf_stSlotProperty_t slotProperty = PLV_total_slots.UssIf_stSlotProperty[i];
             
             apaSlotInfo slotInfo;
             APA_SPACE::SApaPSRect& rectInfo = slotInfo.rectInfo;
@@ -620,6 +643,7 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
             rectInfo.iRoadEdgeDist = slotProperty.u16ObjDistanceBetweenLineABToSlotBottom;
             
             outputSlot_USS.WorldoutRect.push_back(slotInfo);
+            LOGT("SlotFusionUSS push back time: %d",i);
         }
 
         if (DEBUG == true){
@@ -630,7 +654,7 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
         // 打印USS车位列表
         for (auto& psd_m_output : outputSlot_USS.WorldoutRect)
         {
-            LOGT("[SlotFusion USS left and right] ID: %d, type: %d, occupied: %d", 
+            LOGT("[SlotFusionUSS left and right] ID: %d, type: %d, occupied: %d", 
                     psd_m_output.rectInfo.label,psd_m_output.rectInfo.PStype,psd_m_output.rectInfo.iSodType);
             for (int i = 0; i < RECTPointNum; ++i) 
             {
