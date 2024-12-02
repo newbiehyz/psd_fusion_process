@@ -111,7 +111,7 @@ void drawRectanglesToJPG(const std::string &filename, std::vector<apaSlotInfo> &
 
             cv::rectangle(image, topLeft, bottomRight, color, 1);
 
-             // 绘制角点坐标
+            // 绘制角点坐标
             for (int i = 0; i < 4; ++i) {
                 cv::Point scaledPoint(
                     rect.rectInfo.pt[i].x * scale + translate_x,
@@ -204,6 +204,99 @@ void drawsingleRectanglesToJPG(const std::string &filename, std::vector<apaSlotI
     std::cout << "Image saved to: " << filename << std::endl;
 }
 
+// Draw apaSlotListInfo
+void drawapaSlotlistinfoToJPG(const std::string &filename, apaSlotListInfo &rectanglesA, Loc::App2emap_DR pose) {
+    // 创建空白图像
+    cv::Mat image(800, 800, CV_8UC3, cv::Scalar(255, 255, 255));
+
+    // 计算输入的全局坐标范围
+    int minX = std::numeric_limits<int>::max();
+    int maxX = std::numeric_limits<int>::lowest();
+    int minY = std::numeric_limits<int>::max();
+    int maxY = std::numeric_limits<int>::lowest();
+
+    auto updateBounds = [&](const apaSlotListInfo &rectangles) {
+        for (const auto &rect : rectangles.WorldoutRect) {
+            for (const auto &pt : rect.rectInfo.pt) {
+                minX = std::min(minX, pt.x);
+                maxX = std::max(maxX, pt.x);
+                minY = std::min(minY, pt.y);
+                maxY = std::max(maxY, pt.y);
+            }
+        }
+    };
+
+    // 更新范围
+    updateBounds(rectanglesA);
+
+    // 图像中心点
+    double center_img_x = image.cols / 2.0;
+    double center_img_y = image.rows / 2.0;
+
+    // 矩形的中心点
+    double center_slots_x = (minX + maxX) / 2.0;
+    double center_slots_y = (minY + maxY) / 2.0;
+
+    // 缩放因子，保持宽高比例并留边距
+    double scale_x = (image.cols * 0.8) / (maxX - minX);  // 留 20% 边距
+    double scale_y = (image.rows * 0.8) / (maxY - minY);
+    double scale = std::min(scale_x, scale_y);
+
+    // 偏移量（将缩放后的矩形中心移到图像中心）
+    double translate_x = center_img_x - center_slots_x * scale;
+    double translate_y = center_img_y - center_slots_y * scale;
+
+    // 应用缩放和平移并绘制矩形
+    auto drawRectangles = [&](const apaSlotListInfo &rectangles, const cv::Scalar &color) {
+        for (const auto &rect : rectangles.WorldoutRect) {
+            cv::Point topLeft(
+                rect.rectInfo.pt[0].x * scale + translate_x,
+                rect.rectInfo.pt[0].y * scale + translate_y
+            );
+            cv::Point bottomRight(
+                rect.rectInfo.pt[2].x * scale + translate_x,
+                rect.rectInfo.pt[2].y * scale + translate_y
+            );
+
+            cv::rectangle(image, topLeft, bottomRight, color, 1);
+            // 绘制角点坐标
+            for (int i = 0; i < 4; ++i) {
+                cv::Point scaledPoint(
+                    rect.rectInfo.pt[i].x * scale + translate_x,
+                    rect.rectInfo.pt[i].y * scale + translate_y
+                );
+
+                // 在图像上绘制小圆点表示角点
+                cv::circle(image, scaledPoint, 3, color, -1);
+
+                // 在角点旁边绘制坐标文本
+                std::string text = "(" + std::to_string(rect.rectInfo.pt[i].x) + ", " +
+                                   std::to_string(rect.rectInfo.pt[i].y) + ")";
+                cv::putText(image, text, scaledPoint + cv::Point(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.4, color, 1);
+            }
+
+            // 绘制车辆位姿
+            // 定义矩形的大小
+            int rectSize = 30; // 矩形从中心点向四周延伸的像素数
+            cv::Point vehicle_pose(pose.x * scale + translate_x,
+                                   pose.y * scale + translate_y);
+            cv::Point cartopLeft(pose.x * scale + translate_x - rectSize, 
+                              pose.y * scale + translate_y - rectSize);
+            cv::Point carbottomRight(pose.x * scale + translate_x + rectSize, 
+                              pose.y * scale + translate_y + rectSize);
+
+            cv::rectangle(image, cartopLeft, carbottomRight, color, cv::FILLED);
+        }
+    };
+
+    // 绘制矩形为红色
+    drawRectangles(rectanglesA, cv::Scalar(0, 0, 255));
+
+    // 保存图像
+    cv::imwrite(filename, image);
+    std::cout << "Image saved to: " << filename << std::endl;
+}
+
 void drawRDslotToJPG(const std::string &filename, const rd::QuadParkingSlots &data) {
     // 创建空白图像
     cv::Mat image(800, 800, CV_8UC3, cv::Scalar(255, 255, 255));
@@ -264,7 +357,7 @@ void drawRDslotToJPG(const std::string &filename, const rd::QuadParkingSlots &da
 
     // 保存图像
     cv::imwrite(filename, image);
-    std::cout << "图像已保存到: " << filename << std::endl;
+    // std::cout << "图像已保存到: " << filename << std::endl;
 }
 
 
@@ -666,6 +759,7 @@ void TimeTrigger_Timer50(){
             // 将 slot 添加到 quadParkingSlotList
             rd_info.quadParkingSlotList.push_back(slot);
         }
+    drawRDslotToJPG("RD_slot.jpg", rd_info);
     // Get DR info
     if (!dr_dataloaded){
         std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/DR_POSE.json";
@@ -747,99 +841,103 @@ void TimeTrigger_Timer50(){
     std::cout<<"coord.yaw:"<<pose_globaldata.yaw<<std::endl;
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots);
+    
+    apaSlotListInfo outputSlot_CALVIS = PSD_FusionModuleIFrunable.GetOutputSlot();
+    std::cout<<"Update vision slot size: "<< outputSlot_CALVIS.WorldoutRect.size()<<std::endl;
+    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg", outputSlot_CALVIS, dr_pose);
 
     //Get Vison data
-    if (!vison_dataloaded){
-        std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/VISapaSlotListInfo.json";
-        loadAllData(filepath, allVisionData);
-        vison_dataloaded = true;
-    }
-    static size_t currentVisionIndex = 0;
-    if(currentVisionIndex >= allVisionData.size()){
-        // std::cout<<"所有数据已处理完毕"<<std::endl;
-        return;
-    }
-    const auto &vision_data = allVisionData[currentVisionIndex];
-    // 创建一个 std::vector<apaSlotInfo> 容器
-    apaSlotListInfo apaSlotlistInfos;
+    // if (!vison_dataloaded){
+    //     std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/VISapaSlotListInfo.json";
+    //     loadAllData(filepath, allVisionData);
+    //     vison_dataloaded = true;
+    // }
+    // static size_t currentVisionIndex = 0;
+    // if(currentVisionIndex >= allVisionData.size()){
+    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
+    //     return;
+    // }
+    // const auto &vision_data = allVisionData[currentVisionIndex];
+    // // 创建一个 std::vector<apaSlotInfo> 容器
+    // apaSlotListInfo apaSlotlistInfos;
 
-    // 提取 slots_in_cur_frame 数组（根据您的 JSON 结构调整字段名）
-    const auto& visionslotListArray = vision_data["WorldoutRect"];
-    const auto& ullFrameId = vision_data["ullFrameId"];
+    // // 提取 slots_in_cur_frame 数组（根据您的 JSON 结构调整字段名）
+    // const auto& visionslotListArray = vision_data["WorldoutRect"];
+    // const auto& ullFrameId = vision_data["ullFrameId"];
 
-    for (const auto& slotJson : visionslotListArray) {
-        // 创建一个 apaSlotInfo 对象
-        apaSlotInfo slot;
+    // for (const auto& slotJson : visionslotListArray) {
+    //     // 创建一个 apaSlotInfo 对象
+    //     apaSlotInfo slot;
 
-        // 提取 rectInfo 信息
-        slot.rectInfo.label = slotJson["rectInfo"]["label"];
-        slot.rectInfo.PStype = slotJson["rectInfo"]["PStype"];
+    //     // 提取 rectInfo 信息
+    //     slot.rectInfo.label = slotJson["rectInfo"]["label"];
+    //     slot.rectInfo.PStype = slotJson["rectInfo"]["PStype"];
 
-        // 提取坐标点信息
-        for (int idx = 0; idx < RECTPointNum; ++idx) {
-            slot.rectInfo.pt[idx].x = slotJson["rectInfo"]["points"][idx]["x"];
-            slot.rectInfo.pt[idx].y = slotJson["rectInfo"]["points"][idx]["y"];
-        }
+    //     // 提取坐标点信息
+    //     for (int idx = 0; idx < RECTPointNum; ++idx) {
+    //         slot.rectInfo.pt[idx].x = slotJson["rectInfo"]["points"][idx]["x"];
+    //         slot.rectInfo.pt[idx].y = slotJson["rectInfo"]["points"][idx]["y"];
+    //     }
 
-        // 提取其他字段
-        slot.detect_frame_count = slotJson["detect_frame_count"];
-        slot.is_reliable = slotJson["is_reliable"];
+    //     // 提取其他字段
+    //     slot.detect_frame_count = slotJson["detect_frame_count"];
+    //     slot.is_reliable = slotJson["is_reliable"];
 
-        // 将 slot 添加到 apaSlotlistInfos
-        apaSlotlistInfos.WorldoutRect.push_back(slot);
-    }
-    std::cout<<"TEST vision slot size:"<<apaSlotlistInfos.WorldoutRect.size()<<std::endl;
+    //     // 将 slot 添加到 apaSlotlistInfos
+    //     apaSlotlistInfos.WorldoutRect.push_back(slot);
+    // }
+    // std::cout<<"TEST vision slot size:"<<apaSlotlistInfos.WorldoutRect.size()<<std::endl;
     
-    //Get USS data
-    if (!uss_dataloaded){
-        std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/USSapaSlotListInfo.json";
-        loadAllData(filepath, allUSSData);
-        uss_dataloaded = true;
-    }
-    static size_t currentUSSIndex = 0;
-    if(currentUSSIndex >= allUSSData.size()){
-        // std::cout<<"所有数据已处理完毕"<<std::endl;
-        return;
-    }
-    const auto &uss_data = allUSSData[currentVisionIndex];
-    // 创建一个 std::vector<apaSlotInfo> 容器
-    apaSlotListInfo apaUSSSlotlistInfos;
+    // //Get USS data
+    // if (!uss_dataloaded){
+    //     std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/USSapaSlotListInfo.json";
+    //     loadAllData(filepath, allUSSData);
+    //     uss_dataloaded = true;
+    // }
+    // static size_t currentUSSIndex = 0;
+    // if(currentUSSIndex >= allUSSData.size()){
+    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
+    //     return;
+    // }
+    // const auto &uss_data = allUSSData[currentVisionIndex];
+    // // 创建一个 std::vector<apaSlotInfo> 容器
+    // apaSlotListInfo apaUSSSlotlistInfos;
 
-    // 提取 slots_in_cur_frame 数组（根据您的 JSON 结构调整字段名）
-    const auto& ussslotListArray = uss_data["WorldoutRect"];
-    const auto& ussullFrameId = uss_data["ullFrameId"];
+    // // 提取 slots_in_cur_frame 数组（根据您的 JSON 结构调整字段名）
+    // const auto& ussslotListArray = uss_data["WorldoutRect"];
+    // const auto& ussullFrameId = uss_data["ullFrameId"];
 
-    for (const auto& slotJson : ussslotListArray) {
-        // 创建一个 apaSlotInfo 对象
-        apaSlotInfo slot;
+    // for (const auto& slotJson : ussslotListArray) {
+    //     // 创建一个 apaSlotInfo 对象
+    //     apaSlotInfo slot;
 
-        // 提取 rectInfo 信息
-        slot.rectInfo.label = slotJson["rectInfo"]["label"];
-        slot.rectInfo.PStype = slotJson["rectInfo"]["PStype"];
+    //     // 提取 rectInfo 信息
+    //     slot.rectInfo.label = slotJson["rectInfo"]["label"];
+    //     slot.rectInfo.PStype = slotJson["rectInfo"]["PStype"];
 
-        // 提取坐标点信息
-        for (int idx = 0; idx < RECTPointNum; ++idx) {
-            slot.rectInfo.pt[idx].x = slotJson["rectInfo"]["points"][idx]["x"];
-            slot.rectInfo.pt[idx].y = slotJson["rectInfo"]["points"][idx]["y"];
-        }
+    //     // 提取坐标点信息
+    //     for (int idx = 0; idx < RECTPointNum; ++idx) {
+    //         slot.rectInfo.pt[idx].x = slotJson["rectInfo"]["points"][idx]["x"];
+    //         slot.rectInfo.pt[idx].y = slotJson["rectInfo"]["points"][idx]["y"];
+    //     }
 
-        // 提取其他字段
-        slot.detect_frame_count = slotJson["detect_frame_count"];
-        slot.is_reliable = slotJson["is_reliable"];
+    //     // 提取其他字段
+    //     slot.detect_frame_count = slotJson["detect_frame_count"];
+    //     slot.is_reliable = slotJson["is_reliable"];
 
-        // 将 slot 添加到 apaSlotlistInfos
-        apaUSSSlotlistInfos.WorldoutRect.push_back(slot);
-    }
-    std::cout<<"TEST USS slot size:"<<apaUSSSlotlistInfos.WorldoutRect.size()<<std::endl;
+    //     // 将 slot 添加到 apaSlotlistInfos
+    //     apaUSSSlotlistInfos.WorldoutRect.push_back(slot);
+    // }
+    // std::cout<<"TEST USS slot size:"<<apaUSSSlotlistInfos.WorldoutRect.size()<<std::endl;
     
-    apaSlotListInfo outputSlot_FUSED;
-    slotfusion sf;
-    sf.mergeSlotLists(apaUSSSlotlistInfos, apaSlotlistInfos, outputSlot_FUSED);
+    // apaSlotListInfo outputSlot_FUSED;
+    // slotfusion sf;
+    // sf.mergeSlotLists(apaUSSSlotlistInfos, apaSlotlistInfos, outputSlot_FUSED);
 
     currentIndex++;
     currentDRIndex++;
-    currentVisionIndex++;
-    currentUSSIndex++;
+    // currentVisionIndex++;
+    // currentUSSIndex++;
 }
 
 int main(int argc, char **argv) {

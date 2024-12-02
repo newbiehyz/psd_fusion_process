@@ -1,8 +1,8 @@
 /**
-* Copyright @ 2020 - 2020 iAUTO(Shanghai) Co., Ltd.
+* Copyright @ 2024 iAUTO(Shanghai) Co., Ltd.
 * All Rights Reserved.
 *
-* Copyright @ 2020 - 2020 Pan Asia Technical Automotive Center Co., Ltd.
+* Copyright @ 2024 Pan Asia Technical Automotive Center Co., Ltd.
 * All Rights Reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,13 @@
 
 #include "apa_define.h"
 #include "math.h"
+#include <map>
 #include <mutex>
+#include "Eigen/Core"
 #include "apa_module_id.h"
+#include "kd_tree.hpp"
+#include "Kalman_filter.h"
+
 /**
  * PSD_FusionModuleIF
  *
@@ -80,6 +85,15 @@ private:
     std::vector<int>    m_min_distance;
     int m_next_available_label_idx;
     FILE* m_all_slot_out;
+
+    Eigen::Matrix3f intrinsic_car2ipm_, intrinsic_ipm2car_;
+    std::shared_ptr<KDTree> slots_tree_;
+    std::map<uint32_t, Kalman_filterPtr> slots_map_;
+    // kdtree index to slot id
+    std::unordered_map<uint64_t, uint32_t> slots_remap_;
+    ParkingSlotParam param_;
+    std::shared_ptr<PSMaskU8> mParkingLineMask_ptr= nullptr;
+
 public:
     PSD_FusionModuleIF() = default;
     virtual ~PSD_FusionModuleIF() = default;
@@ -92,12 +106,9 @@ public:
 
     virtual bool Destroy();
 
-    void RegisterCallback(IFusionMapCallback* callback, Fusion_Error_Code& error_code);
-    //void UpdateSonarSlots(const UssInfo& info);
     void UpdateVechiclePose(const padVehiclePose& pose_global);
     void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots);
-    void UpdateUserSelectSlotId(int user_select_slot_id);
-    //void UpdateSonarObstacle(const UssInfo& info);
+
     apaSlotListInfo GetOutputSlot()
     {
         return m_output_slot;
@@ -113,16 +124,36 @@ private:
     int CalcDistance(POINT_I a, POINT_I b);
     vector<apaSlotInfo>::iterator existed_in_psinfo(const apaSlotInfo& rect, bool& mis_detect_flag);
 
-    //void ProcessObstaclePoint(const UssInfo& info);
-    bool CheckSlotAreaObstacleNum(apaSlotInfo rect, padVisionSlotCoord slot);
-    bool isOddNumber(const POINT_I& obstacle, const std::vector<int>& rect_pt_x, const std::vector<int>& rect_pt_y);
-
     int CalMixSideDistance(const apaSlotInfo& target_slot);
     std::vector<int> MixDistanceDataset(const apaSlotInfo& target_slot, const ObstacleInfo& obstacle_point);
     int CalPointAndLineDistance(const POINT_I& point, const POINT_I& pta, const POINT_I& ptb);
-    APA_SPACE::ERECT_EDGE_SOD_TYPE CalcDownSlotSOD(const apaSlotInfo& targetslot);
     POINT_I coordConvert_car_center(const padPoint& slot);
     static bool compareDistance(int pre, int current);
+
+    /**
+     * @brief 检查输入的QuadInfo是否与已经跟踪的车位匹配
+     * @param quad_info 模型检出的车位信息
+     * @return 能找到已经跟踪的车位，将其返回，否则返回nullptr
+     */
+    Kalman_filterPtr check_slot_existance(const QuadInfoPtr& quad_info);
+    void transform2world(const padVehiclePose& loc_pose, QuadInfoPtr& quad_info);
+    void transform2world(const padVehiclePose& loc_pose, const ParkingSlotResultPtr& post_result,QuadInfoPtr& quad_info);
+    void rebuild_slots_tree();
+    bool ProcessParkingSlotResult(const PSMaskU8 &parking_line_mask, const padVisionSlotCoord &bbox, ParkingSlotResultPtr &result);
+    bool FillSingleSlot(ParkingSlotQuad &approx_quad);
+    void ObtainDirection(ParkingSlotQuad &quad);
+    void ObtainSlotType(ParkingSlotQuad &quad);
+    void CompleteBoxWithArrowFix(ParkingSlotQuad &quad);
+    void ModifyDirIn(ParkingSlotQuad &quad);
+    bool CalibrateSingleSlot(const padVisionSlotCoord &quad, const PSMaskU8 &mask, ParkingSlotQuad &approx_quad);
+    bool ApproxBox(const PSMaskU8 &mask, ParkingSlotQuad &approx);
+    bool CheckSlant(ParkingSlotQuad &quad);
+    void RecalculateRetlen(ParkingSlotQuad &quad);
+    bool CheckComplete(const std::vector<ApproxBoxPoints> &points);
+    void ModifyCornerScore(const PSMaskU8 &mask,
+                           Eigen::Vector2f &p,
+                           float &score,
+                           float boarder_dis = 2.F);
 
  PSD_FusionModuleIF(const PSD_FusionModuleIF &);
  PSD_FusionModuleIF & operator=(const PSD_FusionModuleIF &);    

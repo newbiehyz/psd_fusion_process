@@ -1,6 +1,9 @@
 #ifndef APA_DEFINE_H
 #define APA_DEFINE_H
 
+#include <memory>
+#include "Eigen/Core"
+
 #include "internalSOCv1_2.hpp"
 #include "APA_OutputStruct.h"
 #include "Relocate_OutputStruct.h"
@@ -126,6 +129,297 @@ struct apaSlotListInfo
         return psinfo;
     }
 };
+
+static inline bool FloatNumEqual(float l, float r) {
+    constexpr float EPSILON = 1e-7;
+    return fabsf(l - r) < EPSILON;
+}
+
+/**
+ * @brief 模型给过来的4个角点可获得的所有信息 *
+ */
+struct QuadInfo {
+    Eigen::Matrix<float, 3, 4> quads;  // 模型给出的4个顶点的坐标
+    Eigen::Matrix<float, 3, 4> corners_ego;    // 转移到自车系的坐标
+    Eigen::Matrix<float, 3, 4> corners_world;  // 转移到世界系的坐标
+    Eigen::Matrix<float, 3, 4> corners_extended;  // 补全并转移到世界系的坐标
+
+    std::array<Eigen::Matrix2f, 4> cov_ego;       // 自车系的协方差
+    std::array<Eigen::Matrix2f, 4> cov_world;     // 世界系的协方差
+    std::array<Eigen::Matrix2f, 4> cov_extended;  // 补全后的协方差
+    std::array<bool, 4> near_edge;                // 是否靠近IPM图边缘
+
+    Eigen::Vector3f center_pixel = Eigen::Vector3f::Zero();
+    Eigen::Vector3f center_ego = Eigen::Vector3f::Zero();
+    Eigen::Vector3f center_world = Eigen::Vector3f::Zero();
+
+    Eigen::Vector2f long_dir_pixel = Eigen::Vector2f::Zero();
+    Eigen::Vector2f long_dir_world = Eigen::Vector2f::Zero();
+    Eigen::Vector2f wide_dir_pixel = Eigen::Vector2f::Zero();
+    Eigen::Vector2f wide_dir_world = Eigen::Vector2f::Zero();
+
+    float length_world, width_world;
+};
+typedef std::shared_ptr<QuadInfo> QuadInfoPtr;
+
+struct IPMParameters {
+    float focal_length = 35.2f;
+    float ipm_width = 352.0f;
+    float ipm_height = 352.0f;
+
+    float cx_ratio = 0.5f;
+    float cy_ratio = 0.5f;
+
+    float edge_thr = 10.0f;
+
+    // 10m
+    float min_u = 141.f;  // width dir
+    float max_u = 210.f;
+    float min_v = 87.f;  // height dir
+    float max_v = 264.f;
+    float cam_v = 120.f;
+
+    // // 15m
+    //  float min_u = 153.f;  // width dir
+    //  float max_u = 200.f;
+    //  float min_v = 118.f;  // height dir
+    //  float max_v = 235.f;
+
+    // // 20m
+    //  float min_u = 158.f;  // width dir
+    //  float max_u = 193.f;
+    //  float min_v = 132.f;  // height dir
+    //  float max_v = 219.f;
+};
+
+struct ParkingSlotManagerParameters {
+    // 车位有效阈值
+    float valid_slot_conf_thr = 10.0f;
+    // 像素误差与到相机距离的比例系数
+    float sigma_1_ratio = 0.05f;
+    float sigma_2_ratio = 0.02f;
+    // 超出此范围的像素，sigma增加
+    float pixel_dist_thr = 100.f;
+    float sigma_enlarge_coeff = 50.0f;
+    // 保留车位的范围
+    float neighborhood_range = 30000.0f;
+    // 检查同一车位的范围
+    float check_same_slot_range = 3000.0f;
+};
+static IPMParameters ipmp_;
+static ParkingSlotManagerParameters psmp_;
+
+typedef struct ParkingSlotResult {
+    Eigen::Vector2f tl, tr, bl, br;
+    Eigen::Vector2f ori_tl, ori_tr, ori_bl, ori_br;
+    float confidence;
+    float width;
+    float length;
+    Eigen::Vector2f center;
+    Eigen::Vector2f wide_direction;
+    Eigen::Vector2f long_direction;
+    bool is_occupied;
+    uint8_t type;
+} ParkingSlotResult;
+typedef std::shared_ptr<ParkingSlotResult> ParkingSlotResultPtr;
+
+/* Describe approx_box's point */
+struct ApproxBoxPoints {
+    Eigen::Vector2f p;
+    float border_dist = 0.F;
+    float point_score = 0.F;
+    // clockwise line, with next point
+    float line_len = 0.F;
+    float line_score = 0.F;
+    bool has_border_point = false;
+};
+
+struct ParkingSlotRect {
+    ParkingSlotRect(int left, int top, int w, int h)
+        : l_(left), t_(top), w_(w), h_(h) {
+        r_ = l_ + w;
+        b_ = t_ + h;
+    }
+    int area() const { return w_ * h_; }
+    int left() const { return l_; }
+    int right() const { return r_; }
+    int top() const { return t_; }
+    int bottom() const { return b_; }
+
+ private:
+    int l_, t_, r_, b_, w_, h_;
+};
+
+/* Quad describes everything for a parkingslot */
+struct ParkingSlotQuad {
+    Eigen::Vector2f tl, tr, bl, br;
+    Eigen::Vector2f ori_tl, ori_tr, ori_bl, ori_br;
+    float confidence;
+    uint32_t label;
+    bool filtered = false;
+    int slot_type = -1;
+    int map_slot_type = -1;
+
+    float IOU(const ParkingSlotQuad &rhs) const;
+    float IOUBoundingBox(const ParkingSlotQuad &rhs) const;
+
+    ParkingSlotRect BoundingRect() const {
+        int left = std::min(tl(0), std::min(tr(0), std::min(bl(0), br(0))));
+        int right = std::max(tl(0), std::max(tr(0), std::max(bl(0), br(0))));
+        int top = std::min(tl(1), std::min(tr(1), std::min(bl(1), br(1))));
+        int bottom = std::max(tl(1), std::max(tr(1), std::max(bl(1), br(1))));
+        return ParkingSlotRect(left, top, right - left + 1, bottom - top + 1);
+    }
+
+    bool IsValidQuad() const {
+        bool invalid =
+            (FloatNumEqual(tl(0), tr(0)) && FloatNumEqual(tl(1), tr(1))) ||
+            (FloatNumEqual(br(0), tr(0)) && FloatNumEqual(br(1), tr(1))) ||
+            (FloatNumEqual(tl(0), bl(0)) && FloatNumEqual(tl(1), bl(1))) ||
+            (FloatNumEqual(br(0), bl(0)) && FloatNumEqual(br(1), bl(1)));
+        return !invalid;
+    }
+
+    // score for each point
+    float s_tl, s_tr, s_bl, s_br;
+    // attribute for each point
+    std::shared_ptr<ApproxBoxPoints> p_tl = nullptr;
+    std::shared_ptr<ApproxBoxPoints> p_tr = nullptr;
+    std::shared_ptr<ApproxBoxPoints> p_bl = nullptr;
+    std::shared_ptr<ApproxBoxPoints> p_br = nullptr;
+
+    // addition info for this parkingslot
+    Eigen::Vector2f dir_in;
+    Eigen::Vector2f dir_width;
+    Eigen::Vector2f dir_length;
+    Eigen::Vector2f center;
+    bool opp_modify = false;
+    bool is_complete = false;
+    float width = 0;
+    float length = 0;
+    float slant_length = 0;
+    bool is_visited = false;
+    bool valid_slant = false;
+};
+typedef std::shared_ptr<ParkingSlotQuad> ParkingSlotQuadPtr;
+
+struct ParkingSlotRange {
+        ParkingSlotRange() {}
+        ParkingSlotRange(float a, float b) { Set(a, b); }
+
+        float low, high;
+
+        inline void Set(float a, float b) {
+            low = std::min(a, b);
+            high = std::max(a, b);
+        }
+        inline bool InRange(const float v) { return low < v && v < high; }
+};
+
+struct ParkingSlotSizeController {
+        std::vector<std::pair<float, float>> vp_slot_sizes = {
+            {70, 175}, {82, 180}, {86, 184}, {90, 188}};
+        std::vector<std::pair<float, float>> v_slot_sizes = {
+            {70, 175}, {82, 180}, {86, 184}, {90, 188}};
+        std::vector<std::pair<float, float>> p_slot_sizes = {
+            {82, 210}, {86, 220}, {95, 246}};
+        std::vector<std::pair<float, float>> slant_slot_size = {{92, 230},
+                                                                {110, 240}};
+        bool Adjust(float &length,
+                    float &width,
+                    bool base_on_length,
+                    std::vector<std::pair<float, float>> ps_sizes,
+                    bool adjust_both = false);
+};
+
+struct ParkingSlotParam {
+        uint32_t topk = 100;
+        float confidence_threshold = 0.25;
+        float corner_conf_threshold = 0.5;
+        float corner_dis_threshold = 1000;
+        float iou_threshold = 0.3;
+        uint32_t input_w = 352, input_h = 352;
+        uint32_t image_w = 600, image_h = 600;
+        ParkingSlotRange ps_length_range{160, 320};
+        ParkingSlotRange ps_width_range{63, 140};
+        ParkingSlotRange ps_width_slant_range{90, 155};
+        ParkingSlotRange ps_length_complete_range{184, 320};
+        ParkingSlotRange ps_length_slant_complete_range{220, 380};
+        ParkingSlotRange ps_length_2_range{160, 184};
+        ParkingSlotRange ps_length_slant_2_range{200, 265};
+        ParkingSlotRange ps_score_range{0.15, 0.8};
+        float vertical_threshold = 0.15;
+        float ps_ratio = 2.4;
+        ParkingSlotSizeController ps_size_controller;
+
+        float point_border_dist_thres = 5;
+        float line_border_dist_thres = 5;
+        float point_border_dist_complete_h2 = 3;
+        float direction_score_thr1 = 0.5F;
+        float direction_score_thr2 = 0.5F;
+        float vp_MaxW = 120;
+        float vp_MaxH = 230;
+        float v_MaxH = 230;
+        float p_MaxH = 230;
+        float slant_MaxH = 270;
+        float p_MinH = 210;
+        float v_MinH = 175;
+        float slant_MinH = 210;
+        float supplement_corner_dis_threshold = 50.F;
+        float slant_cos_up = 0.9397;
+        float slant_cos_low = 0.31;
+        float slant_cos_para = 0.174;
+        float border_point_dis_thr = 5;
+
+        ParkingSlotRange car_length_range = {88.F, 264.F};
+        ParkingSlotRange car_width_range = {140.F, 213.F};
+        float point_border_dis_thres_for_score_modify = 2.F;
+        std::vector<Eigen::Vector2f> car_contour = {
+            {140.F, 88.F}, {213.F, 88.F}, {213.F, 264.F}, {140.F, 264.F}};
+        bool post_output_parking_slot = true;
+    };
+
+template <typename _Tp>
+class PSMask {
+ public:
+    PSMask() = default;
+    PSMask(uint32_t width, uint32_t height, const _Tp value = 0)
+        : width(width), height(height) {
+        step = width;
+        data.resize(height * step, value);
+    }
+    PSMask(uint32_t width, uint32_t col, const std::vector<_Tp> &vec)
+        : width(width), height(height), data(vec) {
+        step = width;
+        this->data.resize(height * step);
+    }
+
+    // Delete unrecognized type
+    template <typename T>
+    _Tp &At(T x, T y) const = delete;
+    template <typename T>
+    _Tp At(T x, T y, _Tp safe_v) const = delete;
+
+    _Tp &At(uint32_t x, uint32_t y) { return data[y * step + x]; }
+    _Tp At(uint32_t x, uint32_t y, _Tp safe_v) const {
+        return x < width && y < height ? data[y * step + x] : safe_v;
+    }
+    _Tp &At(float x, float y) {
+        return At(static_cast<uint32_t>(x + 0.5F),
+                  static_cast<uint32_t>(y + 0.5F));
+    }
+    _Tp At(float x, float y, _Tp safe_v) const {
+        return At(static_cast<uint32_t>(x + 0.5F),
+                  static_cast<uint32_t>(y + 0.5F), safe_v);
+    }
+
+ public:
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t step = 0;
+    std::vector<_Tp> data;
+};
+typedef PSMask<uint8_t> PSMaskU8;
 
 #include <stdint.h>
 #define IMG_RAW_HEIGHT 480
