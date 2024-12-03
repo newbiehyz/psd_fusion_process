@@ -65,7 +65,7 @@ using namespace IOU;
 #define VERTICAL 0
 #define PARALLEL 1
 #define SLANT 2
-#define KF true
+#define KF false
 
 bool PSD_FusionModuleIF::Initialize()
 {
@@ -398,18 +398,13 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                     //     printf("\n");
                     // }
                 }  
+                for(auto info = m_apa_psinfo.WorldoutRect.rbegin(); info != m_apa_psinfo.WorldoutRect.rend(); ++info) {
+                    if(info->is_reliable == 1) {
+                        m_output_slot.WorldoutRect.push_back(*info);
+                    }
+                }
             }
-    }
-   
-
-    for(auto info = m_apa_psinfo.WorldoutRect.rbegin(); info != m_apa_psinfo.WorldoutRect.rend(); ++info) {
-        if(info->is_reliable == 1) {
-            m_output_slot.WorldoutRect.push_back(*info);
         }
-    }
-        
-
-    
     }
 
     // check m_output_slot 
