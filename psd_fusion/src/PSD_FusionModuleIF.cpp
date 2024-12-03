@@ -62,7 +62,7 @@
 
 using namespace IOU;
 #define wheel_base 3.0
-#define VERTICAL 0
+#define SLOT_VERTICAL 0
 #define PARALLEL 1
 #define SLANT 2
 
@@ -453,19 +453,19 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
         iou = iouEx(vert_new, vert); //当前帧和上一帧的车位IOU
         
         //IOU>0.4重复，此时返回it是重叠的老车位
-        if (iou >= 0.4) {
+        if (iou >= 0.8) {
             break;
         }
 
         //0.2-0.4misdetect
-        else if (iou >= 0.2 && iou < 0.4) {
+        else if (iou >= 0.2 && iou < 0.8) {
             mis_detect_flag = false;
         }
 
         //<0.2认为没有相同车位继续循环
         
     }
-    if(iou < 0.4) 
+    if(iou < 0.8) 
     {
         it = m_apa_psinfo.WorldoutRect.end(); //遍历完，没有找到重复车位
     }
@@ -956,7 +956,7 @@ void PSD_FusionModuleIF::ObtainSlotType(ParkingSlotQuad &quad) {
                 quad.slot_type = PARALLEL;
                
             } else {
-                quad.slot_type = VERTICAL;
+                quad.slot_type = SLOT_VERTICAL;
                 
             }
         }

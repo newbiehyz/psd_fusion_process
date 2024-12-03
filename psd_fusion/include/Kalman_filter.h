@@ -11,6 +11,7 @@
 #include <memory>
 #include <iostream>
 #include <array>
+#include <atomic>
 #include <vector>
 #include "Eigen/Core"
 #include "apa_define.h"

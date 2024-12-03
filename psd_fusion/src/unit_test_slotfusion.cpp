@@ -205,9 +205,12 @@ void drawsingleRectanglesToJPG(const std::string &filename, std::vector<apaSlotI
 }
 
 // Draw apaSlotListInfo
-void drawapaSlotlistinfoToJPG(const std::string &filename, apaSlotListInfo &rectanglesA, Loc::App2emap_DR pose) {
+void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &rectanglesA, Loc::App2emap_DR pose) {
     // 创建空白图像
     cv::Mat image(800, 800, CV_8UC3, cv::Scalar(255, 255, 255));
+
+    std::string timestampText = "(RD)timestamp " + std::to_string(rectanglesA.ullFrameId);
+    cv::putText(image, timestampText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 2);
 
     // 计算输入的全局坐标范围
     int minX = std::numeric_limits<int>::max();
@@ -249,22 +252,21 @@ void drawapaSlotlistinfoToJPG(const std::string &filename, apaSlotListInfo &rect
     // 应用缩放和平移并绘制矩形
     auto drawRectangles = [&](const apaSlotListInfo &rectangles, const cv::Scalar &color) {
         for (const auto &rect : rectangles.WorldoutRect) {
-            cv::Point topLeft(
-                rect.rectInfo.pt[0].x * scale + translate_x,
-                rect.rectInfo.pt[0].y * scale + translate_y
-            );
-            cv::Point bottomRight(
-                rect.rectInfo.pt[2].x * scale + translate_x,
-                rect.rectInfo.pt[2].y * scale + translate_y
-            );
-
-            cv::rectangle(image, topLeft, bottomRight, color, 1);
-            // 绘制角点坐标
+            std::vector<cv::Point> scaledPoints;
             for (int i = 0; i < 4; ++i) {
                 cv::Point scaledPoint(
                     rect.rectInfo.pt[i].x * scale + translate_x,
                     rect.rectInfo.pt[i].y * scale + translate_y
                 );
+                scaledPoints.push_back(scaledPoint);
+            }
+
+            // 绘制四边形
+            cv::polylines(image, scaledPoints, true, color, 1);
+
+            // 绘制角点坐标
+            for (int i = 0; i < 4; ++i) {
+                cv::Point scaledPoint = scaledPoints[i];
 
                 // 在图像上绘制小圆点表示角点
                 cv::circle(image, scaledPoint, 3, color, -1);
@@ -296,6 +298,7 @@ void drawapaSlotlistinfoToJPG(const std::string &filename, apaSlotListInfo &rect
     cv::imwrite(filename, image);
     std::cout << "Image saved to: " << filename << std::endl;
 }
+
 
 void drawRDslotToJPG(const std::string &filename, const rd::QuadParkingSlots &data) {
     // 创建空白图像
@@ -689,7 +692,10 @@ void TimeTrigger_Timer50(){
     
     //Get RD info
     if (!rd_dataloaded){
-        std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+
+        // std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/RDinfo.json";
+        std::string filepath = (parentPath / "RDinfo.json").string();
+        
         loadAllData(filepath, allRDData);
         rd_dataloaded = true;
     }
@@ -762,7 +768,10 @@ void TimeTrigger_Timer50(){
     drawRDslotToJPG("RD_slot.jpg", rd_info);
     // Get DR info
     if (!dr_dataloaded){
-        std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/DR_POSE.json";
+
+        // std::string filepath = "/home/gary/Downloads/patac-557e-emos_4.2.3_11211827/patac-557e-emos_4.2.3/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/DR_POSE.json";
+        std::string filepath = (parentPath / "DR_POSE.json").string();
+        
         loadAllData(filepath, allDRData);
         dr_dataloaded = true;
     }
@@ -844,7 +853,7 @@ void TimeTrigger_Timer50(){
     
     apaSlotListInfo outputSlot_CALVIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     std::cout<<"Update vision slot size: "<< outputSlot_CALVIS.WorldoutRect.size()<<std::endl;
-    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg", outputSlot_CALVIS, dr_pose);
+    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_CALVIS, dr_pose);
 
     //Get Vison data
     // if (!vison_dataloaded){

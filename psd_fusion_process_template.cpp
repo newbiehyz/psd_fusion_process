@@ -171,6 +171,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     pose_globaldata.coord.x = int(dr_pose.x);
     pose_globaldata.coord.y = int(dr_pose.y);
     pose_globaldata.yaw = dr_pose.canAng;
+    pose_globaldata.timestamps = dr_pose.timeStamp;
     LOGT("[_test dr_pose] S32G RECEIVE x:%d, y: %d, yaw: %f",pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
 
     //@TODO 进入search才开始车位融合
