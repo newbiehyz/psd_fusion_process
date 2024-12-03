@@ -62,7 +62,7 @@
 
 using namespace IOU;
 #define wheel_base 3.0
-#define SLOT_VERTICAL 0
+#define VERTICAL 0
 #define PARALLEL 1
 #define SLANT 2
 
@@ -282,127 +282,128 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
         if((slot.a.y + slot.b.y) / 2 < EFFECTIVE_SLOT_Y_1 || (slot.a.y + slot.b.y) / 2 > EFFECTIVE_SLOT_Y_2) {
             continue;
         }
-        // auto quad = std::make_shared<QuadInfo>();
-        // quad->quads.bottomRows<1>().setOnes();
-        // // 原始检测角点信息，乱序的
-        // Eigen::Vector2f tl, tr, bl, br;
-        // tl<<slot.a.x, slot.a.y;
-        // tr<<slot.b.x, slot.b.y;
-        // bl<<slot.c.x, slot.c.y;
-        // br<<slot.d.x, slot.d.y;
-        // quad->quads.col(0).head<2>() = tl;
-        // quad->quads.col(1).head<2>() = tr;
-        // quad->quads.col(2).head<2>() = br;
-        // quad->quads.col(3).head<2>() = bl;
-        // transform2world(m_vehicle_pose,quad);
+        auto quad = std::make_shared<QuadInfo>();
+        quad->quads.bottomRows<1>().setOnes();
+        // 原始检测角点信息，乱序的
+        Eigen::Vector2f tl, tr, bl, br;
+        tl<<slot.a.x, slot.a.y;
+        tr<<slot.b.x, slot.b.y;
+        bl<<slot.c.x, slot.c.y;
+        br<<slot.d.x, slot.d.y;
+        quad->quads.col(0).head<2>() = tl;
+        quad->quads.col(1).head<2>() = tr;
+        quad->quads.col(2).head<2>() = br;
+        quad->quads.col(3).head<2>() = bl;
+        transform2world(m_vehicle_pose,quad);
         
-        // auto slot_existance = check_slot_existance(quad);
-        // if (slot_existance != nullptr) {
-        //     Eigen::Vector3d pose{m_vehicle_pose.coord.x, m_vehicle_pose.coord.y, m_vehicle_pose.yaw};
-        //     Eigen::Vector3f diff = pose.cast<float>() - slot_existance->GetSlotCenter();
-        //     float dist = (diff.head<2>().norm())/1000;
-        //     if (slot_existance->IsConfiremd() &&
-        //         dist > slot_existance->GetMinDist2EgoCar()) {
-        //         continue;
-        //     }
-        //     // 已经存在与之对应的车位，用角点信息进行更新
-        //     slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
-        //     slot_existance->Update(quad);
-            
-        // } else {
-        //     auto result = std::make_shared<ParkingSlotResult>();
-        //     mParkingLineMask_ptr=std::make_shared<PSMaskU8>(352, 352, 0);
-        //     for (uint32_t row = 0; row < 352; row++) {
-        //         for (uint32_t col = 0; col < 352; col++) {
-        //             mParkingLineMask_ptr->At(col, row) = 1;
-        //         }
-        //     }
-        //     if (ProcessParkingSlotResult(*mParkingLineMask_ptr, slot, result)) {
-        //         transform2world(m_vehicle_pose, result, quad);
-        //         if (check_slot_existance(quad) != nullptr) {
-        //             continue;
-        //         }
-        //         auto new_slot = std::make_shared<Kalman_filter>(result, quad);
-        //         slots_map_[new_slot->GetSlotApaId()] = new_slot;
-        //         new_slot->SetLatestFrameId(static_cast<uint32_t>(frameid));
-        //         rebuild_slots_tree();
-        //     }
-        // }
-
-        apaSlotInfo rect;
-        apaSlotInfo rect_car_center;
-        rect.rectInfo.iRectType = 0; // 0为视觉检测结果 
-        rect.rectInfo.iSodType = 0;  // 0为没有障碍物，1为有障碍物，-1为未知情况（reset,或车停下来）
-        // rect.rectInfo.iMinOtherSideDist = -1;
-        rect.rectInfo.level=2; //跟踪值还是检测值 2为检测值，1为跟踪值
-        rect.rectInfo.PStype = slot.bayType;
-        rect.detect_frame_count = 1; 
-
-        //从RD左上角原点 转为 后轴中心为原点
-        rect.rectInfo.pt[0] = coordConvert_global_dr(slot.a, m_vehicle_pose);
-        rect.rectInfo.pt[1] = coordConvert_global_dr(slot.b, m_vehicle_pose);
-        rect.rectInfo.pt[2] = coordConvert_global_dr(slot.c, m_vehicle_pose);
-        rect.rectInfo.pt[3] = coordConvert_global_dr(slot.d, m_vehicle_pose);
-
-        //重叠过滤
-        bool mis_detect_flag = true;
-        auto it = existed_in_psinfo(rect, mis_detect_flag); 
-        if(!mis_detect_flag && it == m_apa_psinfo.WorldoutRect.end()) { // 当未发生误检测且当前车位在 m_apa_psinfo 中不存在，跳过循环，不对车位进行处理
-            continue;
-        } 
-
-        if (it == m_apa_psinfo.WorldoutRect.end()) { // 如果当前车位不在 m_apa_psinfo 中，将其视为新矩形，并加入 m_apa_psinfo
-            rect.rectInfo.label = m_next_available_label_idx++;
-            if(m_apa_psinfo.WorldoutRect.size() >= MAX_SLOT_NUM) {
-                m_apa_psinfo.WorldoutRect.erase(m_apa_psinfo.WorldoutRect.begin());
+        auto slot_existance = check_slot_existance(quad);
+        if (slot_existance != nullptr) {
+            Eigen::Vector3d pose{m_vehicle_pose.coord.x, m_vehicle_pose.coord.y, m_vehicle_pose.yaw};
+            Eigen::Vector3f diff = pose.cast<float>() - slot_existance->GetSlotCenter();
+            float dist = (diff.head<2>().norm())/1000;
+            if (slot_existance->IsConfiremd() &&
+                dist > slot_existance->GetMinDist2EgoCar()) {
+                continue;
             }
-            m_apa_psinfo.WorldoutRect.push_back(rect);
-        }
-        else {
-            //找到重叠
-            rect.rectInfo.label = it->rectInfo.label;
-            rect.detect_frame_count = it->detect_frame_count + 1;
-            rect.is_reliable = rect.detect_frame_count >= 5; //如果连续出现5帧，则这个车位可信任，is_reliable 设为 true
-            rect.detect_as_occupy_count = it->detect_as_occupy_count + slot.occupy;
-            rect.rectInfo.iSodType = float(rect.detect_as_occupy_count) / float(rect.detect_frame_count) > 0.5;
-
-            if (m_select_slot_label_id > 0) { 
-                if(m_select_slot_label_id == rect.rectInfo.label) { 
-                    *it = rect;
+            // 已经存在与之对应的车位，用角点信息进行更新
+            slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
+            slot_existance->Update(quad);
+            
+        } else {
+            auto result = std::make_shared<ParkingSlotResult>();
+            mParkingLineMask_ptr=std::make_shared<PSMaskU8>(352, 352, 0);
+            for (uint32_t row = 0; row < 352; row++) {
+                for (uint32_t col = 0; col < 352; col++) {
+                    mParkingLineMask_ptr->At(col, row) = 1;
                 }
             }
-            else {
-                *it = rect;
-            } 
-
-            if(rect.is_reliable == 1) {
-                rect_car_center = *it;
-                rect_car_center.rectInfo.pt[0] = coordConvert_car_center(slot.a);
-                rect_car_center.rectInfo.pt[1] = coordConvert_car_center(slot.b);
-                rect_car_center.rectInfo.pt[2] = coordConvert_car_center(slot.c);
-                rect_car_center.rectInfo.pt[3] = coordConvert_car_center(slot.d); 
-                
-                m_output_slot.slots_in_cur_frame.push_back(rect_car_center);
-                // //check m_output_slot.slots_in_cur_frame
-                // printf("[_test updatevisionslots] slots_in_cur_frame size: %d\n",m_output_slot.slots_in_cur_frame.size());
-                // for (const auto& psd_slot1 : m_output_slot.slots_in_cur_frame)
-                // {
-                //     printf("[_test updatevisionslots] slots_in_cur_frame, isreliable:%d, ",psd_slot1.is_reliable);
-                //     for (int i = 0; i < RECTPointNum; ++i) 
-                //     {
-                //         printf("(%d,%d)",psd_slot1.rectInfo.pt[i].x,psd_slot1.rectInfo.pt[i].y);
-                //     }
-                //     printf("\n");
-                // }
-            }  
+            if (ProcessParkingSlotResult(*mParkingLineMask_ptr, slot, result)) {
+                transform2world(m_vehicle_pose, result, quad);
+                if (check_slot_existance(quad) != nullptr) {
+                    continue;
+                }
+                auto new_slot = std::make_shared<Kalman_filter>(result, quad);
+                slots_map_[new_slot->GetSlotApaId()] = new_slot;
+                new_slot->SetLatestFrameId(static_cast<uint32_t>(frameid));
+                rebuild_slots_tree();
+            }
         }
-    }
+    collect_confirmed_slots(m_output_slot);
+
+    //     apaSlotInfo rect;
+    //     apaSlotInfo rect_car_center;
+    //     rect.rectInfo.iRectType = 0; // 0为视觉检测结果 
+    //     rect.rectInfo.iSodType = 0;  // 0为没有障碍物，1为有障碍物，-1为未知情况（reset,或车停下来）
+    //     // rect.rectInfo.iMinOtherSideDist = -1;
+    //     rect.rectInfo.level=2; //跟踪值还是检测值 2为检测值，1为跟踪值
+    //     rect.rectInfo.PStype = slot.bayType;
+    //     rect.detect_frame_count = 1; 
+
+    //     //从RD左上角原点 转为 后轴中心为原点
+    //     rect.rectInfo.pt[0] = coordConvert_global_dr(slot.a, m_vehicle_pose);
+    //     rect.rectInfo.pt[1] = coordConvert_global_dr(slot.b, m_vehicle_pose);
+    //     rect.rectInfo.pt[2] = coordConvert_global_dr(slot.c, m_vehicle_pose);
+    //     rect.rectInfo.pt[3] = coordConvert_global_dr(slot.d, m_vehicle_pose);
+
+    //     //重叠过滤
+    //     bool mis_detect_flag = true;
+    //     auto it = existed_in_psinfo(rect, mis_detect_flag); 
+    //     if(!mis_detect_flag && it == m_apa_psinfo.WorldoutRect.end()) { // 当未发生误检测且当前车位在 m_apa_psinfo 中不存在，跳过循环，不对车位进行处理
+    //         continue;
+    //     } 
+
+    //     if (it == m_apa_psinfo.WorldoutRect.end()) { // 如果当前车位不在 m_apa_psinfo 中，将其视为新矩形，并加入 m_apa_psinfo
+    //         rect.rectInfo.label = m_next_available_label_idx++;
+    //         if(m_apa_psinfo.WorldoutRect.size() >= MAX_SLOT_NUM) {
+    //             m_apa_psinfo.WorldoutRect.erase(m_apa_psinfo.WorldoutRect.begin());
+    //         }
+    //         m_apa_psinfo.WorldoutRect.push_back(rect);
+    //     }
+    //     else {
+    //         //找到重叠
+    //         rect.rectInfo.label = it->rectInfo.label;
+    //         rect.detect_frame_count = it->detect_frame_count + 1;
+    //         rect.is_reliable = rect.detect_frame_count >= 5; //如果连续出现5帧，则这个车位可信任，is_reliable 设为 true
+    //         rect.detect_as_occupy_count = it->detect_as_occupy_count + slot.occupy;
+    //         rect.rectInfo.iSodType = float(rect.detect_as_occupy_count) / float(rect.detect_frame_count) > 0.5;
+
+    //         if (m_select_slot_label_id > 0) { 
+    //             if(m_select_slot_label_id == rect.rectInfo.label) { 
+    //                 *it = rect;
+    //             }
+    //         }
+    //         else {
+    //             *it = rect;
+    //         } 
+
+    //         if(rect.is_reliable == 1) {
+    //             rect_car_center = *it;
+    //             rect_car_center.rectInfo.pt[0] = coordConvert_car_center(slot.a);
+    //             rect_car_center.rectInfo.pt[1] = coordConvert_car_center(slot.b);
+    //             rect_car_center.rectInfo.pt[2] = coordConvert_car_center(slot.c);
+    //             rect_car_center.rectInfo.pt[3] = coordConvert_car_center(slot.d); 
+                
+    //             m_output_slot.slots_in_cur_frame.push_back(rect_car_center);
+    //             // //check m_output_slot.slots_in_cur_frame
+    //             // printf("[_test updatevisionslots] slots_in_cur_frame size: %d\n",m_output_slot.slots_in_cur_frame.size());
+    //             // for (const auto& psd_slot1 : m_output_slot.slots_in_cur_frame)
+    //             // {
+    //             //     printf("[_test updatevisionslots] slots_in_cur_frame, isreliable:%d, ",psd_slot1.is_reliable);
+    //             //     for (int i = 0; i < RECTPointNum; ++i) 
+    //             //     {
+    //             //         printf("(%d,%d)",psd_slot1.rectInfo.pt[i].x,psd_slot1.rectInfo.pt[i].y);
+    //             //     }
+    //             //     printf("\n");
+    //             // }
+    //         }  
+    //     }
+    // }
    
 
-    for(auto info = m_apa_psinfo.WorldoutRect.rbegin(); info != m_apa_psinfo.WorldoutRect.rend(); ++info) {
-        if(info->is_reliable == 1) {
-            m_output_slot.WorldoutRect.push_back(*info);
-        }
+    // for(auto info = m_apa_psinfo.WorldoutRect.rbegin(); info != m_apa_psinfo.WorldoutRect.rend(); ++info) {
+    //     if(info->is_reliable == 1) {
+    //         m_output_slot.WorldoutRect.push_back(*info);
+    //     }
     }
 
     // check m_output_slot 
@@ -419,6 +420,28 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     }
 
     printf("[_test updatevisionslots] end!!\n");
+}
+
+void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
+    slot_res.WorldoutRect.clear();
+    apaSlotInfo rect;
+    for (const auto &slot : slots_map_){
+        auto corner_world = slot.second.get()->GetCornersWorld();
+        
+            rect.rectInfo.label = slot.second.get()->GetSlotApaId();
+            rect.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
+            
+            for(int i = 0; i < 4; i++){
+                if(corner_world[i].hasNaN()){
+                    continue;    
+                }else{
+                    rect.rectInfo.pt[i].x = corner_world[i].head<2>().x();
+                    rect.rectInfo.pt[i].y = corner_world[i].head<2>().y();
+                }
+                
+            }
+            slot_res.WorldoutRect.push_back(rect);
+    } 
 }
 
 
@@ -453,19 +476,19 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
         iou = iouEx(vert_new, vert); //当前帧和上一帧的车位IOU
         
         //IOU>0.4重复，此时返回it是重叠的老车位
-        if (iou >= 0.8) {
+        if (iou >= 0.7) {
             break;
         }
 
         //0.2-0.4misdetect
-        else if (iou >= 0.2 && iou < 0.8) {
+        else if (iou >= 0.2 && iou < 0.7) {
             mis_detect_flag = false;
         }
 
         //<0.2认为没有相同车位继续循环
         
     }
-    if(iou < 0.8) 
+    if(iou < 0.7) 
     {
         it = m_apa_psinfo.WorldoutRect.end(); //遍历完，没有找到重复车位
     }
@@ -956,7 +979,7 @@ void PSD_FusionModuleIF::ObtainSlotType(ParkingSlotQuad &quad) {
                 quad.slot_type = PARALLEL;
                
             } else {
-                quad.slot_type = SLOT_VERTICAL;
+                quad.slot_type = VERTICAL;
                 
             }
         }

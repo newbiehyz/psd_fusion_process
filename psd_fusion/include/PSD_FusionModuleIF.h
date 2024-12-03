@@ -150,6 +150,7 @@ private:
     bool CheckSlant(ParkingSlotQuad &quad);
     void RecalculateRetlen(ParkingSlotQuad &quad);
     bool CheckComplete(const std::vector<ApproxBoxPoints> &points);
+    void collect_confirmed_slots(apaSlotListInfo &slot_res);
     void ModifyCornerScore(const PSMaskU8 &mask,
                            Eigen::Vector2f &p,
                            float &score,
