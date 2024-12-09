@@ -77,6 +77,7 @@ private:
     padVehiclePose      m_vehicle_pose;
     apaSlotListInfo     m_apa_psinfo;
     apaSlotListInfo     m_output_slot;
+    std::mutex          m_output_slot_mutex;
     int                 m_frame_id;
     std::mutex m_psinfo_mutex;
     std::vector<ObstacleInfo> m_obstacle_info;
@@ -111,6 +112,7 @@ public:
 
     apaSlotListInfo GetOutputSlot()
     {
+        // std::lock_guard<std::mutex> ld(m_output_slot_mutex);
         return m_output_slot;
     }
     apaSlotListInfo GetApaPsinfo()

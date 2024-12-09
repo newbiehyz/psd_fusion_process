@@ -167,7 +167,7 @@ POINT_I PSD_FusionModuleIF::coordConvert_global_dr(const padPoint& slot, const p
 
     //平移dr偏移量
     grand.x += pose.coord.x;
-    grand.y += pose.coord.y;
+    grand.y -= pose.coord.y;
 
     return grand;
 }
@@ -398,18 +398,21 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
         }
     }
    
-
-    for(auto info = m_apa_psinfo.WorldoutRect.rbegin(); info != m_apa_psinfo.WorldoutRect.rend(); ++info) {
-        if(info->is_reliable == 1) {
-            m_output_slot.WorldoutRect.push_back(*info);
-        }
+    {
+        // std::lock_guard<std::mutex> ld(m_output_slot_mutex);
+        // for(auto info = m_apa_psinfo.WorldoutRect.rbegin(); info != m_apa_psinfo.WorldoutRect.rend(); ++info) {
+        // if(info->is_reliable == 1) {
+        //     m_output_slot.WorldoutRect.push_back(*info);
+        // }
+    // }
     }
+    
 
     // check m_output_slot 
-    printf("[_test updatevisionslots] m_output_slot list size: %d\n",m_output_slot.WorldoutRect.size());
-    for (const auto& psd_slot2 : m_output_slot.WorldoutRect)
+    printf("[_test updatevisionslots] m_output_slot list size: %d\n",m_output_slot.slots_in_cur_frame.size());
+    for (const auto& psd_slot2 : m_output_slot.slots_in_cur_frame)
     {
-        printf("[_test updatevisionslots] m_output_slot, isreliable:%d, label:%d, PStype:%d, ",
+        printf("[_test updatevisionslots] slots_in_cur_frame, isreliable:%d, label:%d, PStype:%d, ",
         psd_slot2.is_reliable,psd_slot2.rectInfo.label,psd_slot2.rectInfo.PStype);
         for (int i = 0; i < RECTPointNum; ++i) 
         {
@@ -451,7 +454,10 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
         changePoint(rect_new, vert_new);
         changePoint(*it, vert);
         iou = iouEx(vert_new, vert); //当前帧和上一帧的车位IOU
-        
+
+
+        // // for test
+        // iou = 0.0;
         //IOU>0.4重复，此时返回it是重叠的老车位
         if (iou >= 0.7) {
             break;

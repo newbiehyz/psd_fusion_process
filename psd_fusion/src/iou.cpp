@@ -1,3 +1,4 @@
+#include <iostream>
 #include "iou.h"
 #include <algorithm>
 
@@ -157,9 +158,12 @@ double areaEx(const Vertexes &C)
             const Point &p2 = C.at(i + 1);
             Point p01 = p1 - p0;
             Point p02 = p2 - p0;
+            // printf("ALERT: p01 = (%f,%f)\n",p01.x, p01.y);
+            // printf("ALERT: p02 = (%f,%f)\n",p02.x, p02.y);
             sArea += fabs(p01^p02)*0.5;
         }
     }
+    // printf("ALERT: sArea = %f \n", sArea);
     return sArea;
 }
 WiseType whichWiseEx(const Vertexes &C)
@@ -327,12 +331,18 @@ double areaIntersectionEx(const Vertexes &C1, const Vertexes &C2)
     findInnerPointsEx(C2, C1, innerVert21);
     //---------------
     // TODO : Check conditions
+    // printf("interVert size is: %d", interVert.size());
+    // printf("\n");
+    // printf("innerVert12 size is:%d", innerVert12.size());
+    // printf("\n");
+    // printf("innerVert21 size is:%d",innerVert21.size());
+    // printf("\n");
     for (int i = 0; i < interVert.size(); ++i)
-        allVerts.push_back(interVert.at(i));
+        allVerts.push_back(interVert[i]);
     for (int i = 0; i < innerVert12.size(); ++i)
-        allVerts.push_back(innerVert12.at(i));
+        allVerts.push_back(innerVert12[i]);
     for (int i = 0; i < innerVert21.size(); ++i)
-        allVerts.push_back(innerVert21.at(i));
+        allVerts.push_back(innerVert21[i]);
 
     if (allVerts.empty())
         return 0.0;
@@ -343,6 +353,8 @@ double areaIntersectionEx(const Vertexes &C1, const Vertexes &C2)
             return -1.0;
         else
             return areaEx(allVerts);
+            // for test
+            // return -1.0;
     }
     return -1.0;
 }
@@ -354,6 +366,10 @@ double iouEx(const Vertexes &C1, const Vertexes &C2)
 {
     double area = areaIntersectionEx(C1, C2);
     double areaUnion = areaEx(C1) + areaEx(C2) - area;
+    if (areaUnion == 0){
+        printf("ALERT: areaUnion = 0!\n");
+        return 0.0;
+    }
     return area/areaUnion;
 }
 

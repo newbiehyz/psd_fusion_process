@@ -16,13 +16,13 @@ slotfusion::~slotfusion()
 
 void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION) 
 {
-    std::cout<<"The Vison slot num is:"<<outputSlot_VIS.WorldoutRect.size()<<std::endl;
-    std::cout<<"The USS slot num is:"<<outputSlot_USS.WorldoutRect.size()<<std::endl;
+    std::cout<<"The Vison slot num is:"<<outputSlot_VIS.slots_in_cur_frame.size()<<std::endl;
+    std::cout<<"The USS slot num is:"<<outputSlot_USS.slots_in_cur_frame.size()<<std::endl;
     outputSlot_FUSION = outputSlot_VIS;
-    for (const auto &slot_USS : outputSlot_USS.WorldoutRect) 
+    for (const auto &slot_USS : outputSlot_USS.slots_in_cur_frame) 
     {
         bool overlapFound = false; 
-        for (const auto &slot_VIS : outputSlot_VIS.WorldoutRect){
+        for (const auto &slot_VIS : outputSlot_VIS.slots_in_cur_frame){
             
             double overlap = calculateOverlap(slot_USS.rectInfo, slot_VIS.rectInfo);
             std::cout<<"The overlap is:"<<overlap<<std::endl;
@@ -37,11 +37,11 @@ void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaS
 
         if (!overlapFound){
             //如果视觉车位和超声车不位重叠，则将USS车位列表加入融合列表内
-            outputSlot_FUSION.WorldoutRect.push_back(slot_USS);
+            outputSlot_FUSION.slots_in_cur_frame.push_back(slot_USS);
             std::cout<<"USS slot not match in vison slot and push bash to Fusion slots!"<<std::endl;
         }
     }
-    std::cout<<"The fusion slot num is:"<<outputSlot_FUSION.WorldoutRect.size()<<std::endl;
+    std::cout<<"The fusion slot num is:"<<outputSlot_FUSION.slots_in_cur_frame.size()<<std::endl;
 }
 
 double slotfusion::calculateOverlap(const APA_SPACE::SApaPSRect& rect1, const APA_SPACE::SApaPSRect& rect2) {

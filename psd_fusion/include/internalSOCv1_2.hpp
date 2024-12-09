@@ -75,7 +75,7 @@ typedef struct
 	padPoint d; // 下底点坐标
 	padPoint o; // 原点，车位左上角点坐标
 	unsigned char slotSide; // 车位的左右方位信息 0x00为右侧车位 0x01为左侧车位
-	unsigned char bayType;	// 车位类型 0x00为垂直泊车位(包含斜向车位) 0x01为水平泊车位
+	unsigned char bayType;	// 车位类型 0x00为垂直泊车位(包含斜向车位) 0x01为水平泊车位 0x02为斜向泊车位
 	int occupy;
 }padVisionSlotCoord;
 
