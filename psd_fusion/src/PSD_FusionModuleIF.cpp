@@ -61,11 +61,11 @@
 #define EFFECTIVE_SLOT_Y_2 335
 
 using namespace IOU;
-#define wheel_base 3.0
+#define wheel_base 3.16
 #define VERTICAL 0
 #define PARALLEL 1
 #define SLANT 2
-#define KF false
+#define KF true
 
 bool PSD_FusionModuleIF::Initialize()
 {
@@ -235,7 +235,8 @@ bool PSD_FusionModuleIF::compareDistance(int pre, int current)
 
 int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POINT_I& pta, const POINT_I& ptb)
 {
-    float threshold = EFFECTIVE_OBSTACLE_POINT_DISTANCE / LR_BIRD_PIXECL_2_WORLD;
+    // float threshold = EFFECTIVE_OBSTACLE_POINT_DISTANCE / LR_BIRD_PIXECL_2_WORLD;
+    float threshold = 6000; // in mm
     if((point.x != INVALID_VALUE) && (point.y != INVALID_VALUE) && 
        (CalcDistance(point, pta) <= threshold || CalcDistance(point, ptb) <= threshold)) {
         return (fabs((ptb.y - pta.y) * point.x + (pta.x - ptb.x) * point.y + ((ptb.x * pta.y) - (pta.x * ptb.y)))) / (sqrt(pow(ptb.y - pta.y, 2) + pow(pta.x - ptb.x, 2)));
@@ -243,6 +244,139 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
     }
 
     return -1;
+}
+
+void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &stopdis){
+    for (auto &obs : empobs.pkEmapObs){
+        if (obs.obsTyp == Fus::OBS_WHEELSTOP){
+            Eigen::Vector3f obs_point3f;
+            obs_point3f << obs.obsCenter.x, obs.obsCenter.y, obs.obsCenter.z;
+
+            //TODO
+            if (slots_map_.empty()) {
+                return;
+            }
+
+            if (slots_map_.size() < 2) {
+                if (slots_map_.begin()->second->point_in_rect(obs_point3f)){
+                    const auto& check_slot = slots_map_.begin()->second;
+                    POINT_I wheelstop_dis, point_a, point_b;
+                
+                    if (check_slot->GetSlotType() == SLOT_TYPE::VERTICALSLOT){
+                    point_a.x = check_slot->GetApoint().x();
+                    point_a.y = check_slot->GetApoint().y();
+                    point_b.x = check_slot->GetBpoint().x();
+                    point_b.y = check_slot->GetBpoint().y();
+
+                    stopdis = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
+                }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
+                    POINT_I point_c, point_d;
+
+                    point_a.x = check_slot->GetApoint().x();
+                    point_a.y = check_slot->GetApoint().y();
+                    point_b.x = check_slot->GetBpoint().x();
+                    point_b.y = check_slot->GetBpoint().y();
+
+                    point_c.x = check_slot->GetCpoint().x();
+                    point_c.y = check_slot->GetCpoint().y();
+                    point_d.x = check_slot->GetDpoint().x();
+                    point_d.y = check_slot->GetDpoint().y();
+
+                    float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
+                    float temp_dis2 = CalPointAndLineDistance(wheelstop_dis, point_a, point_d);
+                    
+                    stopdis = std::max(temp_dis1, temp_dis2); 
+                }else{
+                    stopdis = 0.0;
+                }
+                }
+                    
+                return;
+            };
+            point_t obs_point2f{obs_point3f.x(), obs_point3f.y()};
+            auto nearest_index = slots_tree_->nearest_index(obs_point2f);
+
+            const auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
+            
+            // 找到最近的停车位
+            if(check_slot->point_in_rect(obs_point3f)){
+                POINT_I wheelstop_dis, point_a, point_b;
+                
+                wheelstop_dis.x = obs_point3f.x();
+                wheelstop_dis.y = obs_point3f.y();
+
+                if (check_slot->GetSlotType() == SLOT_TYPE::VERTICALSLOT){
+                    point_a.x = check_slot->GetApoint().x();
+                    point_a.y = check_slot->GetApoint().y();
+                    point_b.x = check_slot->GetBpoint().x();
+                    point_b.y = check_slot->GetBpoint().y();
+
+                    stopdis = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
+                }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
+                    POINT_I point_c, point_d;
+
+                    point_a.x = check_slot->GetApoint().x();
+                    point_a.y = check_slot->GetApoint().y();
+                    point_b.x = check_slot->GetBpoint().x();
+                    point_b.y = check_slot->GetBpoint().y();
+
+                    point_c.x = check_slot->GetCpoint().x();
+                    point_c.y = check_slot->GetCpoint().y();
+                    point_d.x = check_slot->GetDpoint().x();
+                    point_d.y = check_slot->GetDpoint().y();
+
+                    float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
+                    float temp_dis2 = CalPointAndLineDistance(wheelstop_dis, point_a, point_d);
+                    
+                    stopdis = std::max(temp_dis1, temp_dis2); 
+                }else{
+                    stopdis = 0.0;
+                }
+                
+            }
+
+            auto neighbor_indexes = slots_tree_->neighborhood_indices(obs_point2f, 2000);
+            for (const auto& index : neighbor_indexes) {
+                if (index == nearest_index) continue;
+       
+                const auto& check_slot = slots_map_.at(slots_remap_.at(index));
+                if (check_slot->point_in_rect(obs_point3f)){
+                    POINT_I wheelstop_dis, point_a, point_b;
+                
+                    wheelstop_dis.x = obs_point3f.x();
+                    wheelstop_dis.y = obs_point3f.y();
+
+                    if (check_slot->GetSlotType() == SLOT_TYPE::VERTICALSLOT){
+                    point_a.x = check_slot->GetApoint().x();
+                    point_a.y = check_slot->GetApoint().y();
+                    point_b.x = check_slot->GetBpoint().x();
+                    point_b.y = check_slot->GetBpoint().y();
+
+                    stopdis = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
+                }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
+                    POINT_I point_c, point_d;
+
+                    point_a.x = check_slot->GetApoint().x();
+                    point_a.y = check_slot->GetApoint().y();
+                    point_b.x = check_slot->GetBpoint().x();
+                    point_b.y = check_slot->GetBpoint().y();
+
+                    point_c.x = check_slot->GetCpoint().x();
+                    point_c.y = check_slot->GetCpoint().y();
+                    point_d.x = check_slot->GetDpoint().x();
+                    point_d.y = check_slot->GetDpoint().y();
+
+                    float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
+                    float temp_dis2 = CalPointAndLineDistance(wheelstop_dis, point_a, point_d);
+                    
+                    stopdis = std::max(temp_dis1, temp_dis2); 
+                }else{
+                    stopdis = 0.0;
+                }
+                }
+            }
+        }
+    }
 }
 
 void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots)
@@ -290,8 +424,8 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             Eigen::Vector2f tl, tr, bl, br;
             tl<<slot.a.x, slot.a.y;
             tr<<slot.b.x, slot.b.y;
-            bl<<slot.c.x, slot.c.y;
-            br<<slot.d.x, slot.d.y;
+            br<<slot.c.x, slot.c.y;
+            bl<<slot.d.x, slot.d.y;
             quad->quads.col(0).head<2>() = tl;
             quad->quads.col(1).head<2>() = tr;
             quad->quads.col(2).head<2>() = br;
@@ -313,9 +447,9 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 
             } else {
                 auto result = std::make_shared<ParkingSlotResult>();
-                mParkingLineMask_ptr=std::make_shared<PSMaskU8>(352, 352, 0);
-                for (uint32_t row = 0; row < 352; row++) {
-                    for (uint32_t col = 0; col < 352; col++) {
+                mParkingLineMask_ptr=std::make_shared<PSMaskU8>(448, 448, 0);
+                for (uint32_t row = 0; row < 448; row++) {
+                    for (uint32_t col = 0; col < 448; col++) {
                         mParkingLineMask_ptr->At(col, row) = 1;
                     }
                 }
@@ -330,7 +464,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                     rebuild_slots_tree();
                 }
             }
-            collect_confirmed_slots(m_output_slot);
+            
         }else{
             apaSlotInfo rect;
             apaSlotInfo rect_car_center;
@@ -406,7 +540,8 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             }
         }
     }
-
+    delete_invalid_slots();
+    collect_confirmed_slots(m_output_slot);
     // check m_output_slot 
     printf("[_test updatevisionslots] m_output_slot list size: %d\n",m_output_slot.WorldoutRect.size());
     for (const auto& psd_slot2 : m_output_slot.WorldoutRect)
@@ -445,10 +580,42 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
     } 
 }
 
+void PSD_FusionModuleIF::delete_invalid_slots() {
+    // delete missing slots
+    bool deleted = false;
+    for (auto iter = slots_map_.begin(); iter != slots_map_.end();) {
+        if (iter->second->IsToBeDeleted()) {
+            
+            iter = slots_map_.erase(iter);
+            deleted = true;
+        } else {
+            ++iter;
+        }
+    }
+    if (deleted) rebuild_slots_tree();
+
+    // delete faraway slots
+    if (slots_map_.size() < 2) return;
+    auto tracking_indexes = slots_tree_->neighborhood_indices(
+        point_t{m_vehicle_pose.coord.x, m_vehicle_pose.coord.y}, psmp_.neighborhood_range);
+
+    deleted = false;
+    for (const auto& remap : slots_remap_) {
+        if (std::find(tracking_indexes.begin(), tracking_indexes.end(),
+                      remap.first) == tracking_indexes.end()) {
+            
+            slots_map_.erase(remap.second);
+            deleted = true;
+        }
+    }
+    if (deleted) rebuild_slots_tree();
+};
+
 
 int PSD_FusionModuleIF::CalcDistance(POINT_I a, POINT_I b)
 {
-    return sqrt((a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y));
+    float dis = sqrt((a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y));
+    return dis;
 }
 
 
@@ -521,119 +688,108 @@ void PSD_FusionModuleIF::transform2world(
     // quad_info->center_ego = intrinsic_ipm2car_ * quad_info->center_pixel;
     quad_info->long_dir_pixel = post_result->long_direction;
     quad_info->wide_dir_pixel = post_result->wide_direction;
-    quad_info->length_world =
-        post_result->length * std::fabs(intrinsic_ipm2car_(0, 1));
-    quad_info->width_world =
-        post_result->width * std::fabs(intrinsic_ipm2car_(1, 0));
+    quad_info->length_world = post_result->length * std::fabs(intrinsic_ipm2car_(0, 1));
+    quad_info->width_world = post_result->width * std::fabs(intrinsic_ipm2car_(1, 0));
 
     transform2world(loc_pose, quad_info);
 };
 
 void PSD_FusionModuleIF::transform2world(const padVehiclePose& loc_pose,
                                          QuadInfoPtr& quad_info) {
-    // const float& min_u = ipmp_.min_u;
-    // const float& max_u = ipmp_.max_u;
-    // const float& min_v = ipmp_.min_v;
-    // const float& max_v = ipmp_.max_v;
-    // const float& cam_v = ipmp_.cam_v;
-    // const float& edge_thr = ipmp_.edge_thr;
+    const float& min_u = ipmp_.min_u;
+    const float& max_u = ipmp_.max_u;
+    const float& min_v = ipmp_.min_v;
+    const float& max_v = ipmp_.max_v;
+    const float& cam_v = ipmp_.cam_v;
+    const float& edge_thr = ipmp_.edge_thr;
 
-    // for (int i = 0; i < quad_info->quads.cols(); ++i) {
-    //     const auto& quad = quad_info->quads.col(i);
-    //     // 判断是否IPM边缘点，先重置为初始值，避免查重的结果影响
-    //     quad_info->near_edge.at(i) = false;
-    //     if (quad.x() < edge_thr || quad.y() < edge_thr ||
-    //         quad.x() + edge_thr > ipmp_.ipm_width ||
-    //         quad.y() + edge_thr > ipmp_.ipm_height) {
-    //         quad_info->near_edge.at(i) = true;
+    for (int i = 0; i < quad_info->quads.cols(); ++i) {
+        const auto& quad = quad_info->quads.col(i);
+        // 判断是否IPM边缘点，先重置为初始值，避免查重的结果影响
+        quad_info->near_edge.at(i) = false;
+        if (quad.x() < edge_thr || quad.y() < edge_thr ||
+            quad.x() + edge_thr > ipmp_.ipm_width ||
+            quad.y() + edge_thr > ipmp_.ipm_height) {
+            quad_info->near_edge.at(i) = true;
             
-    //     }
+        }
 
-    //     // 设置协方差
-    //     Eigen::Vector2f cam_pixel;
-    //     if (quad.x() < min_u) {  // left
-    //         cam_pixel = Eigen::Vector2f(min_u + 1.f, cam_v);
-    //     } else if (quad.x() > max_u) {  // right
-    //         cam_pixel = Eigen::Vector2f(max_u - 1.f, cam_v);
-    //     } else if (quad.y() < min_v) {  // top
-    //         cam_pixel = Eigen::Vector2f(ipmp_.ipm_width * 0.5f, min_v + 1.f);
-    //     } else if (quad.y() > max_v) {  // bottom
-    //         cam_pixel = Eigen::Vector2f(ipmp_.ipm_width * 0.5f, max_v - 1.f);
-    //     } else {
-    //         cam_pixel = Eigen::Vector2f(ipmp_.ipm_width * 0.5f, cam_v);
-    //     };
+        // 设置协方差
+        Eigen::Vector2f cam_pixel;
+        if (quad.x() < min_u) {  // left
+            cam_pixel = Eigen::Vector2f(min_u + 1.f, cam_v);
+        } else if (quad.x() > max_u) {  // right
+            cam_pixel = Eigen::Vector2f(max_u - 1.f, cam_v);
+        } else if (quad.y() < min_v) {  // top
+            cam_pixel = Eigen::Vector2f(ipmp_.ipm_width * 0.5f, min_v + 1.f);
+        } else if (quad.y() > max_v) {  // bottom
+            cam_pixel = Eigen::Vector2f(ipmp_.ipm_width * 0.5f, max_v - 1.f);
+        } else {
+            cam_pixel = Eigen::Vector2f(ipmp_.ipm_width * 0.5f, cam_v);
+        };
 
-    //     Eigen::Vector2f pixel_vec = quad.head<2>() - cam_pixel;
-    //     float pixel_dist = pixel_vec.norm();
-    //     Eigen::Vector2f v_1_pixel = pixel_vec / pixel_dist;  // 像素坐标系
-    //     Eigen::Vector2f v_1 = {-v_1_pixel.y(), -v_1_pixel.x()};  // 自车系
-    //     Eigen::Vector2f v_2 = {v_1_pixel.x(),
-    //                            -v_1_pixel.y()};  // {-v_1(1), v_1(0)}
-    //     float sigma_1 = std::max(psmp_.sigma_1_ratio * pixel_dist,
-    //                              psmp_.sigma_1_ratio * 10.0f) *
-    //                     intrinsic_ipm2car_(0, 1);
-    //     float sigma_2 = std::max(psmp_.sigma_2_ratio * pixel_dist,
-    //                              psmp_.sigma_2_ratio * 10.0f) *
-    //                     intrinsic_ipm2car_(0, 1);
+        Eigen::Vector2f pixel_vec = quad.head<2>() - cam_pixel;
+        float pixel_dist = pixel_vec.norm();
+        Eigen::Vector2f v_1_pixel = pixel_vec / pixel_dist;  // 像素坐标系
+        Eigen::Vector2f v_1 = {-v_1_pixel.y(), -v_1_pixel.x()};  // 自车系
+        Eigen::Vector2f v_2 = {v_1_pixel.x(),
+                               -v_1_pixel.y()};  // {-v_1(1), v_1(0)}
+        float sigma_1 = std::max(psmp_.sigma_1_ratio * pixel_dist,
+                                 psmp_.sigma_1_ratio * 10.0f) *
+                        intrinsic_ipm2car_(0, 1);
+        float sigma_2 = std::max(psmp_.sigma_2_ratio * pixel_dist,
+                                 psmp_.sigma_2_ratio * 10.0f) *
+                        intrinsic_ipm2car_(0, 1);
 
        
-    //     if (quad_info->near_edge.at(i) || pixel_dist > psmp_.pixel_dist_thr) {
-    //         sigma_1 *= pixel_dist / psmp_.sigma_enlarge_coeff;
-    //         sigma_2 *= pixel_dist / psmp_.sigma_enlarge_coeff;
-    //     }
-    //     Eigen::Matrix2f V;
-    //     V.col(0) = v_1;
-    //     V.col(1) = v_2;
-    //     Eigen::Vector2f lambda;
-    //     lambda(0) = sigma_1 * sigma_1;
-    //     lambda(1) = sigma_2 * sigma_2;
-    //     quad_info->cov_ego.at(i) = V * lambda.asDiagonal() * V.transpose();
+        if (quad_info->near_edge.at(i) || pixel_dist > psmp_.pixel_dist_thr) {
+            sigma_1 *= pixel_dist / psmp_.sigma_enlarge_coeff;
+            sigma_2 *= pixel_dist / psmp_.sigma_enlarge_coeff;
+        }
+        Eigen::Matrix2f V;
+        V.col(0) = v_1;
+        V.col(1) = v_2;
+        Eigen::Vector2f lambda;
+        lambda(0) = sigma_1 * sigma_1;
+        lambda(1) = sigma_2 * sigma_2;
+        quad_info->cov_ego.at(i) = V * lambda.asDiagonal() * V.transpose();
         
-    // }
+    }
 
     // 转换坐标系
-    quad_info->corners_ego = intrinsic_ipm2car_ * quad_info->quads;
     const auto& yaw = loc_pose.yaw;
     float cos_yaw = std::cos(yaw);
     float sin_yaw = std::sin(yaw);
     Eigen::Matrix3f trans_matrix;
     trans_matrix << cos_yaw, -sin_yaw, loc_pose.coord.x, sin_yaw, cos_yaw,
         loc_pose.coord.y, 0, 0, 1;
-    // quad_info->corners_world = trans_matrix * quad_info->corners_ego;
-    // // 协方差转换到世界坐标系
-    // Eigen::Matrix2f Rotation = trans_matrix.topLeftCorner<2, 2>();
-    // for (size_t i = 0; i < quad_info->quads.cols(); ++i) {
-    //     quad_info->cov_world.at(i) =
-    //         Rotation * quad_info->cov_ego.at(i) * Rotation.transpose();
+    // 协方差转换到世界坐标系
+    Eigen::Matrix2f Rotation = trans_matrix.topLeftCorner<2, 2>();
+    for (size_t i = 0; i < quad_info->quads.cols(); ++i) {
+        quad_info->cov_world.at(i) =
+            Rotation * quad_info->cov_ego.at(i) * Rotation.transpose();
        
-    // };
+    };
 
-    // // 处理补全完的车位的相关信息
-    // if (quad_info->center_ego != Eigen::Vector3f::Zero()) {
-    //     quad_info->center_world = trans_matrix * quad_info->center_ego;
-    //     quad_info->long_dir_world = trans_matrix.topLeftCorner<2, 2>() *
-    //                                 (intrinsic_ipm2car_.topLeftCorner<2, 2>() *
-    //                                  quad_info->long_dir_pixel)
-    //                                     .normalized();
-    //     quad_info->wide_dir_world = trans_matrix.topLeftCorner<2, 2>() *
-    //                                 (intrinsic_ipm2car_.topLeftCorner<2, 2>() *
-    //                                  quad_info->wide_dir_pixel)
-    //                                     .normalized();
-    // }
-    float temp_x, temp_y;
+    float global_x, global_y, local_x, local_y;
     for (int i = 0; i < quad_info->quads.cols(); ++i) {
         const auto& quad = quad_info->quads.col(i);
         float x = (quad.x() - BIRD_VIEW_HEIGHT / 2) * LR_BIRD_PIXECL_2_WORLD;
         float y = (BIRD_VIEW_HEIGHT/2.0 + (VEHICLE_LENGTH/2.0-REAR_AXLE_CENTER_VEHICLE_REAR)/LR_BIRD_PIXECL_2_WORLD - quad.y()) * LR_BIRD_PIXECL_2_WORLD;
         float yaw = loc_pose.yaw * PI / 180.0;   
         
-        temp_x = x * cos(yaw) + y * sin(yaw) + loc_pose.coord.x;
-        temp_y = y * cos(yaw) - x * sin(yaw) + loc_pose.coord.y;
+        global_x = x * cos(yaw) + y * sin(yaw) + loc_pose.coord.x;
+        global_y = y * cos(yaw) - x * sin(yaw) + loc_pose.coord.y;
 
-        quad_info->corners_ego.col(i)<<temp_x,temp_y,0.0;
+        quad_info->corners_world.col(i)<<global_x, global_y, 0.0;
+
+        local_x = (global_x - BIRD_VIEW_HEIGHT/2) * LR_BIRD_PIXECL_2_WORLD;
+        local_y = (BIRD_VIEW_HEIGHT/2 - global_y) * LR_BIRD_PIXECL_2_WORLD;
+        quad_info->corners_ego.col(i)<<local_x, local_y, 0.0;
     }
+    
     if (quad_info->center_ego != Eigen::Vector3f::Zero()) {
-        quad_info->center_world = quad_info->center_ego;
+        quad_info->center_world = trans_matrix * quad_info->center_ego;
         quad_info->long_dir_world = trans_matrix.topLeftCorner<2, 2>() *
                                     (intrinsic_ipm2car_.topLeftCorner<2, 2>() *
                                      quad_info->long_dir_pixel)
@@ -643,7 +799,6 @@ void PSD_FusionModuleIF::transform2world(const padVehiclePose& loc_pose,
                                      quad_info->wide_dir_pixel)
                                         .normalized();
     }
-    quad_info->corners_world = quad_info->corners_ego;
     
 };
 
@@ -969,9 +1124,11 @@ void PSD_FusionModuleIF::ObtainSlotType(ParkingSlotQuad &quad) {
         double cosine_len = Cosine(quad.dir_length, Eigen::Vector2f(0.0F, 1.0F));
         double cos_wid_len{Cosine(quad.dir_length, quad.dir_width)};
         
-        static const double COS_75{0.259};
-        static const double COS_15{0.966};
-        if (fabs(cos_wid_len) > COS_75 && fabs(cos_wid_len) < COS_15) {
+        // static const double COS_75{0.259};
+        // static const double COS_15{0.966};
+        static const double COS_60{0.5};
+        static const double COS_30{0.866};
+        if (fabs(cos_wid_len) > COS_60 && fabs(cos_wid_len) < COS_30) {
             quad.slot_type = SLANT;
            
         } else {

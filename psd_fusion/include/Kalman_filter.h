@@ -64,8 +64,8 @@ class Kalman_filter{
         float loose_angle_coeff = 4e-6f;
         float loose_length_coeff = 4e-4f;
 
-        float same_point_thr = 0.5f;  // 旋转点时候判断是同一个点的阈值
-        float valid_measure_thr = 0.2f;  // 判定是有效测量的阈值
+        float same_point_thr = 500;  // 旋转点时候判断是同一个点的阈值
+        float valid_measure_thr = 200;  // 判定是有效测量的阈值
         // 判定无效测量点的协方差放大倍率
         float invalid_measure_enlarge_ratio = 9.0f;
         float invalid_innovation_thr = 1.0f;  // 偏差过大阈值
@@ -91,6 +91,26 @@ class Kalman_filter{
         Eigen::Vector3f c = Eigen::Vector3f::Ones();
         c.head<2>() = slot_state_.head<2>();
         return c;
+    };
+    Eigen::Vector3f GetApoint() const {
+        Eigen::Vector3f a = Eigen::Vector3f::Ones();
+        a << corners_world_[0].x(), corners_world_[0].y(), 0.0;
+        return a;
+    };
+    Eigen::Vector3f GetBpoint() const {
+        Eigen::Vector3f b = Eigen::Vector3f::Ones();
+        b << corners_world_[1].x(),  corners_world_[1].y(), 0.0;
+        return b;
+    };
+    Eigen::Vector3f GetCpoint() const {
+        Eigen::Vector3f c = Eigen::Vector3f::Ones();
+        c << corners_world_[2].x(),  corners_world_[2].y(), 0.0;
+        return c;
+    };
+    Eigen::Vector3f GetDpoint() const {
+        Eigen::Vector3f d = Eigen::Vector3f::Ones();
+        d << corners_world_[3].x(),  corners_world_[3].y(), 0.0;
+        return d;
     };
     Eigen::Vector3f GetSlotLongDir() const { return long_dir_; };
     Eigen::Vector3f GetSlotWideDir() const { return wide_dir_; };
@@ -131,7 +151,8 @@ class Kalman_filter{
     }
 
     bool point_in_slot(const Eigen::Vector3f& point,
-                       float ratio_thr = 1.0) const;
+                       float ratio_thr = 0.8) const;
+    bool point_in_rect(const Eigen::Vector3f& point) const;
     void Update(const QuadInfoPtr& quad_info);
 
  private:

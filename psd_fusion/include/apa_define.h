@@ -163,28 +163,30 @@ struct QuadInfo {
 typedef std::shared_ptr<QuadInfo> QuadInfoPtr;
 
 struct IPMParameters {
-    float focal_length = 35.2f;
-    float ipm_width = 352.0f;
-    float ipm_height = 352.0f;
+    float focal_length = 29.8f;
+    // float focal_length = 44.8f;
+    float ipm_width = 448.0f;
+    float ipm_height = 448.0f;
 
     float cx_ratio = 0.5f;
     float cy_ratio = 0.5f;
 
     float edge_thr = 10.0f;
 
-    // 10m
-    float min_u = 141.f;  // width dir
-    float max_u = 210.f;
-    float min_v = 87.f;  // height dir
-    float max_v = 264.f;
-    float cam_v = 120.f;
+    // // 10m
+    // float min_u = 141.f;  // width dir
+    // float max_u = 210.f;
+    // float min_v = 87.f;  // height dir
+    // float max_v = 264.f;
+    // float cam_v = 120.f;
 
-    // // 15m
-    //  float min_u = 153.f;  // width dir
-    //  float max_u = 200.f;
-    //  float min_v = 118.f;  // height dir
-    //  float max_v = 235.f;
-
+    // 15m
+     float min_u = 153.f;  // width dir
+     float max_u = 200.f;
+     float min_v = 118.f;  // height dir
+     float max_v = 235.f;
+     float cam_v = 120.f;
+     
     // // 20m
     //  float min_u = 158.f;  // width dir
     //  float max_u = 193.f;
@@ -338,16 +340,24 @@ struct ParkingSlotParam {
         float corner_conf_threshold = 0.5;
         float corner_dis_threshold = 1000;
         float iou_threshold = 0.3;
-        uint32_t input_w = 352, input_h = 352;
+        uint32_t input_w = 448, input_h = 448;
         uint32_t image_w = 600, image_h = 600;
+        // ParkingSlotRange ps_length_range{204, 407};
+        // ParkingSlotRange ps_width_range{80, 178};
+        // ParkingSlotRange ps_width_slant_range{115, 197};
+        // ParkingSlotRange ps_length_complete_range{234, 407};
+        // ParkingSlotRange ps_length_slant_complete_range{280, 483};
+        // ParkingSlotRange ps_length_2_range{203, 234};
+        // ParkingSlotRange ps_length_slant_2_range{254, 337};
+        // ParkingSlotRange ps_score_range{0.58, 0.8};
         ParkingSlotRange ps_length_range{160, 320};
-        ParkingSlotRange ps_width_range{63, 140};
+        ParkingSlotRange ps_width_range{63, 108};
         ParkingSlotRange ps_width_slant_range{90, 155};
         ParkingSlotRange ps_length_complete_range{184, 320};
-        ParkingSlotRange ps_length_slant_complete_range{220, 380};
+        ParkingSlotRange ps_length_slant_complete_range{190, 320};
         ParkingSlotRange ps_length_2_range{160, 184};
-        ParkingSlotRange ps_length_slant_2_range{200, 265};
-        ParkingSlotRange ps_score_range{0.15, 0.8};
+        ParkingSlotRange ps_length_slant_2_range{160, 220};
+        ParkingSlotRange ps_score_range{0.58, 0.9397};
         float vertical_threshold = 0.15;
         float ps_ratio = 2.4;
         ParkingSlotSizeController ps_size_controller;
@@ -357,11 +367,19 @@ struct ParkingSlotParam {
         float point_border_dist_complete_h2 = 3;
         float direction_score_thr1 = 0.5F;
         float direction_score_thr2 = 0.5F;
+        // float vp_MaxW = 153;
+        // float vp_MaxH = 293;
+        // float v_MaxH = 293;
+        // float p_MaxH = 292;
+        // float slant_MaxH = 343;
+        // float p_MinH = 267;
+        // float v_MinH = 222;
+        // float slant_MinH = 267;
         float vp_MaxW = 120;
         float vp_MaxH = 230;
         float v_MaxH = 230;
         float p_MaxH = 230;
-        float slant_MaxH = 270;
+        float slant_MaxH = 240;
         float p_MinH = 210;
         float v_MinH = 175;
         float slant_MinH = 210;

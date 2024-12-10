@@ -670,7 +670,7 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
     slotfusion fusionslot;
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     outputSlot_USS.ullFrameId = outputSlot_VIS.ullFrameId;
-    fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
+    fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS , outputSlot_FUSED);
    
 
     // //打印融合车位列表

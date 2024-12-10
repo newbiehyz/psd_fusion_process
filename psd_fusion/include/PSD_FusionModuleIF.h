@@ -31,6 +31,7 @@
 #ifndef PSD_FUSION_MODULE_IF
 #define PSD_FUSION_MODULE_IF
 
+#include "psd_fusion_process_header.h"
 #include "apa_define.h"
 #include "math.h"
 #include <map>
@@ -108,7 +109,7 @@ public:
 
     void UpdateVechiclePose(const padVehiclePose& pose_global);
     void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots);
-
+    void CalStopDistance(const Fus::PkEmapObs &empobs, float &stopdis);
     apaSlotListInfo GetOutputSlot()
     {
         return m_output_slot;
@@ -151,6 +152,7 @@ private:
     void RecalculateRetlen(ParkingSlotQuad &quad);
     bool CheckComplete(const std::vector<ApproxBoxPoints> &points);
     void collect_confirmed_slots(apaSlotListInfo &slot_res);
+    void delete_invalid_slots();
     void ModifyCornerScore(const PSMaskU8 &mask,
                            Eigen::Vector2f &p,
                            float &score,
