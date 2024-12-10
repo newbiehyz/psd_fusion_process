@@ -53,7 +53,7 @@ Kalman_filter::Kalman_filter(const ParkingSlotResultPtr& post_slot,
 
     creat_initial_covariance(quad_info);
 
-    min_dist2egocar_ = (quad_info->center_ego.head<2>().norm())/1000;
+    min_dist2egocar_ = quad_info->center_ego.head<2>().norm();
 };
 
 Kalman_filter::~Kalman_filter(){};
@@ -314,12 +314,6 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
     // 更新预测矩阵，状态量不变，P需要调整
     P_ = F_ * P_ * F_.transpose() + Q_ * fmax(1.0, delta_frame_cnt_ / 10.0);
 
-    // 检查 P_
-    if (P_.hasNaN()) {
-        std::cerr << "P_ 矩阵包含 NaN。" << std::endl;
-        return;
-    }
-
     // 更新观测矩阵
     float hsa = 0.5 * std::sin(GetSlotLongAngle());
     float hca = 0.5 * std::cos(GetSlotLongAngle());
@@ -336,12 +330,6 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
     H_.row(BOTTOM_LEFT_X) << 1, 0, length * hsa, -width * hsb, -hca, hcb;
     H_.row(BOTTOM_LEFT_Y) << 0, 1, -length * hca, width * hcb, -hsa, hsb;
 
-    // 在 Update 函数中更新 H_ 后，添加检查
-    if (H_.hasNaN()) {
-        std::cerr << "H_ 矩阵包含 NaN。" << std::endl;
-        return;
-    }
-
     // 更新测量噪声矩阵
     R_.setIdentity();
     const float valid_measure_thr = 200;  // unit: mm
@@ -355,12 +343,6 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
         R_.block<2, 2>(idx, idx) = quad_info->cov_extended.at(cur);
         if (dist > isp_.valid_measure_thr) {
             R_.block<2, 2>(idx, idx) *= isp_.invalid_measure_enlarge_ratio;
-        }
-
-         // 检查 R_ 块是否包含 NaN
-        if (R_.block<2, 2>(i, i).hasNaN()) {
-            std::cerr << "R_ 矩阵包含 NaN 在索引 " << i << std::endl;
-            return;
         }
     }
 
@@ -386,21 +368,6 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
     measure_prediction(BOTTOM_LEFT_Y) = corners_world_.at(3).y();
     Eigen::Matrix<float, SLOT_MEASURE_SIZE, SLOT_MEASURE_SIZE> S;
     S = H_ * P_ * H_.transpose() + R_;
-    // **********test*******************
-    Eigen::FullPivLU<Eigen::Matrix<float, SLOT_MEASURE_SIZE, SLOT_MEASURE_SIZE>> lu(S);
-    if (!lu.isInvertible()) {
-        std::cerr << "S 矩阵不可逆。" << std::endl;
-        // 添加正则化
-        float epsilon = 1e-6f;
-        S += epsilon * Eigen::Matrix<float, SLOT_MEASURE_SIZE, SLOT_MEASURE_SIZE>::Identity();
-        // 重新检查
-        lu.compute(S);
-        if (!lu.isInvertible()) {
-            std::cerr << "正则化后 S 矩阵仍不可逆。" << std::endl;
-            return;
-        }
-    }
-    // **********test*******************
     Eigen::Matrix<float, SLOT_STATE_SIZE, SLOT_MEASURE_SIZE> kalman_gain;
     kalman_gain = P_ * H_.transpose() * S.inverse();
     Eigen::Matrix<float, SLOT_MEASURE_SIZE, 1> innovation;

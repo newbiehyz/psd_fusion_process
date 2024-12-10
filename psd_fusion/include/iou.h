@@ -6,6 +6,7 @@
 #include <vector>
 #include <stdlib.h>
 #include "apa_define.h"
+
 namespace IOU
 {
     const double EPS = 1e-6;

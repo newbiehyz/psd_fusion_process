@@ -168,7 +168,7 @@ POINT_I PSD_FusionModuleIF::coordConvert_global_dr(const padPoint& slot, const p
 
     //平移dr偏移量
     grand.x += pose.coord.x;
-    grand.y += pose.coord.y;
+    grand.y -= pose.coord.y;
 
     return grand;
 }
@@ -475,78 +475,45 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             rect.rectInfo.PStype = slot.bayType;
             rect.detect_frame_count = 1; 
 
-            //从RD左上角原点 转为 后轴中心为原点
-            rect.rectInfo.pt[0] = coordConvert_global_dr(slot.a, m_vehicle_pose);
-            rect.rectInfo.pt[1] = coordConvert_global_dr(slot.b, m_vehicle_pose);
-            rect.rectInfo.pt[2] = coordConvert_global_dr(slot.c, m_vehicle_pose);
-            rect.rectInfo.pt[3] = coordConvert_global_dr(slot.d, m_vehicle_pose);
-
-            //重叠过滤
-            bool mis_detect_flag = true;
-            auto it = existed_in_psinfo(rect, mis_detect_flag); 
-            if(!mis_detect_flag && it == m_apa_psinfo.WorldoutRect.end()) { // 当未发生误检测且当前车位在 m_apa_psinfo 中不存在，跳过循环，不对车位进行处理
-                continue;
-            } 
-
-            if (it == m_apa_psinfo.WorldoutRect.end()) { // 如果当前车位不在 m_apa_psinfo 中，将其视为新矩形，并加入 m_apa_psinfo
-                rect.rectInfo.label = m_next_available_label_idx++;
-                if(m_apa_psinfo.WorldoutRect.size() >= MAX_SLOT_NUM) {
-                    m_apa_psinfo.WorldoutRect.erase(m_apa_psinfo.WorldoutRect.begin());
+            if (m_select_slot_label_id > 0) { 
+                if(m_select_slot_label_id == rect.rectInfo.label) { 
+                    *it = rect;
                 }
-                m_apa_psinfo.WorldoutRect.push_back(rect);
             }
             else {
-                //找到重叠
-                rect.rectInfo.label = it->rectInfo.label;
-                rect.detect_frame_count = it->detect_frame_count + 1;
-                rect.is_reliable = rect.detect_frame_count >= 5; //如果连续出现5帧，则这个车位可信任，is_reliable 设为 true
-                rect.detect_as_occupy_count = it->detect_as_occupy_count + slot.occupy;
-                rect.rectInfo.iSodType = float(rect.detect_as_occupy_count) / float(rect.detect_frame_count) > 0.5;
+                *it = rect;
+            } 
 
-                if (m_select_slot_label_id > 0) { 
-                    if(m_select_slot_label_id == rect.rectInfo.label) { 
-                        *it = rect;
-                    }
-                }
-                else {
-                    *it = rect;
-                } 
-
-                if(rect.is_reliable == 1) {
-                    rect_car_center = *it;
-                    rect_car_center.rectInfo.pt[0] = coordConvert_car_center(slot.a);
-                    rect_car_center.rectInfo.pt[1] = coordConvert_car_center(slot.b);
-                    rect_car_center.rectInfo.pt[2] = coordConvert_car_center(slot.c);
-                    rect_car_center.rectInfo.pt[3] = coordConvert_car_center(slot.d); 
-                    
-                    m_output_slot.slots_in_cur_frame.push_back(rect_car_center);
-                    // //check m_output_slot.slots_in_cur_frame
-                    // printf("[_test updatevisionslots] slots_in_cur_frame size: %d\n",m_output_slot.slots_in_cur_frame.size());
-                    // for (const auto& psd_slot1 : m_output_slot.slots_in_cur_frame)
-                    // {
-                    //     printf("[_test updatevisionslots] slots_in_cur_frame, isreliable:%d, ",psd_slot1.is_reliable);
-                    //     for (int i = 0; i < RECTPointNum; ++i) 
-                    //     {
-                    //         printf("(%d,%d)",psd_slot1.rectInfo.pt[i].x,psd_slot1.rectInfo.pt[i].y);
-                    //     }
-                    //     printf("\n");
-                    // }
-                }  
-                for(auto info = m_apa_psinfo.WorldoutRect.rbegin(); info != m_apa_psinfo.WorldoutRect.rend(); ++info) {
-                    if(info->is_reliable == 1) {
-                        m_output_slot.WorldoutRect.push_back(*info);
-                    }
-                }
-            }
+            if(rect.is_reliable == 1) {
+                rect_car_center = *it;
+                rect_car_center.rectInfo.pt[0] = coordConvert_car_center(slot.a);
+                rect_car_center.rectInfo.pt[1] = coordConvert_car_center(slot.b);
+                rect_car_center.rectInfo.pt[2] = coordConvert_car_center(slot.c);
+                rect_car_center.rectInfo.pt[3] = coordConvert_car_center(slot.d); 
+                
+                m_output_slot.slots_in_cur_frame.push_back(rect_car_center);
+                // //check m_output_slot.slots_in_cur_frame
+                // printf("[_test updatevisionslots] slots_in_cur_frame size: %d\n",m_output_slot.slots_in_cur_frame.size());
+                // for (const auto& psd_slot1 : m_output_slot.slots_in_cur_frame)
+                // {
+                //     printf("[_test updatevisionslots] slots_in_cur_frame, isreliable:%d, ",psd_slot1.is_reliable);
+                //     for (int i = 0; i < RECTPointNum; ++i) 
+                //     {
+                //         printf("(%d,%d)",psd_slot1.rectInfo.pt[i].x,psd_slot1.rectInfo.pt[i].y);
+                //     }
+                //     printf("\n");
+                // }
+            }  
         }
     }
     delete_invalid_slots();
     collect_confirmed_slots(m_output_slot);
+
     // check m_output_slot 
-    printf("[_test updatevisionslots] m_output_slot list size: %d\n",m_output_slot.WorldoutRect.size());
-    for (const auto& psd_slot2 : m_output_slot.WorldoutRect)
+    printf("[_test updatevisionslots] m_output_slot list size: %d\n",m_output_slot.slots_in_cur_frame.size());
+    for (const auto& psd_slot2 : m_output_slot.slots_in_cur_frame)
     {
-        printf("[_test updatevisionslots] m_output_slot, isreliable:%d, label:%d, PStype:%d, ",
+        printf("[_test updatevisionslots] slots_in_cur_frame, isreliable:%d, label:%d, PStype:%d, ",
         psd_slot2.is_reliable,psd_slot2.rectInfo.label,psd_slot2.rectInfo.PStype);
         for (int i = 0; i < RECTPointNum; ++i) 
         {
@@ -642,7 +609,10 @@ vector<apaSlotInfo>::iterator PSD_FusionModuleIF::existed_in_psinfo(const apaSlo
         changePoint(rect_new, vert_new);
         changePoint(*it, vert);
         iou = iouEx(vert_new, vert); //当前帧和上一帧的车位IOU
-        
+
+
+        // // for test
+        // iou = 0.0;
         //IOU>0.4重复，此时返回it是重叠的老车位
         if (iou >= 0.7) {
             break;
@@ -1137,7 +1107,7 @@ void PSD_FusionModuleIF::ObtainSlotType(ParkingSlotQuad &quad) {
                 quad.slot_type = PARALLEL;
                
             } else {
-                quad.slot_type = VERTICAL;
+                quad.slot_type = SLOT_VERTICAL;
                 
             }
         }
