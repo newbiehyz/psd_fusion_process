@@ -11,6 +11,7 @@
 #include <memory>
 #include <iostream>
 #include <array>
+#include <atomic>
 #include <vector>
 #include "Eigen/Core"
 #include "apa_define.h"
@@ -107,6 +108,7 @@ class Kalman_filter{
     std::array<CORNER_STATUS, 4> GetConerStatus() const {
         return corner_status_;
     };
+
     bool IsTentative() const {
         return this->status_ == SLOT_STATUS::TENTATIVE;
     };

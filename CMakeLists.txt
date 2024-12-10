@@ -5,6 +5,7 @@
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
+
 project(psd_fusion_process)
 file(GLOB_RECURSE SOURCES "*.*")
 include(${CMAKE_SOURCE_DIR}/em_swc/${PROJECT_NAME}/${PROJECT_NAME}.cmake)
@@ -18,6 +19,10 @@ list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/psd_fusion/src/unit_test_sl
 #------------------------------------------------
 #INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/demo/api)  # The header file path of the linked library
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/psd_fusion/include
+
+
+
+
 
 
 )  
@@ -35,6 +40,9 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/psd_fusion/include
 #add_library(${PROJECT_NAME} STATIC ${SOURCES})
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBRARIES})
+
+
+
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".comp")
 #------------------------------------------------
