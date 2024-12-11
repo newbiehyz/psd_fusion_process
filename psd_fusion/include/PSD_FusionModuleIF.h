@@ -159,6 +159,7 @@ private:
                            Eigen::Vector2f &p,
                            float &score,
                            float boarder_dis = 2.F);
+    void world2car(Eigen::Vector3f &pt);
 
  PSD_FusionModuleIF(const PSD_FusionModuleIF &);
  PSD_FusionModuleIF & operator=(const PSD_FusionModuleIF &);    

@@ -4,7 +4,7 @@
 #include <iostream>
 #include <typeinfo>
 
-#define DEBUG false
+#define DEBUG true
 
 #define VEHICLE_LENGTH 5259.9 
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7 
@@ -180,10 +180,10 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     pose_globaldata.coord.x = int(dr_pose.x);
     pose_globaldata.coord.y = int(dr_pose.y);
     pose_globaldata.yaw = dr_pose.canAng;
-    // LOGT("[_test dr_pose] S32G RECEIVE x:%d, y: %d, yaw: %f",pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+    LOGD("[_test dr_pose] S32G RECEIVE x:%d, y: %d, yaw: %f",pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
 
     //@TODO 进入search才开始车位融合
-    //if (apa_states == 2) {
+    if (apa_states == 2) {
     // LOGT("[_test update dr begin]");
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
 
@@ -197,6 +197,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     
     if (DEBUG == true){
         filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"VISapaSlotListInfo.json");
+    }
     }
     
     // LOGT("[_test apastatus]: %d", apa_states);
@@ -220,7 +221,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     //     LOGD("\n");
     // }
 
-
+    if (apa_states == 2){
     // 下游：APAHANDEL, PERCEPTION, VCU, PLANNING
 
     //***********APAHANDEL (ready)
@@ -474,6 +475,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
         psd2perception.slotSource = psd2planning.targetSlot.slotSource;
     }
     EMC_psd_fusion_process_SetFieldSfusionSlots(psd2perception);
+    }
     
     // @TODO 泊车过程是否完成或者失败：重新初始化；
 

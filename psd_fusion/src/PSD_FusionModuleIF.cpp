@@ -399,7 +399,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     m_output_slot.ullFrameId = frameid;
     m_output_slot.slots_in_cur_frame.clear();
     m_output_slot.WorldoutRect.clear();
-
+    LOGD("updateVidsion_slot_vehicle_pose, x: %d, y: %d, yaw: %f",m_vehicle_pose.coord.x,m_vehicle_pose.coord.y, m_vehicle_pose.yaw);
     int next_available_label_idx = m_apa_psinfo.WorldoutRect.size();
 
     for (auto slot : slots) 
@@ -443,7 +443,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 }
                 // 已经存在与之对应的车位，用角点信息进行更新
                 slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
-                slot_existance->Update(quad);
+                // slot_existance->Update(quad);
                 
             } else {
                 auto result = std::make_shared<ParkingSlotResult>();
@@ -477,15 +477,15 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
 
             if (m_select_slot_label_id > 0) { 
                 if(m_select_slot_label_id == rect.rectInfo.label) { 
-                    *it = rect;
+                    // *it = rect;
                 }
             }
             else {
-                *it = rect;
+                // *it = rect;
             } 
 
             if(rect.is_reliable == 1) {
-                rect_car_center = *it;
+                // rect_car_center = *it;
                 rect_car_center.rectInfo.pt[0] = coordConvert_car_center(slot.a);
                 rect_car_center.rectInfo.pt[1] = coordConvert_car_center(slot.b);
                 rect_car_center.rectInfo.pt[2] = coordConvert_car_center(slot.c);
@@ -526,7 +526,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
 }
 
 void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
-    slot_res.WorldoutRect.clear();
+    slot_res.slots_in_cur_frame.clear();
     apaSlotInfo rect;
     for (const auto &slot : slots_map_){
         auto corner_world = slot.second.get()->GetCornersWorld();
@@ -538,13 +538,33 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
                 if(corner_world[i].hasNaN()){
                     continue;    
                 }else{
-                    rect.rectInfo.pt[i].x = corner_world[i].head<2>().x();
-                    rect.rectInfo.pt[i].y = corner_world[i].head<2>().y();
+                    Eigen::Vector3f pt;
+                    pt << corner_world[i].head<2>().x(), corner_world[i].head<2>().y(), 0.0;
+                    world2car(pt);
+                    rect.rectInfo.pt[i].x = pt.x();
+                    rect.rectInfo.pt[i].y = pt.y();
                 }
                 
             }
-            slot_res.WorldoutRect.push_back(rect);
+            slot_res.slots_in_cur_frame.push_back(rect);
     } 
+}
+
+void PSD_FusionModuleIF::world2car(Eigen::Vector3f &pt){
+    const auto& yaw = m_output_slot.padRealTimeLocation.yaw;
+    float cos_yaw = std::cos(yaw);
+    float sin_yaw = std::sin(yaw);
+    Eigen::Matrix3f global_trans_matrix;
+    global_trans_matrix << cos_yaw, -sin_yaw, m_vehicle_pose.coord.x, sin_yaw, cos_yaw,
+        m_vehicle_pose.coord.y, 0, 0, 1;
+    Eigen::Matrix3f local_trans_matrix;
+    LOGD("vehicle_pose, x: %d, y: %d, yaw: %f",m_output_slot.padRealTimeLocation.x,m_output_slot.padRealTimeLocation.y,m_output_slot.padRealTimeLocation.yaw);
+    LOGD("PT(%f, %f)", pt.x(), pt.y());
+    local_trans_matrix <<  cos_yaw,  sin_yaw,  -m_output_slot.padRealTimeLocation.x*cos_yaw - m_output_slot.padRealTimeLocation.y*sin_yaw,
+                      -sin_yaw,  cos_yaw,   m_output_slot.padRealTimeLocation.x*sin_yaw - m_output_slot.padRealTimeLocation.y*cos_yaw,
+                       0,         0,        1;
+
+    pt = local_trans_matrix * pt;
 }
 
 void PSD_FusionModuleIF::delete_invalid_slots() {
@@ -1107,7 +1127,7 @@ void PSD_FusionModuleIF::ObtainSlotType(ParkingSlotQuad &quad) {
                 quad.slot_type = PARALLEL;
                
             } else {
-                quad.slot_type = SLOT_VERTICAL;
+                quad.slot_type = VERTICAL;
                 
             }
         }
