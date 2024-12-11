@@ -399,7 +399,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     m_output_slot.ullFrameId = frameid;
     m_output_slot.slots_in_cur_frame.clear();
     m_output_slot.WorldoutRect.clear();
-    LOGD("updateVidsion_slot_vehicle_pose, x: %d, y: %d, yaw: %f",m_vehicle_pose.coord.x,m_vehicle_pose.coord.y, m_vehicle_pose.yaw);
+    // LOGD("updateVidsion_slot_vehicle_pose, x: %d, y: %d, yaw: %f",m_vehicle_pose.coord.x,m_vehicle_pose.coord.y, m_vehicle_pose.yaw);
     int next_available_label_idx = m_apa_psinfo.WorldoutRect.size();
 
     for (auto slot : slots) 
@@ -554,17 +554,19 @@ void PSD_FusionModuleIF::world2car(Eigen::Vector3f &pt){
     const auto& yaw = m_output_slot.padRealTimeLocation.yaw;
     float cos_yaw = std::cos(yaw);
     float sin_yaw = std::sin(yaw);
-    Eigen::Matrix3f global_trans_matrix;
-    global_trans_matrix << cos_yaw, -sin_yaw, m_vehicle_pose.coord.x, sin_yaw, cos_yaw,
-        m_vehicle_pose.coord.y, 0, 0, 1;
-    Eigen::Matrix3f local_trans_matrix;
-    LOGD("vehicle_pose, x: %d, y: %d, yaw: %f",m_output_slot.padRealTimeLocation.x,m_output_slot.padRealTimeLocation.y,m_output_slot.padRealTimeLocation.yaw);
-    LOGD("PT(%f, %f)", pt.x(), pt.y());
-    local_trans_matrix <<  cos_yaw,  sin_yaw,  -m_output_slot.padRealTimeLocation.x*cos_yaw - m_output_slot.padRealTimeLocation.y*sin_yaw,
-                      -sin_yaw,  cos_yaw,   m_output_slot.padRealTimeLocation.x*sin_yaw - m_output_slot.padRealTimeLocation.y*cos_yaw,
-                       0,         0,        1;
+    // 全局坐标中的点 pt (pt.x(), pt.y())
+    // 车辆位置
+    float Vx = m_vehicle_pose.coord.x;
+    float Vy = m_vehicle_pose.coord.y;
 
-    pt = local_trans_matrix * pt;
+    // 平移
+    float dx = pt.x() - Vx;
+    float dy = pt.y() - Vy;
+
+    // 旋转（逆旋转yaw，将点从全局对齐到车体坐标）
+    float local_x = dx * cos_yaw + dy * sin_yaw;
+    float local_y = -dx * sin_yaw + dy * cos_yaw;
+    pt << local_x, local_y, 0.0;
 }
 
 void PSD_FusionModuleIF::delete_invalid_slots() {
