@@ -212,6 +212,7 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
     std::string timestampText = "(RD)timestamp " + std::to_string(rectanglesA.ullFrameId);
     cv::putText(image, timestampText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 2);
 
+    
     // 计算输入的全局坐标范围
     int minX = std::numeric_limits<int>::max();
     int maxX = std::numeric_limits<int>::lowest();
@@ -252,6 +253,13 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
     // 应用缩放和平移并绘制矩形
     auto drawRectangles = [&](const apaSlotListInfo &rectangles, const cv::Scalar &color) {
         for (const auto &rect : rectangles.WorldoutRect) {
+            
+            cv::Point center;
+            center.x = ((rect.rectInfo.pt[0].x + rect.rectInfo.pt[2].x) / 2.0)* scale + translate_x;
+            center.y = ((rect.rectInfo.pt[0].y + rect.rectInfo.pt[2].y) / 2.0)* scale + translate_y;
+            std::string id_text = "id: " + std::to_string(rect.rectInfo.label);
+            cv::putText(image, id_text, center, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+
             std::vector<cv::Point> scaledPoints;
             for (int i = 0; i < 4; ++i) {
                 cv::Point scaledPoint(
@@ -260,12 +268,6 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
                 );
                 scaledPoints.push_back(scaledPoint);
             }
-            // cv::Point scaledPoint_bl(rect.rectInfo.pt[3].x * scale + translate_x,
-            //                              rect.rectInfo.pt[3].y * scale + translate_y);
-            // cv::Point scaledPoint_br(rect.rectInfo.pt[2].x * scale + translate_x,
-            //                              rect.rectInfo.pt[2].y * scale + translate_y);
-            // scaledPoints.push_back(scaledPoint_bl);
-            // scaledPoints.push_back(scaledPoint_br);
 
             // 绘制四边形
             cv::polylines(image, scaledPoints, true, color, 1);
@@ -362,10 +364,24 @@ void drawRDslotToJPG(const std::string &filename, const rd::QuadParkingSlots &da
         pts.push_back(cv::Point(slot.tr.x * scale + translate_x, slot.tr.y * scale + translate_y));
         pts.push_back(cv::Point(slot.br.x * scale + translate_x, slot.br.y * scale + translate_y));
         pts.push_back(cv::Point(slot.bl.x * scale + translate_x, slot.bl.y * scale + translate_y));
+        // 绘制角点坐标
+        for (int i = 0; i < 4; ++i) {
+            cv::Point scaledPoint = pts[i];
 
+            // 在图像上绘制小圆点表示角点
+            cv::circle(image, scaledPoint, 3, cv::Scalar(0, 0, 255), -1);
+
+            // 在角点旁边绘制坐标文本
+            std::string text = "(" + std::to_string(static_cast<int>((scaledPoint.x - translate_x)/scale)) + ", " +
+                                    std::to_string(static_cast<int>((scaledPoint.y - translate_y)/scale )) + ")";
+            cv::putText(image, text, scaledPoint + cv::Point(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 255), 1);
+        }
         contours.push_back(pts);
     }
     cv::polylines(image, contours, true, cv::Scalar(0, 0, 255), 2);
+    
+    
+
     // 保存图像
     cv::imwrite(filename, image);
     // std::cout << "图像已保存到: " << filename << std::endl;

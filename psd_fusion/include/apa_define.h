@@ -342,21 +342,23 @@ struct ParkingSlotParam {
         float iou_threshold = 0.3;
         uint32_t input_w = 448, input_h = 448;
         uint32_t image_w = 600, image_h = 600;
-        // ParkingSlotRange ps_length_range{204, 407};
-        // ParkingSlotRange ps_width_range{80, 178};
-        // ParkingSlotRange ps_width_slant_range{115, 197};
-        // ParkingSlotRange ps_length_complete_range{234, 407};
-        // ParkingSlotRange ps_length_slant_complete_range{280, 483};
-        // ParkingSlotRange ps_length_2_range{203, 234};
-        // ParkingSlotRange ps_length_slant_2_range{254, 337};
-        // ParkingSlotRange ps_score_range{0.58, 0.8};
-        ParkingSlotRange ps_length_range{160, 320};
-        ParkingSlotRange ps_width_range{63, 108};
-        ParkingSlotRange ps_width_slant_range{90, 155};
-        ParkingSlotRange ps_length_complete_range{184, 320};
-        ParkingSlotRange ps_length_slant_complete_range{190, 320};
-        ParkingSlotRange ps_length_2_range{160, 184};
-        ParkingSlotRange ps_length_slant_2_range{160, 220};
+        // 15m & 448*448 1pixel = 0.03348m
+        // 10m & 352*352 1pixel = 0.0284m
+        ParkingSlotRange ps_length_range{136, 271};
+        ParkingSlotRange ps_width_range{53, 92};
+        ParkingSlotRange ps_width_slant_range{76, 131};
+        ParkingSlotRange ps_length_complete_range{156, 271};
+        ParkingSlotRange ps_length_slant_complete_range{161, 271};
+        ParkingSlotRange ps_length_2_range{136, 156};
+        ParkingSlotRange ps_length_slant_2_range{136, 187};
+        // ParkingSlotRange ps_score_range{0.58, 0.8};  
+        // ParkingSlotRange ps_length_range{160, 320};                // 4.54m - 9.0m 
+        // ParkingSlotRange ps_width_range{63, 108};                  // 1.78m - 3.0m 
+        // ParkingSlotRange ps_width_slant_range{90, 155};            // 2.55m - 4.4m 
+        // ParkingSlotRange ps_length_complete_range{184, 320};       // 5.22m - 9.08m 
+        // ParkingSlotRange ps_length_slant_complete_range{190, 320}; // 5.40m - 9.08m 
+        // ParkingSlotRange ps_length_2_range{160, 184};              // 4.54m - 5.22m 
+        // ParkingSlotRange ps_length_slant_2_range{160, 220};        // 4.54m - 6.24m 
         ParkingSlotRange ps_score_range{0.58, 0.9397};
         float vertical_threshold = 0.15;
         float ps_ratio = 2.4;
@@ -367,22 +369,22 @@ struct ParkingSlotParam {
         float point_border_dist_complete_h2 = 3;
         float direction_score_thr1 = 0.5F;
         float direction_score_thr2 = 0.5F;
-        // float vp_MaxW = 153;
-        // float vp_MaxH = 293;
-        // float v_MaxH = 293;
-        // float p_MaxH = 292;
-        // float slant_MaxH = 343;
-        // float p_MinH = 267;
-        // float v_MinH = 222;
-        // float slant_MinH = 267;
-        float vp_MaxW = 120;
-        float vp_MaxH = 230;
-        float v_MaxH = 230;
-        float p_MaxH = 230;
-        float slant_MaxH = 240;
-        float p_MinH = 210;
-        float v_MinH = 175;
-        float slant_MinH = 210;
+        float vp_MaxW = 102;
+        float vp_MaxH = 195;
+        float v_MaxH = 195;
+        float p_MaxH = 195;
+        float slant_MaxH = 203;
+        float p_MinH = 178;
+        float v_MinH = 148;
+        float slant_MinH = 178;
+        // float vp_MaxW = 120;    // 3.4m
+        // float vp_MaxH = 230;    // 6.5m
+        // float v_MaxH = 230;     // 6.5m
+        // float p_MaxH = 230;     // 6.5m
+        // float slant_MaxH = 240; // 6.8m
+        // float p_MinH = 210;     // 5.96m
+        // float v_MinH = 175;     // 4.97m
+        // float slant_MinH = 210; // 5.96m
         float supplement_corner_dis_threshold = 50.F;
         float slant_cos_up = 0.9397;
         float slant_cos_low = 0.31;
