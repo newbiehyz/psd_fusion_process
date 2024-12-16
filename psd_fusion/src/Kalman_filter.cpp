@@ -17,10 +17,10 @@ Kalman_filter::Kalman_filter(const ParkingSlotResultPtr& post_slot,
     switch (post_slot->type)
     {
     case 0x00:
-        type_ = SLOT_TYPE::PARALLELSLOT;
+        type_ = SLOT_TYPE::VERTICALSLOT;
         break;
     case 0x01:
-        type_ = SLOT_TYPE::VERTICALSLOT;
+        type_ = SLOT_TYPE::PARALLELSLOT;
         break;
     case 0x02:
         type_ = SLOT_TYPE::SLANTSLOT;
@@ -104,14 +104,14 @@ void Kalman_filter::creat_initial_covariance(const QuadInfoPtr& quad_info) {
     J(SLOT_CENTER_X, BOTTOM_LEFT_X) = 0.25f;
     J(SLOT_CENTER_Y, BOTTOM_LEFT_Y) = 0.25f;
 
-    const auto& x1 = this->corners_world_.at(0).x();
-    const auto& y1 = this->corners_world_.at(0).y();
-    const auto& x2 = this->corners_world_.at(1).x();
-    const auto& y2 = this->corners_world_.at(1).y();
-    const auto& x3 = this->corners_world_.at(2).x();
-    const auto& y3 = this->corners_world_.at(2).y();
-    const auto& x4 = this->corners_world_.at(3).x();
-    const auto& y4 = this->corners_world_.at(3).y();
+    const auto& x1 = (this->corners_world_.at(0).x())/1000;
+    const auto& y1 = (this->corners_world_.at(0).y())/1000;
+    const auto& x2 = (this->corners_world_.at(1).x())/1000;
+    const auto& y2 = (this->corners_world_.at(1).y())/1000;
+    const auto& x3 = (this->corners_world_.at(2).x())/1000;
+    const auto& y3 = (this->corners_world_.at(2).y())/1000;
+    const auto& x4 = (this->corners_world_.at(3).x())/1000;
+    const auto& y4 = (this->corners_world_.at(3).y())/1000;
 
     // 求alpha对四个角点的偏导数
     float t = y1 + y2 - y3 - y4;  // top 分子
@@ -195,7 +195,7 @@ void Kalman_filter::extend_line(const QuadInfoPtr& quad_info,
 
     const auto& valid_point = quad_info->corners_world.col(valid);
     const auto& edge_point = quad_info->corners_world.col(edge);
-    float len = (valid_point - edge_point).head<2>().norm();
+    float len = ((valid_point - edge_point).head<2>().norm())/1000;
     float extend_ratio;
     if (std::fabs((valid_point - edge_point)
                       .head<2>()
@@ -203,9 +203,9 @@ void Kalman_filter::extend_line(const QuadInfoPtr& quad_info,
         std::fabs((valid_point - edge_point)
                       .head<2>()
                       .dot(this->GetSlotWideDir().head<2>()))) {
-        extend_ratio = this->GetSlotWidth() / len;
-    } else {
         extend_ratio = this->GetSlotLength() / len;
+    } else {
+        extend_ratio = this->GetSlotWidth() / len;
     }
     quad_info->corners_extended.col(edge) =
         valid_point + (edge_point - valid_point) * extend_ratio;
@@ -226,6 +226,28 @@ bool Kalman_filter::point_in_slot(const Eigen::Vector3f& point,
 
     return (length_ratio < ratio_thr && width_ratio < ratio_thr);
 };
+
+bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const{
+    // 创建旋转矩阵（将长方向对齐到 x 轴）
+    Eigen::Matrix3f rotation;
+    rotation.col(0) = long_dir_.normalized();  // 长方向单位向量
+    rotation.col(1) = wide_dir_.normalized();  // 宽方向单位向量
+    
+    // 逆旋转矩阵
+    Eigen::Matrix3f rotation_inv = rotation.transpose(); // 旋转矩阵是正交矩阵，其逆等于转置
+    
+    Eigen::Vector3f center;
+    center<<slot_state_[0],slot_state_[1], 0.0;
+    // 将点转换到矩形的局部坐标系
+    Eigen::Vector3f local_point = (rotation_inv * (point - center))/1000;
+    
+    // 检查点是否在矩形的范围内
+    float half_length = slot_state_[SLOT_LENGTH] / 2.0f;
+    float half_width = slot_state_[SLOT_WIDTH] / 2.0f;
+    
+    return (local_point.x() >= -half_width && local_point.x() <= half_width &&
+            local_point.y() >= -half_length  && local_point.y() <= half_length);
+}
 
 bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
     valid_quad_cnt_ = 0;
@@ -400,23 +422,45 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
 
     // 更新车位角点信息
     auto center = GetSlotCenter();
-    std::cout<<"per center(" << temp_center.x()<<","<<temp_center.y()<<")"<<std::endl;
-    auto len_cur = GetSlotLength();
-    auto wid_cur = GetSlotWidth();
-    long_dir_ << std::cos(GetSlotLongAngle()), std::sin(GetSlotLongAngle()),
-        0.0;
-    wide_dir_ << std::cos(GetSlotWideAngle()), std::sin(GetSlotWideAngle()),
-        0.0;
+    auto len_cur = GetSlotLength() * 1000;
+    auto wid_cur = GetSlotWidth() * 1000;
+ 
+    long_dir_ << std::cos(GetSlotLongAngle()), std::sin(GetSlotLongAngle()),0.0;
+    wide_dir_ << std::cos(GetSlotWideAngle()), std::sin(GetSlotWideAngle()),0.0;
 
-    corners_world_.at(0) =
-        center + 0.5 * len_cur * long_dir_ + 0.5 * wid_cur * wide_dir_;
-    corners_world_.at(1) =
-        center + 0.5 * len_cur * long_dir_ - 0.5 * wid_cur * wide_dir_;
-    corners_world_.at(2) =
-        center - 0.5 * len_cur * long_dir_ - 0.5 * wid_cur * wide_dir_;
-    corners_world_.at(3) =
-        center - 0.5 * len_cur * long_dir_ + 0.5 * wid_cur * wide_dir_;
-
+    if (type_ == SLOT_TYPE::VERTICALSLOT){
+        if(this->slot_state_(SLOT_CENTER_X) > 0){
+             corners_world_.at(0) =
+                center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+            corners_world_.at(1) =
+                center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+            corners_world_.at(2) =
+                center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+            corners_world_.at(3) =
+                center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+        }else{
+            corners_world_.at(0) =
+                center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+            corners_world_.at(1) =
+                center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+            corners_world_.at(2) =
+                center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+            corners_world_.at(3) =
+                center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+        }
+       
+        
+            
+    }else if(type_ == SLOT_TYPE::PARALLELSLOT){
+        corners_world_.at(0) =
+            center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
+        corners_world_.at(1) =
+            center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
+        corners_world_.at(2) =
+            center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+        corners_world_.at(3) =
+            center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+    }  
 
     // 更新车位状态信息
     this->age_++;

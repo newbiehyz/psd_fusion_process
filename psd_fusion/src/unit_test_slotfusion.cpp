@@ -212,6 +212,7 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
     std::string timestampText = "(RD)timestamp " + std::to_string(rectanglesA.ullFrameId);
     cv::putText(image, timestampText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 2);
 
+    
     // 计算输入的全局坐标范围
     int minX = std::numeric_limits<int>::max();
     int maxX = std::numeric_limits<int>::lowest();
@@ -252,6 +253,13 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
     // 应用缩放和平移并绘制矩形
     auto drawRectangles = [&](const apaSlotListInfo &rectangles, const cv::Scalar &color) {
         for (const auto &rect : rectangles.WorldoutRect) {
+            
+            cv::Point center;
+            center.x = ((rect.rectInfo.pt[0].x + rect.rectInfo.pt[2].x) / 2.0)* scale + translate_x;
+            center.y = ((rect.rectInfo.pt[0].y + rect.rectInfo.pt[2].y) / 2.0)* scale + translate_y;
+            std::string id_text = "id: " + std::to_string(rect.rectInfo.label);
+            cv::putText(image, id_text, center, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+
             std::vector<cv::Point> scaledPoints;
             for (int i = 0; i < 4; ++i) {
                 cv::Point scaledPoint(
@@ -272,8 +280,8 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
                 cv::circle(image, scaledPoint, 3, color, -1);
 
                 // 在角点旁边绘制坐标文本
-                std::string text = "(" + std::to_string(rect.rectInfo.pt[i].x) + ", " +
-                                   std::to_string(rect.rectInfo.pt[i].y) + ")";
+                std::string text = "(" + std::to_string(static_cast<int>((scaledPoint.x - translate_x)/scale)) + ", " +
+                                   std::to_string(static_cast<int>((scaledPoint.y - translate_y)/scale )) + ")";
                 cv::putText(image, text, scaledPoint + cv::Point(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.4, color, 1);
             }
 
@@ -303,6 +311,9 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
 void drawRDslotToJPG(const std::string &filename, const rd::QuadParkingSlots &data) {
     // 创建空白图像
     cv::Mat image(800, 800, CV_8UC3, cv::Scalar(255, 255, 255));
+
+    std::string timestampText = "(RD)timestamp " + std::to_string(data.frameTimeStampNs);
+    cv::putText(image, timestampText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 2);
 
     // 计算输入的全局坐标范围
     float minX = std::numeric_limits<float>::max();
@@ -343,6 +354,8 @@ void drawRDslotToJPG(const std::string &filename, const rd::QuadParkingSlots &da
     // 偏移量（将缩放后的矩形中心移到图像中心）
     double translate_x = center_img_x - center_slots_x * scale;
     double translate_y = center_img_y - center_slots_y * scale;
+    // 使用多边形绘制矩形
+    std::vector<std::vector<cv::Point>> contours;
 
     // 绘制矩形
     for (const auto &slot : data.quadParkingSlotList) {
@@ -351,12 +364,23 @@ void drawRDslotToJPG(const std::string &filename, const rd::QuadParkingSlots &da
         pts.push_back(cv::Point(slot.tr.x * scale + translate_x, slot.tr.y * scale + translate_y));
         pts.push_back(cv::Point(slot.br.x * scale + translate_x, slot.br.y * scale + translate_y));
         pts.push_back(cv::Point(slot.bl.x * scale + translate_x, slot.bl.y * scale + translate_y));
+        // 绘制角点坐标
+        for (int i = 0; i < 4; ++i) {
+            cv::Point scaledPoint = pts[i];
 
-        // 使用多边形绘制矩形
-        std::vector<std::vector<cv::Point>> contours;
+            // 在图像上绘制小圆点表示角点
+            cv::circle(image, scaledPoint, 3, cv::Scalar(0, 0, 255), -1);
+
+            // 在角点旁边绘制坐标文本
+            std::string text = "(" + std::to_string(static_cast<int>((scaledPoint.x - translate_x)/scale)) + ", " +
+                                    std::to_string(static_cast<int>((scaledPoint.y - translate_y)/scale )) + ")";
+            cv::putText(image, text, scaledPoint + cv::Point(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 255), 1);
+        }
         contours.push_back(pts);
-        cv::polylines(image, contours, true, cv::Scalar(0, 0, 255), 2);
     }
+    cv::polylines(image, contours, true, cv::Scalar(0, 0, 255), 2);
+    
+    
 
     // 保存图像
     cv::imwrite(filename, image);
@@ -495,17 +519,17 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
         // 可以根据需要对 quadParkingSlots 进行处理
 
         // 示例：输出 frameTimeStampNs 和 sensorId
-        std::cout << "frameTimeStampNs: " << rd_info.frameTimeStampNs << std::endl;
-        std::cout << "sensorId: " << rd_info.sensorId << std::endl;
+        // std::cout << "frameTimeStampNs: " << rd_info.frameTimeStampNs << std::endl;
+        // std::cout << "sensorId: " << rd_info.sensorId << std::endl;
 
-        // 遍历并输出每个 QuadParkingSlot 的信息
-        for (const auto& slot : rd_info.quadParkingSlotList) {
-            std::cout << "Slot label: " << slot.label << std::endl;
-            std::cout << "Confidence: " << slot.confidence << std::endl;
-            std::cout << "Top-left corner: (" << slot.tl.x << ", " << slot.tl.y << ")" << std::endl;
-            std::cout << "Bottom-right corner: (" << slot.br.x << ", " << slot.br.y << ")" << std::endl;
-            // ... 输出其他需要的信息
-        }
+        // // 遍历并输出每个 QuadParkingSlot 的信息
+        // for (const auto& slot : rd_info.quadParkingSlotList) {
+        //     std::cout << "Slot label: " << slot.label << std::endl;
+        //     std::cout << "Confidence: " << slot.confidence << std::endl;
+        //     std::cout << "Top-left corner: (" << slot.tl.x << ", " << slot.tl.y << ")" << std::endl;
+        //     std::cout << "Bottom-right corner: (" << slot.br.x << ", " << slot.br.y << ")" << std::endl;
+        //     // ... 输出其他需要的信息
+        // }
 
         std::string jpg = "RD_" + std::to_string(rd_time) + ".jpg";
         drawRDslotToJPG(jpg, rd_info);
@@ -601,14 +625,6 @@ TEST(MergeSlotListsTest, HandlesOverlapAndFusion) {
     //     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots);
     // }
 
-    
-    
-
-    
-
-
-    
-   
 
     // Draw Vison slot
     std::vector<json> allVisonData;
@@ -765,7 +781,8 @@ void TimeTrigger_Timer50(){
             // 将 slot 添加到 quadParkingSlotList
             rd_info.quadParkingSlotList.push_back(slot);
         }
-    drawRDslotToJPG("RD_slot.jpg", rd_info);
+    std::string jpg = "RD_" + std::to_string(rd_info.frameTimeStampNs) + ".jpg";
+    drawRDslotToJPG(jpg, rd_info);
     // Get DR info
     if (!dr_dataloaded){
 
@@ -854,6 +871,22 @@ void TimeTrigger_Timer50(){
     apaSlotListInfo outputSlot_CALVIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     std::cout<<"Update vision slot size: "<< outputSlot_CALVIS.WorldoutRect.size()<<std::endl;
     drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_CALVIS, dr_pose);
+
+    // 20241203-TODO
+    // Calculate stop distance
+    Fus::PkEmapObs obs;
+    obs.pkEmapObs[0].obsTyp = Fus::OBS_WHEELSTOP;
+    // obs.pkEmapObs[0].obsCenter.x = 7540;
+    // obs.pkEmapObs[0].obsCenter.y = 4649;
+    obs.pkEmapObs[0].obsCenter.x = 3800;
+    obs.pkEmapObs[0].obsCenter.y = 700;
+    obs.pkEmapObs[1].obsTyp = Fus::OBS_WHEELSTOP;
+    // obs.pkEmapObs[1].obsCenter.x = 7568;
+    // obs.pkEmapObs[1].obsCenter.y = 2280;
+    obs.pkEmapObs[1].obsCenter.x = 3800;
+    obs.pkEmapObs[1].obsCenter.y = 6300;
+    float stop_dis;
+    PSD_FusionModuleIFrunable.CalStopDistance(obs, stop_dis);
 
     //Get Vison data
     // if (!vison_dataloaded){
