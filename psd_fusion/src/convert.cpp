@@ -9,6 +9,7 @@
 // vcu: int, 0 shuiping 1 chuizhi 2 xielie
 // decplan: enum, 0 null 1 chuizhi 2 xielie 3 shuiping
 // apahandel: int, 0 shuiping 1 chuizhi 2 xielie 
+// statemachine: int, 0 default 1 vertical 2 para 3 diag 4 zixuan
 
 
 int slottype_uss2rd(UssIf_enmSlotType_t uss_type) 
@@ -57,4 +58,19 @@ Sfus::_tSfusionSlotType slottype_rd2decplan(int rd_type)
         case 2:
             return Sfus::SLOTTYP_OBL;
     }
+}
+
+int decplan2statemachine(Sfus::_tSfusionSlotType decplan_type)
+{
+    switch (decplan_type) 
+    {
+        default:
+            return 0; 
+        case Sfus::SLOTTYP_PER:
+            return 1; 
+        case Sfus::SLOTTYP_PARA:
+            return 2; 
+        case Sfus::SLOTTYP_OBL:
+            return 3;
+    } 
 }

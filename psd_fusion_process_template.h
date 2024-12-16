@@ -10,6 +10,7 @@ void mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaSlotListInfo 
 int slottype_uss2rd(UssIf_enmSlotType_t uss_type);
 int slottype_rd2vcu(int rd_type);
 Sfus::_tSfusionSlotType slottype_rd2decplan(int rd_type);
+int slottype_decplan2statemachine(Sfus::_tSfusionSlotType decplan_type);
 
 class cpsd_fusion_process: public cpsd_fusion_process_base
 {
