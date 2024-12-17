@@ -526,7 +526,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
 }
 
 void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
-    slot_res.WorldoutRect.clear();
+    slot_res.slots_in_cur_frame.clear();
     apaSlotInfo rect;
     for (const auto &slot : slots_map_){
         auto corner_world = slot.second.get()->GetCornersWorld();
@@ -541,14 +541,16 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
                     Eigen::Vector3f pt;
                     pt << corner_world[i].head<2>().x(), corner_world[i].head<2>().y(), 0.0;
                     world2car(pt);
-                    // rect.rectInfo.pt[i].x = pt.x();
-                    // rect.rectInfo.pt[i].y = pt.y();
-                    rect.rectInfo.pt[i].x = corner_world[i].head<2>().x();
-                    rect.rectInfo.pt[i].y = corner_world[i].head<2>().y();
+                    // local
+                    rect.rectInfo.pt[i].x = pt.x();
+                    rect.rectInfo.pt[i].y = pt.y();
+                    // world
+                    // rect.rectInfo.pt[i].x = corner_world[i].head<2>().x();
+                    // rect.rectInfo.pt[i].y = corner_world[i].head<2>().y();
                 }
                 
             }
-            slot_res.WorldoutRect.push_back(rect);
+            slot_res.slots_in_cur_frame.push_back(rect);
     } 
 }
 

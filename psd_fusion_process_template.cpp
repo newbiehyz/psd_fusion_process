@@ -4,6 +4,7 @@
 #include <iostream>
 #include <typeinfo>
 
+#define OBS_READY false // OBS接口是否接入数据
 #define DEBUG true
 
 #define VEHICLE_LENGTH 5259.9 
@@ -211,7 +212,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     int tempsize;
     tempsize = outputSlot_FUSED.slots_in_cur_frame.size();
     psd2location.slotNum = tempsize;
-    // LOGT("[_test] tempsize:%d, slotnum: %d",tempsize,psd2location.slotNum);
+    LOGD("[_test] tempsize:%d, slotnum: %d",tempsize,psd2location.slotNum);
     if (psd2location.slotNum > 0){
         int j = 0;
 
@@ -307,9 +308,9 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
             if (final_select_ID-1000 >= 0 && final_select_ID-1000 < tempsize){
                 for (int i = 0; i < tempsize; i++) {
                     if (psd2vcu.FusionSlotInfo[i].slotLabel == final_select_ID) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 5; // 设置为选中的状态
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 5; // 设置为SELECTED状态
                     } else {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为默认状态
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                     }
                 }
             }
@@ -404,7 +405,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
         EMC_psd_fusion_process_SetFieldSlotlabel(psd2apahandel_targetID);
     }
     LOGD("[SELECTID] HMI %d, VCU %d, final %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);
-    
 
     //***********PLANNING 发送目标车位，STATEMACHINE发送
     //check psd output to planning(2 target slot)
@@ -460,22 +460,25 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
 
 
     //**********STATEMACHINE 交互
+    psd2statemachine.aps_apaParkPlaceNum = tempsize;
+
     if (apa_status == 1 || apa_status == 6 || apa_status == 7){
         psd2statemachine.aps_apaParkType = 0;
         psd2statemachine.aps_apaParkPlaceNum = 0;
         psd2statemachine.aps_apaHighlightSlot = 0;
+        final_select_ID = 0;
+        HMI_temp_ID = 0;
     }
     if (final_select_ID > 0){
         psd2statemachine.aps_apaParkType = slottype_decplan2statemachine(psd2planning.targetSlot.slotType);
         psd2statemachine.aps_apaParkFusionType = 0; //@TODO 车位来源
         psd2statemachine.aps_apaNarrowSlot = 0; //@TODO 窄车位
         if (tempsize > 0){
-            psd2statemachine.aps_apaParkPlaceNum = tempsize;
             psd2statemachine.aps_apaAvailableSlot = 1;
             psd2statemachine.aps_apaHighlightSlot = 1;
         }
-        
     }
+    LOGD("SELECT ID: %d, aps_parktype = %d, aps_apaParkPlaceNum: %d",final_select_ID,psd2statemachine.aps_apaParkType,psd2statemachine.aps_apaParkPlaceNum);
     S2S_MCore_Bridge_SetSigStatusDecFusionInput(&psd2statemachine);
     
     // @TODO 泊车过程是否完成或者失败：重新初始化；
@@ -731,8 +734,14 @@ tResult cpsd_fusion_process::OnPreciseEmapGrid(const Fus::PreciseEmapGrid& userD
     RETURN_NOERROR;
 }
 
+Fus::PkEmapObs obs_info;
+
 tResult cpsd_fusion_process::OnPkEmapObs(const Fus::PkEmapObs& userData)
 {
+    if (OBS_READY){
+        obs_info = userData;
+        filetojson.SaveObsToJson(obs_info,"ObsInfo.json");
+    }
     RETURN_NOERROR;
 }
 
