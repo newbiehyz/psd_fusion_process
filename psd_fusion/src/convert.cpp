@@ -60,7 +60,7 @@ Sfus::_tSfusionSlotType slottype_rd2decplan(int rd_type)
     }
 }
 
-int decplan2statemachine(Sfus::_tSfusionSlotType decplan_type)
+int slottype_decplan2statemachine(Sfus::_tSfusionSlotType decplan_type)
 {
     switch (decplan_type) 
     {

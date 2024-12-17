@@ -212,3 +212,127 @@ void SaveFileToJson::SaveDRInfoToJson(Loc::App2emap_DR &info,const std::string &
         std::cerr << "无法打开文件进行写入：" << filename << std::endl;
     }
 }
+
+
+void SaveFileToJson::SaveObsToJson(Fus::PkEmapObs &info,const std::string &filename){
+    json j_obs;
+
+    json pkEmapObsArray = json::array();
+    for (const auto & obs_one : info.pkEmapObs){
+        json single_obs_json;
+
+        single_obs_json["FrameIndex"] = obs_one.FrameIndex;
+        single_obs_json["FailSafe"] = obs_one.FailSafe;
+        single_obs_json["obsID"] = obs_one.obsID;
+        single_obs_json["obsTyp"] = obs_one.obsTyp;
+        single_obs_json["age"] = obs_one.age;
+        single_obs_json["obsBdTyp"] = obs_one.obsBdTyp;
+        single_obs_json["obsConf"] = obs_one.obsConf;
+
+        single_obs_json["obsCenter"]["x"] = obs_one.obsCenter.x;
+        single_obs_json["obsCenter"]["y"] = obs_one.obsCenter.y;
+        single_obs_json["obsCenter"]["z"] = obs_one.obsCenter.z;
+
+        single_obs_json["obsDirection"]["x"] = obs_one.obsDirection.x;
+        single_obs_json["obsDirection"]["y"] = obs_one.obsDirection.y;
+        single_obs_json["obsDirection"]["z"] = obs_one.obsDirection.z;
+
+        single_obs_json["obsMotionInfo"]["acceleration"]["x"] = obs_one.obsMotionInfo.acceleration.x;
+        single_obs_json["obsMotionInfo"]["acceleration"]["y"] = obs_one.obsMotionInfo.acceleration.y;
+        single_obs_json["obsMotionInfo"]["acceleration"]["z"] = obs_one.obsMotionInfo.acceleration.z;
+        single_obs_json["obsMotionInfo"]["accelerationUncertainty"]["x"] = obs_one.obsMotionInfo.accelerationUncertainty.x;
+        single_obs_json["obsMotionInfo"]["accelerationUncertainty"]["y"] = obs_one.obsMotionInfo.accelerationUncertainty.y;
+        single_obs_json["obsMotionInfo"]["accelerationUncertainty"]["z"] = obs_one.obsMotionInfo.accelerationUncertainty.z;
+        single_obs_json["obsMotionInfo"]["center"]["x"] = obs_one.obsMotionInfo.center.x;
+        single_obs_json["obsMotionInfo"]["center"]["y"] = obs_one.obsMotionInfo.center.y;
+        single_obs_json["obsMotionInfo"]["center"]["z"] = obs_one.obsMotionInfo.center.z;
+        single_obs_json["obsMotionInfo"]["centerUncertainty"]["x"] = obs_one.obsMotionInfo.centerUncertainty.x;
+        single_obs_json["obsMotionInfo"]["centerUncertainty"]["y"] = obs_one.obsMotionInfo.centerUncertainty.y;
+        single_obs_json["obsMotionInfo"]["centerUncertainty"]["z"] = obs_one.obsMotionInfo.centerUncertainty.z;
+        single_obs_json["obsMotionInfo"]["isValid"] = obs_one.obsMotionInfo.isValid;
+        single_obs_json["obsMotionInfo"]["jerk"]["x"] = obs_one.obsMotionInfo.jerk.x;
+        single_obs_json["obsMotionInfo"]["jerk"]["y"] = obs_one.obsMotionInfo.jerk.y;
+        single_obs_json["obsMotionInfo"]["jerk"]["z"] = obs_one.obsMotionInfo.jerk.z;
+        single_obs_json["obsMotionInfo"]["jerkUncertainty"]["x"] = obs_one.obsMotionInfo.jerkUncertainty.x;
+        single_obs_json["obsMotionInfo"]["jerkUncertainty"]["y"] = obs_one.obsMotionInfo.jerkUncertainty.y;
+        single_obs_json["obsMotionInfo"]["jerkUncertainty"]["z"] = obs_one.obsMotionInfo.jerkUncertainty.z;
+        single_obs_json["obsMotionInfo"]["velocity"]["x"] = obs_one.obsMotionInfo.velocity.x;
+        single_obs_json["obsMotionInfo"]["velocity"]["y"] = obs_one.obsMotionInfo.velocity.y;
+        single_obs_json["obsMotionInfo"]["velocity"]["z"] = obs_one.obsMotionInfo.velocity.z;
+        single_obs_json["obsMotionInfo"]["velocityHeading"] = obs_one.obsMotionInfo.velocityHeading;
+        single_obs_json["obsMotionInfo"]["velocityHeadingRate"] = obs_one.obsMotionInfo.velocityHeadingRate;
+        single_obs_json["obsMotionInfo"]["velocityHeadingRateUncertainty"] = obs_one.obsMotionInfo.velocityHeadingRateUncertainty;
+        single_obs_json["obsMotionInfo"]["velocityHeadingUncertainty"] = obs_one.obsMotionInfo.velocityHeadingUncertainty;
+        single_obs_json["obsMotionInfo"]["velocityUncertainty"]["y"] = obs_one.obsMotionInfo.velocityUncertainty.x;
+        single_obs_json["obsMotionInfo"]["velocityUncertainty"]["y"] = obs_one.obsMotionInfo.velocityUncertainty.y;
+        single_obs_json["obsMotionInfo"]["velocityUncertainty"]["z"] = obs_one.obsMotionInfo.velocityUncertainty.z;
+
+        single_obs_json["obsTrajectory"]["confidence"] = obs_one.obsTrajectory.confidence;
+        single_obs_json["obsTrajectory"]["motionStatus"] = obs_one.obsTrajectory.motionStatus;
+        json obsTrajectoryArray = json::array();
+        for (const auto & obsTrajectorypoint : obs_one.obsTrajectory.points){
+            json single_trajectory_point;
+            single_trajectory_point["deltaTNs"] = obsTrajectorypoint.deltaTNs;
+
+            single_trajectory_point["center"]["x"] = obsTrajectorypoint.center.x;
+            single_trajectory_point["center"]["y"] = obsTrajectorypoint.center.y;
+            single_trajectory_point["center"]["z"] = obsTrajectorypoint.center.z;
+
+            single_trajectory_point["direction"]["x"] = obsTrajectorypoint.direction.x;
+            single_trajectory_point["direction"]["y"] = obsTrajectorypoint.direction.y;
+            single_trajectory_point["direction"]["z"] = obsTrajectorypoint.direction.z;
+
+            obsTrajectoryArray.push_back(single_trajectory_point);
+        }
+        single_obs_json["obsTrajectory"]["points"] = obsTrajectoryArray;
+
+
+        json obsBdBoxArray = json::array();
+        for (const auto & box : obs_one.obsBdBox){
+            json single_box;
+            single_box["x"] = box.x;
+            single_box["y"] = box.y;
+            single_box["z"] = box.z;
+            obsBdBoxArray.push_back(single_box);
+        }
+        single_obs_json["obsBdBox"] = obsBdBoxArray;
+
+        pkEmapObsArray.push_back(single_obs_json);
+    }
+    j_obs["PkEmapObs"] = pkEmapObsArray;
+
+    // 读取已有的 JSON 文件
+    json j_existing;
+    std::ifstream inFile(filename);
+    if (inFile.is_open()) {
+        try {
+            inFile >> j_existing;
+        } catch (json::parse_error& e) {
+            std::cerr << "JSON 解析错误：" << e.what() << std::endl;
+            j_existing = json::array(); // 如果解析失败，初始化为空数组
+        }
+        inFile.close();
+    } else {
+        // 文件不存在，初始化为空数组
+        j_existing = json::array();
+    }
+
+    // 如果不是数组，可能是第一次保存，需要将 j_existing 转换为数组
+    if (!j_existing.is_array()) {
+        json temp = j_existing;
+        j_existing = json::array();
+        j_existing.push_back(temp);
+    }
+
+    // 将新的数据对象追加到数组中
+    j_existing.push_back(j_obs);
+
+    // 将更新后的数据写回文件
+    std::ofstream outFile(filename);
+    if (outFile.is_open()){
+        outFile << j_existing.dump(4); // 缩进4个空格，格式化输出
+        outFile.close();
+    } else {
+        std::cerr << "无法打开文件进行写入：" << filename << std::endl;
+    }
+}
