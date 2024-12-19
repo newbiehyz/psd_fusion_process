@@ -54,11 +54,14 @@ public:
     tResult OnSelectSlot(const Sfus::SelectSlot& userData);
     tResult OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch& userData);
     tResult OnSelectSlot2(const Sfus::SelectSlot& userData);
+     private:
+    bool LoadFromFile(const std::string& filename);
 
  public:
     apaSlotListInfo outputSlot_FUSED;
     apaSlotListInfo outputSlot_VIS;   
     SaveFileToJson filetojson;
+    bool DEBUG = false;
 };
 
 #endif

@@ -5,11 +5,19 @@
 #include <typeinfo>
 
 #define OBS_READY false // OBS接口是否接入数据
-#define DEBUG true
+
+// 1227试驾 OV049车专用 offset调优角点性能, y = kx+b
+#define OFFSET_FOR_RIDE false // 1227试驾 OV049车专用 offset调优角点性能
+
+
+// #define DEBUG true
 
 #define VEHICLE_LENGTH 5259.9 
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7 
 #define MM_TO_M 1000
+
+float cal_k = 1;
+float b = -200;
 
 int apa_status;
 StatusDecFusionInput psd2statemachine;
@@ -34,6 +42,11 @@ cpsd_fusion_process::~cpsd_fusion_process()
 
 tResult cpsd_fusion_process::Init()
 {
+    // Load Config
+    if (LoadFromFile("psd_config.json")) {
+        std::cerr << "Load config failed!" << std::endl;
+    }
+
     RETURN_NOERROR;
 }
 
@@ -55,6 +68,29 @@ tResult cpsd_fusion_process::Stop()
 tResult cpsd_fusion_process::ThreadTrigger_thread()
 {
     RETURN_NOERROR;
+}
+
+bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
+    std::ifstream inFile(filename);
+    if(!inFile.is_open()){
+        DEBUG = false;
+        std::cerr << "无法打开配置文件: " << filename << ", DEBUG:"<< DEBUG <<std::endl;
+        return false;
+    }
+
+    try{
+        json j;
+        inFile >> j;
+
+        //解析文件路径
+        j.at("debug").at("save_to_json").get_to(DEBUG);
+    }
+    catch (json::exception& e) {
+            std::cerr << "配置文件解析错误: " << e.what() << std::endl;
+            return false;
+    }
+    inFile.close();
+    return true;
 }
 
 PSD_FusionModuleIF PSD_FusionModuleIFrunable;
@@ -265,7 +301,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
             }
             //psd2vcu.FusionSlotInfo[i].slotType = slottype_rd2vcu(psd_m_output.rectInfo.PStype);
             psd2vcu.FusionSlotInfo[i].slotLabel = psd_m_output.rectInfo.label; //ID
-            psd2vcu.FusionSlotInfo[i].displayLabel = psd2vcu.FusionSlotInfo[i].slotLabel;
+            psd2vcu.FusionSlotInfo[i].displayLabel = 0;
 
             //ABCD顺序调整为VCU专用顺序
             //左侧
@@ -673,23 +709,52 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
 
      //***融合
     slotfusion fusionslot;
-    // outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     outputSlot_USS.ullFrameId = outputSlot_VIS.ullFrameId;
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS , outputSlot_FUSED);
+
+    // 输出原始角点
+    for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
+        LOGD("ORIGIN FUSEDSLOTS: TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        outputSlot_FUSED.slots_in_cur_frame.size(),
+        psd_m_output.rectInfo.label,
+        psd_m_output.rectInfo.PStype,
+        psd_m_output.rectInfo.pt[0].x,
+        psd_m_output.rectInfo.pt[0].y,
+        psd_m_output.rectInfo.pt[1].x,
+        psd_m_output.rectInfo.pt[1].y,
+        psd_m_output.rectInfo.pt[2].x,
+        psd_m_output.rectInfo.pt[2].y,
+        psd_m_output.rectInfo.pt[3].x,
+        psd_m_output.rectInfo.pt[3].y);
+    }
+
+    // 1227试驾  OV049车专用 offset调优角点性能。表现为y轴方向融合后y 大于 实测值y 230mm
+    if (OFFSET_FOR_RIDE){
+        for (auto & offset_slot : outputSlot_FUSED.slots_in_cur_frame){
+            offset_slot.rectInfo.pt[0].y = cal_k * (offset_slot.rectInfo.pt[0].y) + b; 
+            offset_slot.rectInfo.pt[1].y = cal_k * (offset_slot.rectInfo.pt[1].y) + b; 
+            offset_slot.rectInfo.pt[2].y = cal_k * (offset_slot.rectInfo.pt[2].y) + b; 
+            offset_slot.rectInfo.pt[3].y = cal_k * (offset_slot.rectInfo.pt[3].y) + b; 
+        }
+    }
+    // 输出OFFSET角点
+    if (OFFSET_FOR_RIDE){
+        for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
+            LOGD("OFFSET FUSEDSLOTS: TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+            outputSlot_FUSED.slots_in_cur_frame.size(),
+            psd_m_output.rectInfo.label,
+            psd_m_output.rectInfo.PStype,
+            psd_m_output.rectInfo.pt[0].x,
+            psd_m_output.rectInfo.pt[0].y,
+            psd_m_output.rectInfo.pt[1].x,
+            psd_m_output.rectInfo.pt[1].y,
+            psd_m_output.rectInfo.pt[2].x,
+            psd_m_output.rectInfo.pt[2].y,
+            psd_m_output.rectInfo.pt[3].x,
+            psd_m_output.rectInfo.pt[3].y);
+        }
+    }
    
-
-    // //打印融合车位列表
-    // for (auto& psd_m_output : outputSlot_FUSED.WorldoutRect)
-    // {
-    //     printf("[_test psd output fused slotlist] ID: %d, type: %d, occupied: %d", 
-    //     psd_m_output.rectInfo.label,psd_m_output.rectInfo.PStype,psd_m_output.rectInfo.iSodType);
-    //     for (int i = 0; i < RECTPointNum; ++i) 
-    //     {
-    //         printf(" (%d,%d)",psd_m_output.rectInfo.pt[i].x,psd_m_output.rectInfo.pt[i].y);
-    //     }
-    //     printf("\n");
-    // }
-
 
     RETURN_NOERROR;
 }
@@ -803,7 +868,6 @@ tResult cpsd_fusion_process::OnHMI_InputInfo(const HMI_InputInfo& userData)
 tResult cpsd_fusion_process::OnSelectSlot(const Sfus::SelectSlot& userData)
 {
     VCU_select_ID_ON = userData.SelectSlotID;
-    LOGD("[PSD2VCU] VCU_select_ID_ON:%d ", VCU_select_ID_ON);
     RETURN_NOERROR;
 }
 

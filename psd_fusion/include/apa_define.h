@@ -171,7 +171,7 @@ struct IPMParameters {
     float cx_ratio = 0.5f;
     float cy_ratio = 0.5f;
 
-    float edge_thr = 10.0f;
+    float edge_thr = 10.0f; //边缘阈值，认为点在图像边上
 
     // // 10m
     // float min_u = 141.f;  // width dir

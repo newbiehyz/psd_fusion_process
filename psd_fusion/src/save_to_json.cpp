@@ -336,3 +336,94 @@ void SaveFileToJson::SaveObsToJson(Fus::PkEmapObs &info,const std::string &filen
         std::cerr << "无法打开文件进行写入：" << filename << std::endl;
     }
 }
+
+void SaveFileToJson::SaveUssInfoToJson(UssIf_stPLVOutputInfo_t &info,const std::string &filename){
+    // 构建新的数据对象 j_uss
+    json j_uss;
+
+    // 序列化 UssIf_stPLVOutputInfo_t
+    j_uss["enmPLVActiveSts"] = (int)(info.enmPLVActiveSts);
+
+    // 序列化 UssIf_stSlotInfo
+    j_uss["UssIf_stSlotInfo"] = json::array();
+    for(const auto& slot_info : info.UssIf_stSlotInfo){
+        json j_slot_info;
+        j_slot_info["u8SlotNum"] = slot_info.u8SlotNum;
+
+        // 序列化 UssIf_stSlotProperty
+        j_slot_info["UssIf_stSlotProperty"] = json::array();
+        for(const auto& slot_property : slot_info.UssIf_stSlotProperty){
+            json j_slot_property;
+            j_slot_property["u16SlotID"] = slot_property.u16SlotID;
+            j_slot_property["enmSlotType"] = (int)(slot_property.enmSlotType);
+            j_slot_property["enmSlotBottomType"] = (int)(slot_property.enmSlotBottomType);
+            j_slot_property["u16SlotLength"] = slot_property.u16SlotLength;
+            j_slot_property["u16SlotDepth"] = slot_property.u16SlotDepth;
+
+            // 序列化 stSlotPt
+            j_slot_property["stSlotPt"] = json::array();
+            for(const auto& point : slot_property.stSlotPt){
+                json j_point;
+                j_point["x"] = point.x;
+                j_point["y"] = point.y;
+                j_slot_property["stSlotPt"].push_back(j_point);
+            }
+
+            j_slot_property["enmInSlotObstacleStatus"] = (int)(slot_property.enmInSlotObstacleStatus);
+
+            // 序列化 stInSlotObstaclePt
+            j_slot_property["stInSlotObstaclePt"] = json::array();
+            for(const auto& point : slot_property.stInSlotObstaclePt){
+                json j_point;
+                j_point["x"] = point.x;
+                j_point["y"] = point.y;
+                j_slot_property["stInSlotObstaclePt"].push_back(j_point);
+            }
+
+            j_slot_property["u16UssOppositeSpace"] = slot_property.u16UssOppositeSpace;
+            j_slot_property["u16UssTransverseSpace"] = slot_property.u16UssTransverseSpace;
+            j_slot_property["u16ObjDistanceBetweenLineABToSlotBottom"] = slot_property.u16ObjDistanceBetweenLineABToSlotBottom;
+            j_slot_property["enmDownSlotSODType"] = (int)(slot_property.enmDownSlotSODType);
+            j_slot_property["u64Timestamp"] = slot_property.u64Timestamp;
+
+            j_slot_info["UssIf_stSlotProperty"].push_back(j_slot_property);
+        }
+
+        j_uss["UssIf_stSlotInfo"].push_back(j_slot_info);
+    }
+
+    // 读取已有的 JSON 文件
+    json j_existing;
+    std::ifstream inFile(filename);
+    if (inFile.is_open()) {
+        try {
+            inFile >> j_existing;
+        } catch (json::parse_error& e) {
+            std::cerr << "JSON 解析错误：" << e.what() << std::endl;
+            j_existing = json::array(); // 如果解析失败，初始化为空数组
+        }
+        inFile.close();
+    } else {
+        // 文件不存在，初始化为空数组
+        j_existing = json::array();
+    }
+
+    // 如果不是数组，可能是第一次保存，需要将 j_existing 转换为数组
+    if (!j_existing.is_array()) {
+        json temp = j_existing;
+        j_existing = json::array();
+        j_existing.push_back(temp);
+    }
+
+    // 将新的数据对象追加到数组中
+    j_existing.push_back(j_uss);
+
+    // 将更新后的数据写回文件
+    std::ofstream outFile(filename);
+    if (outFile.is_open()){
+        outFile << j_existing.dump(4); // 缩进4个空格，格式化输出
+        outFile.close();
+    } else {
+        std::cerr << "无法打开文件进行写入：" << filename << std::endl;
+    }
+}

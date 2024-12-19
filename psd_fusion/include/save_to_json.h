@@ -16,5 +16,7 @@ class SaveFileToJson{
     void SaveQuadParkingSlotsInfoToJson(rd::QuadParkingSlots &info,const std::string &filename);
     void SaveDRInfoToJson(Loc::App2emap_DR &info,const std::string &filename);
     void SaveObsToJson(Fus::PkEmapObs &info,const std::string &filename);
+    // save ori USS data
+    void SaveUssInfoToJson(UssIf_stPLVOutputInfo_t &info,const std::string &filename);
 };
 

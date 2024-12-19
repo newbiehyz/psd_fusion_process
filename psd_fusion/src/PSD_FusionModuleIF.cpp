@@ -124,6 +124,7 @@ Kalman_filterPtr PSD_FusionModuleIF::check_slot_existance(
         return nullptr;
     }
 
+    //center是新检测到的车位的中心点
     Eigen::Vector3f center_sum = quad_info->corners_world.rowwise().sum(); // 对每一行（即 x、y、z 坐标）进行求和，得到总和向量
     Eigen::Vector3f center = center_sum / quad_info->corners_world.cols(); // 将总和向量除以列数（角点数量），得到中心点的坐标 center
     if (slots_map_.size() < 2) {
@@ -136,7 +137,7 @@ Kalman_filterPtr PSD_FusionModuleIF::check_slot_existance(
    
     const auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
 
-    if (check_slot->point_in_slot(center)) return check_slot;
+    if (check_slot->point_in_slot(center)) return check_slot; // 如果点在map里的最近index的车位内，判断是相同车位
 
     auto neighbor_indexes = slots_tree_->neighborhood_indices(
         quad_center, psmp_.check_same_slot_range);
@@ -433,7 +434,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             transform2world(m_vehicle_pose,quad);
             
             auto slot_existance = check_slot_existance(quad);
-            if (slot_existance != nullptr) {
+            if (slot_existance != nullptr) { //找到了已经跟踪的车位
                 Eigen::Vector3d pose{m_vehicle_pose.coord.x, m_vehicle_pose.coord.y, m_vehicle_pose.yaw};
                 Eigen::Vector3f diff = pose.cast<float>() - slot_existance->GetSlotCenter();
                 float dist = (diff.head<2>().norm())/1000;
@@ -445,9 +446,9 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
                 // slot_existance->Update(quad);
                 
-            } else {
-                auto result = std::make_shared<ParkingSlotResult>();
-                mParkingLineMask_ptr=std::make_shared<PSMaskU8>(448, 448, 0);
+            } else { //没找到已经跟踪的车位
+                auto result = std::make_shared<ParkingSlotResult>();//创建result存车位
+                mParkingLineMask_ptr=std::make_shared<PSMaskU8>(448, 448, 0); //mask全部赋值为1
                 for (uint32_t row = 0; row < 448; row++) {
                     for (uint32_t col = 0; col < 448; col++) {
                         mParkingLineMask_ptr->At(col, row) = 1;
@@ -725,7 +726,7 @@ void PSD_FusionModuleIF::transform2world(const padVehiclePose& loc_pose,
         };
 
         Eigen::Vector2f pixel_vec = quad.head<2>() - cam_pixel;
-        float pixel_dist = pixel_vec.norm();
+        float pixel_dist = pixel_vec.norm(); //欧式距离
         Eigen::Vector2f v_1_pixel = pixel_vec / pixel_dist;  // 像素坐标系
         Eigen::Vector2f v_1 = {-v_1_pixel.y(), -v_1_pixel.x()};  // 自车系
         Eigen::Vector2f v_2 = {v_1_pixel.x(),
@@ -1862,6 +1863,7 @@ bool PSD_FusionModuleIF::CalibrateSingleSlot(const padVisionSlotCoord &quad,
                            abs(approx_quad.tr(0) - approx_quad.br(0)));
     float min_w = 0.1;
     // width = std::max(width, min_w);
+    //
     if (width < min_w) {
         return false;
     }
