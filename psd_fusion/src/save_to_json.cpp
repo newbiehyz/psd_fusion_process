@@ -337,7 +337,7 @@ void SaveFileToJson::SaveObsToJson(Fus::PkEmapObs &info,const std::string &filen
     }
 }
 
-void SaveFileToJson::SaveUssInfoToJson(UssIf_stPLVOutputInfo_t &info,const std::string &filename){
+void SaveFileToJson::SaveUssInfoToJson(UssIf_stPLVOutputInfo_t info,const std::string &filename){
     // 构建新的数据对象 j_uss
     json j_uss;
 

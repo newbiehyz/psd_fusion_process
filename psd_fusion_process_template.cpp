@@ -43,7 +43,7 @@ cpsd_fusion_process::~cpsd_fusion_process()
 tResult cpsd_fusion_process::Init()
 {
     // Load Config
-    if (LoadFromFile("psd_config.json")) {
+    if (!LoadFromFile("psd_config.json")) {
         std::cerr << "Load config failed!" << std::endl;
     }
 
@@ -208,6 +208,8 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     pose_globaldata.yaw = dr_pose.canAng;
     LOGD("[_test dr_pose] S32G RECEIVE x:%d, y: %d, yaw: %f",pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
 
+
+
     // part3 算法
     LOGD("[_test apastatus]: %d", apa_status);
     //进入search才开始车位融合
@@ -226,20 +228,48 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
         outputSlot_VIS.slots_in_cur_frame.clear();
     }
 
-    //psd输出的原始车位列表（原点为后轴中心）
-    // LOGD("[_test psd output origin slotlist] size is %d",outputSlot_VIS.WorldoutRect.size());
+    // 输出视觉原始角点
+    for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
+        LOGD("ORIGIN VISSLOTS: TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        outputSlot_VIS.slots_in_cur_frame.size(),
+        psd_m_output.rectInfo.label,
+        psd_m_output.rectInfo.PStype,
+        psd_m_output.rectInfo.pt[0].x,
+        psd_m_output.rectInfo.pt[0].y,
+        psd_m_output.rectInfo.pt[1].x,
+        psd_m_output.rectInfo.pt[1].y,
+        psd_m_output.rectInfo.pt[2].x,
+        psd_m_output.rectInfo.pt[2].y,
+        psd_m_output.rectInfo.pt[3].x,
+        psd_m_output.rectInfo.pt[3].y);
+    }
 
-    // for (auto& psd_m_output : outputSlot_VIS.WorldoutRect)
-    // {
-    //     LOGD("[_test psd output origin slotlist] m_output_slot list: ");
-    //     LOGD("ID: %d, type: %d, occupied: %d", 
-    //     psd_m_output.rectInfo.label,psd_m_output.rectInfo.PStype,psd_m_output.rectInfo.iSodType);
-    //     for (int i = 0; i < RECTPointNum; ++i) 
-    //     {
-    //         LOGD(" (%d,%d)",psd_m_output.rectInfo.pt[i].x,psd_m_output.rectInfo.pt[i].y);
-    //     }
-    //     LOGD("\n");
-    // }
+    // 1227试驾  OV049车专用 offset调优角点性能。表现为y轴方向融合后y 大于 实测值y 230mm
+    if (OFFSET_FOR_RIDE){
+        for (auto & offset_slot : outputSlot_VIS.slots_in_cur_frame){
+            offset_slot.rectInfo.pt[0].y = cal_k * (offset_slot.rectInfo.pt[0].y) + b; 
+            offset_slot.rectInfo.pt[1].y = cal_k * (offset_slot.rectInfo.pt[1].y) + b; 
+            offset_slot.rectInfo.pt[2].y = cal_k * (offset_slot.rectInfo.pt[2].y) + b; 
+            offset_slot.rectInfo.pt[3].y = cal_k * (offset_slot.rectInfo.pt[3].y) + b; 
+        }
+    }
+    // 输出OFFSET角点
+    if (OFFSET_FOR_RIDE){
+        for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
+            LOGD("OFFSET VISSLOTS: TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+            outputSlot_VIS.slots_in_cur_frame.size(),
+            psd_m_output.rectInfo.label,
+            psd_m_output.rectInfo.PStype,
+            psd_m_output.rectInfo.pt[0].x,
+            psd_m_output.rectInfo.pt[0].y,
+            psd_m_output.rectInfo.pt[1].x,
+            psd_m_output.rectInfo.pt[1].y,
+            psd_m_output.rectInfo.pt[2].x,
+            psd_m_output.rectInfo.pt[2].y,
+            psd_m_output.rectInfo.pt[3].x,
+            psd_m_output.rectInfo.pt[3].y);
+        }
+    }
 
     // part4 输出，下游：APAHANDLE, PERCEPTION, VCU, PLANNING，STATEMACHINE
 
@@ -544,6 +574,9 @@ UssIf_stSlotInfo_t PLV_total_slots;
 
 tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo_t& userData)
 {
+    if (DEBUG == true){
+        filetojson.SaveUssInfoToJson(userData,"USSapaSlotListInfo.json");
+    }
     // //***打印PLV原始输出
     // // LOGT("[SlotFusion USS PLV] LEFT slot num: %d",userData.UssIf_stSlotInfo[0].u8SlotNum);
     // for (int i = 0; i < userData.UssIf_stSlotInfo[0].u8SlotNum; ++i)
@@ -688,10 +721,10 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
             // LOGT("SlotFusionUSS push back time: %d",i);
         }
 
-        if (DEBUG == true){
-            filetojson.SaveapaSlotListInfoToJson(outputSlot_USS,"USSapaSlotListInfo.json");
-            filetojson.SaveapaSlotListInfoToJson(outputSlot_FUSED,"FusedapaSlotListInfo.json");
-        }
+        // if (DEBUG == true){
+        //     filetojson.SaveapaSlotListInfoToJson(outputSlot_USS,"USSapaSlotListInfo.json");
+        //     filetojson.SaveapaSlotListInfoToJson(outputSlot_FUSED,"FusedapaSlotListInfo.json");
+        // }
         
         // // 打印USS车位列表
         // for (auto& psd_m_output : outputSlot_USS.WorldoutRect)
@@ -711,49 +744,6 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
     slotfusion fusionslot;
     outputSlot_USS.ullFrameId = outputSlot_VIS.ullFrameId;
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS , outputSlot_FUSED);
-
-    // 输出原始角点
-    for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-        LOGD("ORIGIN FUSEDSLOTS: TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
-        outputSlot_FUSED.slots_in_cur_frame.size(),
-        psd_m_output.rectInfo.label,
-        psd_m_output.rectInfo.PStype,
-        psd_m_output.rectInfo.pt[0].x,
-        psd_m_output.rectInfo.pt[0].y,
-        psd_m_output.rectInfo.pt[1].x,
-        psd_m_output.rectInfo.pt[1].y,
-        psd_m_output.rectInfo.pt[2].x,
-        psd_m_output.rectInfo.pt[2].y,
-        psd_m_output.rectInfo.pt[3].x,
-        psd_m_output.rectInfo.pt[3].y);
-    }
-
-    // 1227试驾  OV049车专用 offset调优角点性能。表现为y轴方向融合后y 大于 实测值y 230mm
-    if (OFFSET_FOR_RIDE){
-        for (auto & offset_slot : outputSlot_FUSED.slots_in_cur_frame){
-            offset_slot.rectInfo.pt[0].y = cal_k * (offset_slot.rectInfo.pt[0].y) + b; 
-            offset_slot.rectInfo.pt[1].y = cal_k * (offset_slot.rectInfo.pt[1].y) + b; 
-            offset_slot.rectInfo.pt[2].y = cal_k * (offset_slot.rectInfo.pt[2].y) + b; 
-            offset_slot.rectInfo.pt[3].y = cal_k * (offset_slot.rectInfo.pt[3].y) + b; 
-        }
-    }
-    // 输出OFFSET角点
-    if (OFFSET_FOR_RIDE){
-        for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-            LOGD("OFFSET FUSEDSLOTS: TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
-            outputSlot_FUSED.slots_in_cur_frame.size(),
-            psd_m_output.rectInfo.label,
-            psd_m_output.rectInfo.PStype,
-            psd_m_output.rectInfo.pt[0].x,
-            psd_m_output.rectInfo.pt[0].y,
-            psd_m_output.rectInfo.pt[1].x,
-            psd_m_output.rectInfo.pt[1].y,
-            psd_m_output.rectInfo.pt[2].x,
-            psd_m_output.rectInfo.pt[2].y,
-            psd_m_output.rectInfo.pt[3].x,
-            psd_m_output.rectInfo.pt[3].y);
-        }
-    }
    
 
     RETURN_NOERROR;
