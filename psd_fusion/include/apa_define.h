@@ -171,7 +171,7 @@ struct IPMParameters {
     float cx_ratio = 0.5f;
     float cy_ratio = 0.5f;
 
-    float edge_thr = 10.0f; //边缘阈值，认为点在图像边上
+    float edge_thr = 10.0f;
 
     // // 10m
     // float min_u = 141.f;  // width dir
@@ -204,7 +204,7 @@ struct ParkingSlotManagerParameters {
     float pixel_dist_thr = 100.f;
     float sigma_enlarge_coeff = 50.0f;
     // 保留车位的范围
-    float neighborhood_range = 30000.0f;
+    float neighborhood_range = 15000.0f;
     // 检查同一车位的范围
     float check_same_slot_range = 3000.0f;
 };
@@ -319,12 +319,18 @@ struct ParkingSlotRange {
 };
 
 struct ParkingSlotSizeController {
+        // std::vector<std::pair<float, float>> vp_slot_sizes = {
+        //     {70, 175}, {82, 180}, {86, 184}, {90, 188}};
+        // std::vector<std::pair<float, float>> v_slot_sizes = {
+        //     {70, 175}, {82, 180}, {86, 184}, {90, 188}};
+        // std::vector<std::pair<float, float>> p_slot_sizes = {
+        //     {82, 210}, {86, 220}, {95, 246}};
         std::vector<std::pair<float, float>> vp_slot_sizes = {
-            {70, 175}, {82, 180}, {86, 184}, {90, 188}};
+            {59, 148}, {69, 152}, {72, 156}, {76, 159}};
         std::vector<std::pair<float, float>> v_slot_sizes = {
-            {70, 175}, {82, 180}, {86, 184}, {90, 188}};
+            {59, 148}, {69, 152}, {72, 156}, {76, 159}};
         std::vector<std::pair<float, float>> p_slot_sizes = {
-            {82, 210}, {86, 220}, {95, 246}};
+            {68, 178}, {73, 186}, {81, 209}};
         std::vector<std::pair<float, float>> slant_slot_size = {{92, 230},
                                                                 {110, 240}};
         bool Adjust(float &length,
@@ -391,8 +397,8 @@ struct ParkingSlotParam {
         float slant_cos_para = 0.174;
         float border_point_dis_thr = 5;
 
-        ParkingSlotRange car_length_range = {88.F, 264.F};
-        ParkingSlotRange car_width_range = {140.F, 213.F};
+        ParkingSlotRange car_length_range = {88.F, 264.F}; //{2.5m, 7.5m}
+        ParkingSlotRange car_width_range = {140.F, 213.F}; //{4m, 6m}
         float point_border_dis_thres_for_score_modify = 2.F;
         std::vector<Eigen::Vector2f> car_contour = {
             {140.F, 88.F}, {213.F, 88.F}, {213.F, 264.F}, {140.F, 264.F}};

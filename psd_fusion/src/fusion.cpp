@@ -3,6 +3,16 @@
 using namespace std;
 
 const double IOU_THRESHOLD = 0.6;
+const int PARALLEL_SLOT_WIDTH = 8000;
+const int PARALLEL_OFFSET_1 = 250;
+const int PARALLEL_OFFSET_2 = 600;
+const int PARALLEL_OFFSET_3 = 2500;
+const int PARALLEL_OFFSET_4 = 6800;
+const int PERPENDICULAR_SLOT_WIDTH = 4000;
+const int PERPENDICULAR_OFFSET_1 = 300;
+const int PERPENDICULAR_OFFSET_2 = 6000;
+const int PERPENDICULAR_OFFSET_3 = 3400;
+#define PI 3.14
 
 slotfusion::slotfusion()
 {
@@ -42,6 +52,228 @@ void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaS
         }
     }
     std::cout<<"The fusion slot num is:"<<outputSlot_FUSION.slots_in_cur_frame.size()<<std::endl;
+}
+
+// void slotfusion::mergeUSSleftandright(UssIf_stSlotInfo_t &total_uss_slot, const UssIf_stPLVOutputInfo_t& userData){
+//     //左右车位列表拼成一个
+//     int USS_total_slotnum = 0;
+//     USS_total_slotnum = userData.UssIf_stSlotInfo[0].u8SlotNum + userData.UssIf_stSlotInfo[1].u8SlotNum;
+//     total_uss_slot.u8SlotNum = USS_total_slotnum;
+//     if (total_uss_slot.u8SlotNum > 0)
+//     {
+//         for (int USS_index = 0; USS_index < USS_total_slotnum; USS_index++)
+//         {
+//             for (int i = 0; i < userData.UssIf_stSlotInfo[0].u8SlotNum; i++)
+//             {
+//                 if (USS_index >= 3){
+//                     std::cout<<"USS left is:"<<USS_index<<std::endl;
+//                     break;
+//                 }
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].u16SlotID = 10000 + USS_index;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].enmSlotType = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].enmSlotType;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].enmSlotBottomType = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].enmSlotBottomType;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].u16SlotDepth = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].u16SlotDepth;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].u16SlotLength = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].u16SlotLength;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[0].x = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[0].x;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[0].y = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[0].y;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[1].x = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[1].x;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[1].y = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[1].y;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[2].x = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[2].x;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[2].y = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[2].y;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[3].x = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[3].x;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[3].y = userData.UssIf_stSlotInfo[0].UssIf_stSlotProperty[i].stSlotPt[3].y;
+//                 USS_index++;
+//             }
+//             for (int j = 0; j < userData.UssIf_stSlotInfo[1].u8SlotNum; j++)
+//             {
+//                 if (USS_index >= 3){
+//                     std::cout<<"USS right is:"<<USS_index<<std::endl;
+//                     break;
+//                 }
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].u16SlotID = 10000 + USS_index;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].enmSlotType = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].enmSlotType;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].enmSlotBottomType = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].enmSlotBottomType;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].u16SlotDepth = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].u16SlotDepth;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].u16SlotLength = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].u16SlotLength;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[0].x = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[0].x;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[0].y = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[0].y;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[1].x = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[1].x;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[1].y = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[1].y;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[2].x = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[2].x;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[2].y = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[2].y;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[3].x = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[3].x;
+//                 total_uss_slot.UssIf_stSlotProperty[USS_index].stSlotPt[3].y = userData.UssIf_stSlotInfo[1].UssIf_stSlotProperty[j].stSlotPt[3].y;
+//                 USS_index++;
+//             }
+//         }
+//     }
+// }
+
+static inline float Getslotangle(UssIf_stSlotProperty_t uss_point){
+    Eigen::Vector2f dir1 = {floor((uss_point.stSlotPt[1].x - uss_point.stSlotPt[2].x) / 2), floor((uss_point.stSlotPt[1].y - uss_point.stSlotPt[2].y) / 2)};
+    dir1 = dir1.normalized();
+    Eigen::Vector2f dir2 = {floor((uss_point.stSlotPt[1].x - uss_point.stSlotPt[0].x) / 2), floor((uss_point.stSlotPt[1].y - uss_point.stSlotPt[0].y) / 2)};
+    dir2 = dir2.normalized();
+    Eigen::Vector2f dir3 = {floor((uss_point.stSlotPt[0].x - uss_point.stSlotPt[3].x) / 2), floor((uss_point.stSlotPt[0].y - uss_point.stSlotPt[3].y) / 2)};
+    dir3 = dir3.normalized();
+
+    float slot_angle;
+    float slot_angle_1 = atan2(dir1.x(), dir1.y());
+    float slot_angle_2 = atan2(dir3.x(), dir3.y());
+    slot_angle = PI/2 - (slot_angle_1 + slot_angle_2) /2.0;
+    return slot_angle;
+}
+
+static inline int CalcDistance(int ax, int ay, int bx, int by)
+{
+    int dis = sqrt((ax-bx)*(ax-bx) + (ay-by)*(ay-by));
+    return dis;
+}
+
+void slotfusion::postprocessUSSslots(UssIf_stPLVOutputInfo_t &total_uss_slot){
+    //TODO
+    for (int jcnt = 0; jcnt < 2; jcnt++){
+        for (int icnt = 0; icnt < total_uss_slot.UssIf_stSlotInfo[jcnt].u8SlotNum; ++icnt){
+            if (total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].enmSlotType == USSIF_SLOT_TYPE_PARALLEL_E && total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].u16SlotLength <= PARALLEL_SLOT_WIDTH){
+                // 不是单边超声垂直车位
+                if (CalcDistance(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y) == 0){
+                                    continue;
+                                 }
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x += PARALLEL_OFFSET_2;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y += PARALLEL_OFFSET_1;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x -= PARALLEL_OFFSET_2;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y += PARALLEL_OFFSET_1;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].x -= PARALLEL_OFFSET_2;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y - PARALLEL_OFFSET_3;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[3].x += PARALLEL_OFFSET_2;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[3].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y - PARALLEL_OFFSET_3;
+
+            }else if(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].enmSlotType == USSIF_SLOT_TYPE_PARALLEL_E && total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].u16SlotLength > PARALLEL_SLOT_WIDTH){
+                // 是单边超声水平车位
+                if (CalcDistance(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y) == 0){
+                                    continue;
+                                 }
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x -= PARALLEL_OFFSET_2;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y += PARALLEL_OFFSET_1;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x - PARALLEL_OFFSET_4;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y += total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y;
+                
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].x -= PARALLEL_OFFSET_2;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y - PARALLEL_OFFSET_3;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[3].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].x - PARALLEL_OFFSET_4;
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[3].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y - PARALLEL_OFFSET_3;
+            }else if(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].enmSlotType == USSIF_SLOT_TYPE_PERPENDICULAR_E ||
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].enmSlotType == USSIF_SLOT_TYPE_ANGULAR_E && total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].u16SlotLength <= PARALLEL_SLOT_WIDTH){
+                // 不是单边超声垂直车位
+                if (CalcDistance(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y) == 0){
+                                    continue;
+                                 }
+                if(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x < 0){
+                    // 车辆左侧
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x;
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y += PERPENDICULAR_OFFSET_1/std::cos(Getslotangle(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt]));
+                    
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x;
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y -= PERPENDICULAR_OFFSET_1/std::cos(Getslotangle(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt]));
+                    
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x - PERPENDICULAR_OFFSET_2;
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].y -= PERPENDICULAR_OFFSET_1/std::cos(Getslotangle(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt]));
+
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[3].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].x;  
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[3].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y;
+                }else{
+                    // 车辆右侧
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x;
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y -= PERPENDICULAR_OFFSET_1/std::cos(Getslotangle(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt]));
+                    
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x;
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y += PERPENDICULAR_OFFSET_1/std::cos(Getslotangle(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt]));
+                    
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x + PERPENDICULAR_OFFSET_2;
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y;
+
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[3].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].x;  
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[3].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y;
+                }
+                
+                
+            }else if(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].enmSlotType == USSIF_SLOT_TYPE_PERPENDICULAR_E ||
+                    total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].enmSlotType == USSIF_SLOT_TYPE_ANGULAR_E && total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].u16SlotLength > PARALLEL_SLOT_WIDTH){
+                // 是单边超声垂直车位
+                if (CalcDistance(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x,
+                                 total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y) == 0){
+                                    continue;
+                                 }
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x -= PERPENDICULAR_OFFSET_1/std::cos(Getslotangle(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt]));
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y;
+                
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x -  PERPENDICULAR_OFFSET_3/std::cos(Getslotangle(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt]));
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y;
+                
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].x -= PERPENDICULAR_OFFSET_1/std::cos(Getslotangle(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt]));
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[2].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].y - PERPENDICULAR_OFFSET_2;
+                
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[3].x = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[1].x -  PERPENDICULAR_OFFSET_3/std::cos(Getslotangle(total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt]));
+                total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[3].y = total_uss_slot.UssIf_stSlotInfo[jcnt].UssIf_stSlotProperty[icnt].stSlotPt[0].y - PERPENDICULAR_OFFSET_2;
+            }
+        }
+    }
+    
+
+}
+
+void slotfusion::fillVisonstruct(const UssIf_stSlotInfo_t &total_uss_slot, apaSlotListInfo &uss_slots){
+    // 与视觉车位类型统一的PLV车位列表
+    // 数据类型统一，含义统一
+    // uss_slots.slots_in_cur_frame.clear();
+    // int USS_total_slotnum = total_uss_slot.u8SlotNum;
+    // if(PLV_total_slots.u8SlotNum  != 0){
+    //     for (int i = 0; i < USS_total_slotnum; ++i) 
+    //     {
+    //         UssIf_stSlotProperty_t slotProperty = PLV_total_slots.UssIf_stSlotProperty[i];
+            
+    //         apaSlotInfo slotInfo;
+    //         APA_SPACE::SApaPSRect& rectInfo = slotInfo.rectInfo;
+
+    //         for (int j = 0; j < RECTPointNum; ++j)
+    //         {
+    //             rectInfo.pt[j].x = slotProperty.stSlotPt[j].x;
+    //             rectInfo.pt[j].y = slotProperty.stSlotPt[j].y;
+    //         }
+
+    //         rectInfo.label = slotProperty.u16SlotID; //USS slot ID从10000开始
+    //         rectInfo.PStype = slottype_uss2rd(slotProperty.enmSlotType);
+    //         rectInfo.iSodType = slotProperty.enmInSlotObstacleStatus;
+    //         rectInfo.iDownSlotSOD = slotProperty.enmDownSlotSODType;
+    //         rectInfo.iMinOtherSideDist = slotProperty.u16UssOppositeSpace;
+    //         rectInfo.iRoadEdgeDist = slotProperty.u16ObjDistanceBetweenLineABToSlotBottom;
+            
+    //         uss_slots.slots_in_cur_frame.push_back(slotInfo);
+    //     }
+        
+        // // 打印USS车位列表
+        // for (auto& psd_m_output : uss_slots.WorldoutRect)
+        // {
+        //     LOGT("[SlotFusionUSS left and right] ID: %d, type: %d, occupied: %d", 
+        //             psd_m_output.rectInfo.label,psd_m_output.rectInfo.PStype,psd_m_output.rectInfo.iSodType);
+        //     for (int i = 0; i < RECTPointNum; ++i) 
+        //     {
+        //         LOGT(" (%d,%d)",psd_m_output.rectInfo.pt[i].x,psd_m_output.rectInfo.pt[i].y);
+        //     }
+        //     printf("\n");
+        // }
+    // }
 }
 
 double slotfusion::calculateOverlap(const APA_SPACE::SApaPSRect& rect1, const APA_SPACE::SApaPSRect& rect2) {

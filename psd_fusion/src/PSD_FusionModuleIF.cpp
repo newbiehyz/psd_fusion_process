@@ -42,7 +42,7 @@
 #define PI 3.1415926
 #define VEHICLE_WIDTH 2000
 #define VEHICLE_LENGTH 5259.9 //458:5245.0
-#define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7 //e2sb:1100,458:1130
+#define REAR_AXLE_CENTER_VEHICLE_REAR 1130 //e2sb:1100,458:1130
 #define FRONT_SONAR_PITCH_HEAD 400
 #define FRONT_REAR_SONAR_DISTANCE 3900
 #define NUM 12
@@ -124,7 +124,6 @@ Kalman_filterPtr PSD_FusionModuleIF::check_slot_existance(
         return nullptr;
     }
 
-    //center是新检测到的车位的中心点
     Eigen::Vector3f center_sum = quad_info->corners_world.rowwise().sum(); // 对每一行（即 x、y、z 坐标）进行求和，得到总和向量
     Eigen::Vector3f center = center_sum / quad_info->corners_world.cols(); // 将总和向量除以列数（角点数量），得到中心点的坐标 center
     if (slots_map_.size() < 2) {
@@ -137,7 +136,7 @@ Kalman_filterPtr PSD_FusionModuleIF::check_slot_existance(
    
     const auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
 
-    if (check_slot->point_in_slot(center)) return check_slot; // 如果点在map里的最近index的车位内，判断是相同车位
+    if (check_slot->point_in_slot(center)) return check_slot;
 
     auto neighbor_indexes = slots_tree_->neighborhood_indices(
         quad_center, psmp_.check_same_slot_range);
@@ -396,7 +395,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     m_frame_id = frameid;
     m_output_slot.padRealTimeLocation.x = m_vehicle_pose.coord.x;
     m_output_slot.padRealTimeLocation.y = m_vehicle_pose.coord.y;
-    m_output_slot.padRealTimeLocation.yaw = m_vehicle_pose.yaw;
+    m_output_slot.padRealTimeLocation.yaw = m_vehicle_pose.yaw * PI / 180;
     m_output_slot.ullFrameId = frameid;
     m_output_slot.slots_in_cur_frame.clear();
     m_output_slot.WorldoutRect.clear();
@@ -414,10 +413,10 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
         if((slot.a.x == slot.b.x && slot.a.y == slot.b.y) || (slot.a.x == slot.d.x && slot.a.y == slot.d.y)) {
             continue;
         }
-        // 中心点不在有效范围
-        if((slot.a.y + slot.b.y) / 2 < EFFECTIVE_SLOT_Y_1 || (slot.a.y + slot.b.y) / 2 > EFFECTIVE_SLOT_Y_2) {
-            continue;
-        }
+        // // 中心点不在有效范围
+        // if((slot.a.y + slot.b.y) / 2 < EFFECTIVE_SLOT_Y_1 || (slot.a.y + slot.b.y) / 2 > EFFECTIVE_SLOT_Y_2) {
+        //     continue;
+        // }
         if (KF){
             auto quad = std::make_shared<QuadInfo>();
             quad->quads.bottomRows<1>().setOnes();
@@ -434,10 +433,10 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             transform2world(m_vehicle_pose,quad);
             
             auto slot_existance = check_slot_existance(quad);
-            if (slot_existance != nullptr) { //找到了已经跟踪的车位
+            if (slot_existance != nullptr) {
                 Eigen::Vector3d pose{m_vehicle_pose.coord.x, m_vehicle_pose.coord.y, m_vehicle_pose.yaw};
                 Eigen::Vector3f diff = pose.cast<float>() - slot_existance->GetSlotCenter();
-                float dist = (diff.head<2>().norm())/1000;
+                float dist = diff.head<2>().norm();
                 if (slot_existance->IsConfiremd() &&
                     dist > slot_existance->GetMinDist2EgoCar()) {
                     continue;
@@ -446,9 +445,9 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
                 // slot_existance->Update(quad);
                 
-            } else { //没找到已经跟踪的车位
-                auto result = std::make_shared<ParkingSlotResult>();//创建result存车位
-                mParkingLineMask_ptr=std::make_shared<PSMaskU8>(448, 448, 0); //mask全部赋值为1
+            } else {
+                auto result = std::make_shared<ParkingSlotResult>();
+                mParkingLineMask_ptr=std::make_shared<PSMaskU8>(448, 448, 0);
                 for (uint32_t row = 0; row < 448; row++) {
                     for (uint32_t col = 0; col < 448; col++) {
                         mParkingLineMask_ptr->At(col, row) = 1;
@@ -528,13 +527,15 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
 
 void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
     slot_res.slots_in_cur_frame.clear();
-    apaSlotInfo rect;
+    slot_res.WorldoutRect.clear();
+    apaSlotInfo rect_local, rect_world;
     for (const auto &slot : slots_map_){
         auto corner_world = slot.second.get()->GetCornersWorld();
         
-            rect.rectInfo.label = slot.second.get()->GetSlotApaId();
-            rect.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
-            
+            rect_local.rectInfo.label = slot.second.get()->GetSlotApaId();
+            rect_local.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
+            rect_world.rectInfo.label = slot.second.get()->GetSlotApaId();
+            rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
             for(int i = 0; i < 4; i++){
                 if(corner_world[i].hasNaN()){
                     continue;    
@@ -543,20 +544,24 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
                     pt << corner_world[i].head<2>().x(), corner_world[i].head<2>().y(), 0.0;
                     world2car(pt);
                     // local
-                    rect.rectInfo.pt[i].x = pt.x();
-                    rect.rectInfo.pt[i].y = pt.y();
+                    rect_local.rectInfo.pt[i].x = pt.x();
+                    rect_local.rectInfo.pt[i].y = pt.y();
                     // world
-                    // rect.rectInfo.pt[i].x = corner_world[i].head<2>().x();
-                    // rect.rectInfo.pt[i].y = corner_world[i].head<2>().y();
+                    rect_world.rectInfo.pt[i].x = corner_world[i].head<2>().x();
+                    rect_world.rectInfo.pt[i].y = corner_world[i].head<2>().y();
                 }
                 
             }
-            slot_res.slots_in_cur_frame.push_back(rect);
+            slot_res.slots_in_cur_frame.push_back(rect_local);
+            slot_res.WorldoutRect.push_back(rect_world);
     } 
 }
 
 void PSD_FusionModuleIF::world2car(Eigen::Vector3f &pt){
     const auto& yaw = m_output_slot.padRealTimeLocation.yaw;
+    // const auto& yaw = m_vehicle_pose.yaw * M_PI / 180;
+
+    std::cout<<"Algoyaw is:"<< yaw << std::endl;
     float cos_yaw = std::cos(yaw);
     float sin_yaw = std::sin(yaw);
     // 全局坐标中的点 pt (pt.x(), pt.y())
@@ -675,12 +680,11 @@ void PSD_FusionModuleIF::transform2world(
 
     quad_info->center_pixel.setOnes();
     quad_info->center_pixel.head<2>() = post_result->center;
-    float x = (quad_info->center_pixel.x() - BIRD_VIEW_HEIGHT / 2) * LR_BIRD_PIXECL_2_WORLD;
-    float y = (BIRD_VIEW_HEIGHT/2.0 + (VEHICLE_LENGTH/2.0-REAR_AXLE_CENTER_VEHICLE_REAR)/LR_BIRD_PIXECL_2_WORLD - quad_info->center_pixel.y()) * LR_BIRD_PIXECL_2_WORLD;
-    float yaw = loc_pose.yaw * PI / 180.0; 
-    
-    float temp_x = x * cos(yaw) + y * sin(yaw) + loc_pose.coord.x;
-    float temp_y = y * cos(yaw) - x * sin(yaw) + loc_pose.coord.y;
+    float x = quad_info->center_pixel.x() - BIRD_VIEW_HEIGHT / 2;
+    float y = BIRD_VIEW_HEIGHT/2.0 - quad_info->center_pixel.y();
+ 
+    float temp_x = x * LR_BIRD_PIXECL_2_WORLD;
+    float temp_y = y * LR_BIRD_PIXECL_2_WORLD;
     quad_info->center_ego << temp_x,temp_y, 0.0;
     // quad_info->center_ego = intrinsic_ipm2car_ * quad_info->center_pixel;
     quad_info->long_dir_pixel = post_result->long_direction;
@@ -726,7 +730,7 @@ void PSD_FusionModuleIF::transform2world(const padVehiclePose& loc_pose,
         };
 
         Eigen::Vector2f pixel_vec = quad.head<2>() - cam_pixel;
-        float pixel_dist = pixel_vec.norm(); //欧式距离
+        float pixel_dist = pixel_vec.norm();
         Eigen::Vector2f v_1_pixel = pixel_vec / pixel_dist;  // 像素坐标系
         Eigen::Vector2f v_1 = {-v_1_pixel.y(), -v_1_pixel.x()};  // 自车系
         Eigen::Vector2f v_2 = {v_1_pixel.x(),
@@ -754,12 +758,14 @@ void PSD_FusionModuleIF::transform2world(const padVehiclePose& loc_pose,
     }
 
     // 转换坐标系
-    const auto& yaw = loc_pose.yaw;
+    quad_info->corners_ego = intrinsic_ipm2car_ * quad_info->quads;
+    const auto& yaw = - loc_pose.yaw * PI / 180.0;
     float cos_yaw = std::cos(yaw);
     float sin_yaw = std::sin(yaw);
     Eigen::Matrix3f trans_matrix;
     trans_matrix << cos_yaw, -sin_yaw, loc_pose.coord.x, sin_yaw, cos_yaw,
         loc_pose.coord.y, 0, 0, 1;
+    // quad_info->corners_world = trans_matrix * quad_info->corners_ego;
     // 协方差转换到世界坐标系
     Eigen::Matrix2f Rotation = trans_matrix.topLeftCorner<2, 2>();
     for (size_t i = 0; i < quad_info->quads.cols(); ++i) {
@@ -779,11 +785,13 @@ void PSD_FusionModuleIF::transform2world(const padVehiclePose& loc_pose,
         global_y = y * cos(yaw) - x * sin(yaw) + loc_pose.coord.y;
 
         quad_info->corners_world.col(i)<<global_x, global_y, 0.0;
-
     }
     
     if (quad_info->center_ego != Eigen::Vector3f::Zero()) {
-        quad_info->center_world = trans_matrix * quad_info->center_ego;
+        Eigen::Vector3f center_sum = quad_info->corners_world.rowwise().sum(); // 对每一行（即 x、y、z 坐标）进行求和，得到总和向量
+        Eigen::Vector3f center = center_sum / quad_info->corners_world.cols(); // 将总和向量除以列数（角点数量），得到中心点的坐标 center
+        quad_info->center_world = center;
+        // quad_info->center_world = trans_matrix * quad_info->center_ego;
         quad_info->long_dir_world = trans_matrix.topLeftCorner<2, 2>() *
                                     (intrinsic_ipm2car_.topLeftCorner<2, 2>() *
                                      quad_info->long_dir_pixel)
@@ -1670,7 +1678,7 @@ void PSD_FusionModuleIF::ModifyCornerScore(const PSMaskU8 &mask,
         // Check If corner under car
         if (param_.car_length_range.InRange(p(1)) &&
             param_.car_width_range.InRange(p(0))) {
-            score -= 0.05;
+            score -= 0.00;
         }
     }
 }
@@ -1863,7 +1871,6 @@ bool PSD_FusionModuleIF::CalibrateSingleSlot(const padVisionSlotCoord &quad,
                            abs(approx_quad.tr(0) - approx_quad.br(0)));
     float min_w = 0.1;
     // width = std::max(width, min_w);
-    //
     if (width < min_w) {
         return false;
     }

@@ -153,7 +153,7 @@ class Kalman_filter{
     }
 
     bool point_in_slot(const Eigen::Vector3f& point,
-                       float ratio_thr = 0.8) const;
+                       float ratio_thr = 0.75) const;
     bool point_in_rect(const Eigen::Vector3f& point) const;
     void Update(const QuadInfoPtr& quad_info);
 

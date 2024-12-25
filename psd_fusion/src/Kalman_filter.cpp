@@ -452,14 +452,26 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
         
             
     }else if(type_ == SLOT_TYPE::PARALLELSLOT){
-        corners_world_.at(0) =
-            center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-        corners_world_.at(1) =
-            center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-        corners_world_.at(2) =
-            center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-        corners_world_.at(3) =
-            center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+        if (this->slot_state_(SLOT_CENTER_X) > 0){
+            corners_world_.at(0) =
+                center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
+            corners_world_.at(1) =
+                center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
+            corners_world_.at(2) =
+                center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+            corners_world_.at(3) =
+                center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+        }else{
+            corners_world_.at(0) =
+                center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
+            corners_world_.at(1) =
+                center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
+            corners_world_.at(2) =
+                center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+            corners_world_.at(3) =
+                center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+        }
+        
     }  
 
     // 更新车位状态信息
