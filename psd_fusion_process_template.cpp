@@ -553,7 +553,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
                 //ID选择后互斥
                 // ID从1000开始算
-                if (final_select_ID-1000 >= 0 && final_select_ID-1000 < tempsize){
+                if (final_select_ID-1000 >= 0 && tempsize > 0){
                     for (int i = 0; i < tempsize; i++) {
                         if (psd2vcu.FusionSlotInfo[i].slotLabel == final_select_ID) {
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 5; // 设置为SELECTED状态
