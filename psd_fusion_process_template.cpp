@@ -571,6 +571,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
         psd2vcu.FusionSlotInfo[0].displayLabel = 0;
+        psd2vcu.FusionSlotInfo[0].slotLabel = final_select_ID;
 
         //ABCD顺序调整为VCU专用顺序
         //左侧
