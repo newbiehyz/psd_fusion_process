@@ -588,7 +588,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
             psd2vcu.FusionSlotInfo[0].pt[3].x = (psd2planning.targetSlot.slotCorners.cornerC.y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
             psd2vcu.FusionSlotInfo[0].pt[3].y = psd2planning.targetSlot.slotCorners.cornerC.x/ MM_TO_M;
             psd2vcu.FusionSlotInfo[0].pt[3].z = 0;
-            psd2vcu.FusionSlotInfo[0].slotStatusType = 3;
+            psd2vcu.FusionSlotInfo[0].slotStatusType = 5;
             psd2vcu.FusionSlotInfo[0].backInAvailableFlag = 1;
             psd2vcu.FusionSlotInfo[0].parkInHeadInSoftButtonCurrentValue = 1;
         }
@@ -606,7 +606,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
             psd2vcu.FusionSlotInfo[0].pt[3].x = (psd2planning.targetSlot.slotCorners.cornerA.y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
             psd2vcu.FusionSlotInfo[0].pt[3].y = psd2planning.targetSlot.slotCorners.cornerA.x / MM_TO_M;
             psd2vcu.FusionSlotInfo[0].pt[3].z = 0;
-            psd2vcu.FusionSlotInfo[0].slotStatusType = 3;
+            psd2vcu.FusionSlotInfo[0].slotStatusType = 5;
             psd2vcu.FusionSlotInfo[0].backInAvailableFlag = 1;
             psd2vcu.FusionSlotInfo[0].parkInHeadInSoftButtonCurrentValue = 1;
         }
