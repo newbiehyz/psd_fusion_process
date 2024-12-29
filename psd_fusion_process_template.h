@@ -4,6 +4,7 @@
 #include "apa_define.h"
 #include "fusion.h"
 #include "save_to_json.h"
+#include "PSD_FusionModuleIF.h"
 
 
 void mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION); 
@@ -60,8 +61,11 @@ public:
  public:
     apaSlotListInfo outputSlot_FUSED;
     apaSlotListInfo outputSlot_VIS;   
+    apaSlotListInfo outputSlot_USS;
     SaveFileToJson filetojson;
     bool DEBUG = false;
+    PSD_FusionModuleIF PSD_FusionModuleIFrunable;
+    bool clear_flag = false;
 };
 
 #endif

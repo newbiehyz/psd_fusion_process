@@ -558,7 +558,8 @@ void TimeTrigger_Timer50(){
     std::cout<<"coord.y:"<<pose_globaldata.coord.y<<std::endl;
     std::cout<<"coord.yaw:"<<pose_globaldata.yaw<<std::endl;
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
-    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots);
+    int apa_status = 0;
+    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots,apa_status);
     
     apaSlotListInfo outputSlot_CALVIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     std::cout<<"Update vision slot size: "<< outputSlot_CALVIS.WorldoutRect.size()<<std::endl;
@@ -674,7 +675,7 @@ int main(int argc, char **argv) {
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
         // 计算需要等待的时间，确保每次循环间隔为50毫秒
-        auto sleepTime = std::chrono::milliseconds(150) - elapsed;
+        auto sleepTime = std::chrono::milliseconds(100) - elapsed;
         if (sleepTime > std::chrono::milliseconds(0)) {
             std::this_thread::sleep_for(sleepTime);
         } else {

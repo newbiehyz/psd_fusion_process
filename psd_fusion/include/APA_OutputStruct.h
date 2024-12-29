@@ -33,6 +33,8 @@ typedef struct SApaPoint_I
 {
     int x;
     int y;
+	SApaPoint_I() : x(0), y(0) {}
+	SApaPoint_I(int x_val, int y_val) : x(x_val), y(y_val) {}
 }SApaPoint_I;
 
 

@@ -53,6 +53,7 @@ enum class SLOT_TYPE : uint8_t {
 
 enum class SLOT_SOURCE : uint8_t { VISUAL = 0, SPACING = 1, FUSED = 2 };
 enum class SLOT_STATUS : uint8_t { TENTATIVE = 0, CONFIRMED = 1, DELETE = 2 };
+enum class SLOT_SOD_STATUS : uint8_t { UNOCCUPIED = 0, OCCUPIED = 1, UNKNOWN = 2 };
 
 class Kalman_filter{
  public:
@@ -87,6 +88,7 @@ class Kalman_filter{
     uint32_t GetSlotApaId() const { return apa_id_; }
     uint32_t GetSlotAge() const { return age_; }
     SLOT_TYPE GetSlotType() const { return type_; }
+    SLOT_SOD_STATUS GetSlotSOD() const { return sod_ ;}
     SLOT_SOURCE GetSlotSource() const { return source_; }
     Eigen::Vector3f GetSlotCenter() const {
         Eigen::Vector3f c = Eigen::Vector3f::Ones();
@@ -175,6 +177,8 @@ class Kalman_filter{
     SLOT_TYPE type_;
     // 车位来源
     SLOT_SOURCE source_;
+    // 车位占用情况
+    SLOT_SOD_STATUS sod_;
     // 车位跟踪状态
     SLOT_STATUS status_;
     // 最新观测帧Id
