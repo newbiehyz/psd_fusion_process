@@ -12,6 +12,7 @@ Kalman_filter::Kalman_filter(const ParkingSlotResultPtr& post_slot,
     age_ = 0;
     missing_time_ = 0;
     apa_id_ = id_generator_;
+    occupy_ = quad_info->occupy;
     ++id_generator_;
     
     switch (post_slot->type)

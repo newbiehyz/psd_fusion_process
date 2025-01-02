@@ -34,9 +34,20 @@ typedef struct SApaPoint_I
     int x;
     int y;
 	SApaPoint_I() : x(0), y(0) {}
+<<<<<<< HEAD
 	SApaPoint_I(int x_val, int y_val) : x(x_val), y(y_val) {}
+=======
+	SApaPoint_I(double x, double y) : x(x), y(y) {}
+>>>>>>> 0102 stable
 }SApaPoint_I;
 
+typedef struct SApaPoint_F
+{
+    float x;
+    float y;
+	SApaPoint_F() : x(0), y(0) {}
+	SApaPoint_F(double x, double y) : x(x), y(y) {}
+}SApaPoint_F;
 
 typedef enum
 {

@@ -32,6 +32,7 @@
 #define PSD_FUSION_MODULE_IF
 
 #include "psd_fusion_process_header.h"
+#include "all.h"
 #include "apa_define.h"
 #include "math.h"
 #include <map>
@@ -138,6 +139,7 @@ private:
      * @param quad_info 模型检出的车位信息
      * @return 能找到已经跟踪的车位，将其返回，否则返回nullptr
      */
+<<<<<<< HEAD
 
     double vectorLength(POINT_I p1, POINT_I p2);
     POINT_I vectorFromPoints(POINT_I p1, POINT_I p2);
@@ -146,6 +148,10 @@ private:
     void shrinkHorizontalRectangle(apaSlotInfo original_rect, double shrink_value);
     apaSlotInfo shrinkAllSlots(apaSlotInfo &original_rect);
 
+=======
+    POINT_F unit_vector(POINT_I p1, POINT_I p2);
+    POINT_I shrink(POINT_I p, POINT_F direction, int shrink_x);
+>>>>>>> 0102 stable
     Kalman_filterPtr check_slot_existance(const QuadInfoPtr& quad_info);
     void transform2world(const padVehiclePose& loc_pose, QuadInfoPtr& quad_info);
     void transform2world(const padVehiclePose& loc_pose, const ParkingSlotResultPtr& post_result,QuadInfoPtr& quad_info);
@@ -168,6 +174,8 @@ private:
                            float &score,
                            float boarder_dis = 2.F);
     void world2car(Eigen::Vector3f &pt);
+    void shrink_quad(apaSlotInfo &original_rect);
+
 
 
 

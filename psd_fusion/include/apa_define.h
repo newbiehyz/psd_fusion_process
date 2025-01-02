@@ -20,6 +20,7 @@ using namespace APA_SPACE;
 using namespace RELOCATE_SPACE;
 
 typedef APA_SPACE::SApaPoint_I POINT_I;
+typedef APA_SPACE::SApaPoint_F POINT_F;
 
 /* 当前APA指令和状态 */
 typedef enum
@@ -159,6 +160,7 @@ struct QuadInfo {
     Eigen::Vector2f wide_dir_world = Eigen::Vector2f::Zero();
 
     float length_world, width_world;
+    uint32_t occupy;
 };
 typedef std::shared_ptr<QuadInfo> QuadInfoPtr;
 

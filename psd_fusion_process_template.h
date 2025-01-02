@@ -66,6 +66,10 @@ public:
     bool DEBUG = false;
     PSD_FusionModuleIF PSD_FusionModuleIFrunable;
     bool clear_flag = false;
+<<<<<<< HEAD
+=======
+    int tempsize;
+>>>>>>> 0102 stable
 };
 
 #endif

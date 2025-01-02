@@ -401,13 +401,18 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     // 当DR变为0时，清空slot map
     if(status == 0 || status == 1 || status == 6 || status == 7){
         slots_map_.clear();
+<<<<<<< HEAD
         std::cout<<"status is 2 and clear slot map"<<std::endl;
     }
+=======
+        LOGD("Clear slot map, and the status is:%d", status);
+    }
+
+>>>>>>> 0102 stable
     m_output_slot.slots_in_cur_frame.clear();
     m_output_slot.WorldoutRect.clear();
     // LOGD("updateVidsion_slot_vehicle_pose, x: %d, y: %d, yaw: %f",m_vehicle_pose.coord.x,m_vehicle_pose.coord.y, m_vehicle_pose.yaw);
     int next_available_label_idx = m_apa_psinfo.WorldoutRect.size();
-
     for (auto slot : slots) 
     {
         //过滤以下车位：
@@ -423,8 +428,13 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
         if((slot.a.y + slot.b.y) / 2 < EFFECTIVE_SLOT_Y_1 || (slot.a.y + slot.b.y) / 2 > EFFECTIVE_SLOT_Y_2) {
             continue;
         }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0102 stable
         if (KF){
             auto quad = std::make_shared<QuadInfo>();
+            quad->occupy = slot.occupy;
             quad->quads.bottomRows<1>().setOnes();
             // 原始检测角点信息，乱序的
             Eigen::Vector2f tl, tr, bl, br;
@@ -538,15 +548,23 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
     slot_res.slots_in_cur_frame.clear();
     slot_res.WorldoutRect.clear();
     apaSlotInfo rect_local, rect_world;
+    int slot_id = 1000;
     for (const auto &slot : slots_map_){
         auto corner_world = slot.second.get()->GetCornersWorld();
         
-            rect_local.rectInfo.label = slot.second.get()->GetSlotApaId();
+            rect_local.rectInfo.label = slot_id;
             rect_local.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
+<<<<<<< HEAD
             rect_local.rectInfo.iSodType = (int)slot.second.get()->GetSlotSOD();
             rect_world.rectInfo.label = slot.second.get()->GetSlotApaId();
             rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
             rect_world.rectInfo.iSodType = (int)slot.second.get()->GetSlotSOD();
+=======
+            rect_local.rectInfo.iSodType = slot.second.get()->GetOccupy();
+            rect_world.rectInfo.label = slot_id;
+            rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
+            rect_world.rectInfo.iSodType = slot.second.get()->GetOccupy();
+>>>>>>> 0102 stable
             for(int i = 0; i < 4; i++){
                 if(corner_world[i].hasNaN()){
                     continue;    
@@ -562,11 +580,17 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
                     rect_world.rectInfo.pt[i].y = corner_world[i].head<2>().y();
                 }
             }
+<<<<<<< HEAD
             rect_local = shrinkAllSlots(rect_local);
             rect_world = shrinkAllSlots(rect_world);
+=======
+            shrink_quad(rect_local); // TODO 12270132
+            // rect_world = shrink_quad(rect_world); // TODO 12270132
+>>>>>>> 0102 stable
             
             slot_res.slots_in_cur_frame.push_back(rect_local);
             slot_res.WorldoutRect.push_back(rect_world);
+            slot_id++;
     } 
 }
 
@@ -1916,6 +1940,7 @@ bool PSD_FusionModuleIF::CalibrateSingleSlot(const padVisionSlotCoord &quad,
     return approx_flag;
 }
 
+<<<<<<< HEAD
 // 计算向量的长度
 double PSD_FusionModuleIF::vectorLength(POINT_I p1, POINT_I p2) {
     int sqrtvalue = 0;
@@ -1985,4 +2010,41 @@ apaSlotInfo PSD_FusionModuleIF::shrinkAllSlots(apaSlotInfo &original_rect){
     }
 }
 
+=======
+
+void PSD_FusionModuleIF::shrink_quad(apaSlotInfo &original_rect){
+    if (original_rect.rectInfo.PStype == 0){//垂直车位
+        int shrink_amount = 120;
+        POINT_F AB_unit = unit_vector(original_rect.rectInfo.pt[0],original_rect.rectInfo.pt[1]);
+        POINT_F CD_unit = unit_vector(original_rect.rectInfo.pt[2],original_rect.rectInfo.pt[3]);
+        
+
+        original_rect.rectInfo.pt[0] = shrink(original_rect.rectInfo.pt[0],AB_unit,shrink_amount);
+        original_rect.rectInfo.pt[1] = shrink(original_rect.rectInfo.pt[1],AB_unit,-shrink_amount);
+        original_rect.rectInfo.pt[2] = shrink(original_rect.rectInfo.pt[2],CD_unit,shrink_amount);
+        original_rect.rectInfo.pt[3] = shrink(original_rect.rectInfo.pt[3],CD_unit,-shrink_amount);
+    }else if(original_rect.rectInfo.PStype == 1){ //平行车位
+        int shrink_amount = 80;
+        
+        POINT_F AD_unit = unit_vector(original_rect.rectInfo.pt[0],original_rect.rectInfo.pt[3]);
+        POINT_F BC_unit = unit_vector(original_rect.rectInfo.pt[1],original_rect.rectInfo.pt[2]);
+
+        original_rect.rectInfo.pt[0] = shrink(original_rect.rectInfo.pt[0],AD_unit,shrink_amount);
+        original_rect.rectInfo.pt[1] = shrink(original_rect.rectInfo.pt[1],BC_unit,shrink_amount);
+        
+    }
+}
+
+POINT_F PSD_FusionModuleIF::unit_vector(POINT_I p1, POINT_I p2){
+    float dx = p2.x - p1.x;
+    float dy = p2.y - p1.y;
+    float length = sqrt(dx * dx + dy * dy);
+
+    return POINT_F(dx / length, dy / length);
+}
+
+POINT_I PSD_FusionModuleIF::shrink(POINT_I p, POINT_F direction, int shrink){
+    return POINT_I(p.x + direction.x * shrink, p.y + direction.y * shrink);
+}
+>>>>>>> 0102 stable
 /* EOF */

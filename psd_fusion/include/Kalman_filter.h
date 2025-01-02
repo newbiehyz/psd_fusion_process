@@ -90,6 +90,7 @@ class Kalman_filter{
     SLOT_TYPE GetSlotType() const { return type_; }
     SLOT_SOD_STATUS GetSlotSOD() const { return sod_ ;}
     SLOT_SOURCE GetSlotSource() const { return source_; }
+    uint32_t GetOccupy() const {return occupy_;}
     Eigen::Vector3f GetSlotCenter() const {
         Eigen::Vector3f c = Eigen::Vector3f::Ones();
         c.head<2>() = slot_state_.head<2>();
@@ -181,6 +182,7 @@ class Kalman_filter{
     SLOT_SOD_STATUS sod_;
     // 车位跟踪状态
     SLOT_STATUS status_;
+    uint32_t    occupy_;
     // 最新观测帧Id
     uint32_t lastest_frame_id_ = 0;
     // 距离上一次观测间隔帧数
