@@ -355,13 +355,8 @@ void SaveFileToJson::SaveUssInfoToJson(UssIf_stPLVOutputInfo_t info,const std::s
         for(const auto& slot_property : slot_info.UssIf_stSlotProperty){
             json j_slot_property;
             j_slot_property["u16SlotID"] = slot_property.u16SlotID;
-<<<<<<< HEAD
-            j_slot_property["enmSlotType"] = (int)(slot_property.enmSlotType);
-            j_slot_property["enmSlotBottomType"] = (int)(slot_property.enmSlotBottomType);
-=======
             j_slot_property["enmSlotType"] = int(slot_property.enmSlotType);
             j_slot_property["enmSlotBottomType"] = int(slot_property.enmSlotBottomType);
->>>>>>> Add JSON record of apastatus, HMI/VCU select id
             j_slot_property["u16SlotLength"] = slot_property.u16SlotLength;
             j_slot_property["u16SlotDepth"] = slot_property.u16SlotDepth;
 
@@ -374,11 +369,7 @@ void SaveFileToJson::SaveUssInfoToJson(UssIf_stPLVOutputInfo_t info,const std::s
                 j_slot_property["stSlotPt"].push_back(j_point);
             }
 
-<<<<<<< HEAD
-            j_slot_property["enmInSlotObstacleStatus"] = (int)(slot_property.enmInSlotObstacleStatus);
-=======
             j_slot_property["enmInSlotObstacleStatus"] = int(slot_property.enmInSlotObstacleStatus);
->>>>>>> Add JSON record of apastatus, HMI/VCU select id
 
             // 序列化 stInSlotObstaclePt
             j_slot_property["stInSlotObstaclePt"] = json::array();
@@ -392,11 +383,7 @@ void SaveFileToJson::SaveUssInfoToJson(UssIf_stPLVOutputInfo_t info,const std::s
             j_slot_property["u16UssOppositeSpace"] = slot_property.u16UssOppositeSpace;
             j_slot_property["u16UssTransverseSpace"] = slot_property.u16UssTransverseSpace;
             j_slot_property["u16ObjDistanceBetweenLineABToSlotBottom"] = slot_property.u16ObjDistanceBetweenLineABToSlotBottom;
-<<<<<<< HEAD
-            j_slot_property["enmDownSlotSODType"] = (int)(slot_property.enmDownSlotSODType);
-=======
             j_slot_property["enmDownSlotSODType"] = int(slot_property.enmDownSlotSODType);
->>>>>>> Add JSON record of apastatus, HMI/VCU select id
             j_slot_property["u64Timestamp"] = slot_property.u64Timestamp;
 
             j_slot_info["UssIf_stSlotProperty"].push_back(j_slot_property);
@@ -405,11 +392,7 @@ void SaveFileToJson::SaveUssInfoToJson(UssIf_stPLVOutputInfo_t info,const std::s
         j_uss["UssIf_stSlotInfo"].push_back(j_slot_info);
     }
 
-<<<<<<< HEAD
-    // 序列化 UssIf_stDrivableSpaceDet
-=======
     // // 序列化 UssIf_stDrivableSpaceDet
->>>>>>> Add JSON record of apastatus, HMI/VCU select id
     // j_uss["UssIf_stDrivableSpaceDet"] = {
     //     {"isDrivable", info.UssIf_stDrivableSpaceDet.isDrivable},
     //     {"detectionConfidence", info.UssIf_stDrivableSpaceDet.detectionConfidence}
@@ -450,8 +433,6 @@ void SaveFileToJson::SaveUssInfoToJson(UssIf_stPLVOutputInfo_t info,const std::s
     } else {
         std::cerr << "无法打开文件进行写入：" << filename << std::endl;
     }
-<<<<<<< HEAD
-=======
 }
 
 void SaveFileToJson::SaveApastatusToJson(StatusDecOutput info,const std::string &filename){
@@ -576,5 +557,4 @@ void SaveFileToJson::SaveSelectSlotToJson(Sfus::SelectSlot info,const std::strin
         std::cerr << "无法打开文件进行写入：" << filename << std::endl;
     }
 
->>>>>>> Add JSON record of apastatus, HMI/VCU select id
 }

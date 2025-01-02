@@ -130,11 +130,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer50()
     // std::cout<<"[TIMECOST]Timetrigger50 time is:"<< elapsed.count() <<std::endl;
     RETURN_NOERROR;
 }
-<<<<<<< HEAD
-
-slotfusion fusionslot;
-
-=======
 
 float degreesToRadians(float degrees){
     return degrees * static_cast<float>(M_PI) / 180.0f;
@@ -168,12 +163,6 @@ inline static void rotatePoint(Sfus::FusionSlotInfovector &vcu_slot_list, padVeh
     }
 }
 
-<<<<<<< HEAD
-slotfusion fusionslot;
-
->>>>>>> 0102 stable
-=======
->>>>>>> Add JSON record of apastatus, HMI/VCU select id
 tResult cpsd_fusion_process::TimeTrigger_Timer100()
 {
     auto start = std::chrono::steady_clock::now();
@@ -212,8 +201,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                 } else {
                     oneslot.bayType = 0xFF;
                 }
-
-                oneslot.occupy = parkingSlot.label; //0 unoccupied, 1 occupied
                 
                 //左右判断,按规划/定位ABCD顺序输出车位角点
                 if (parkingSlot.tl.x < 224 && parkingSlot.tr.x < 224){
@@ -270,26 +257,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     }
 
     // part3 算法
-<<<<<<< HEAD
-    //进入search才开始车位融合
-    if (apa_status != 1) {
-        PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
-        PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status);
-        
-        
-        if(apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-            memset(&outputSlot_FUSED, 0, sizeof(apaSlotListInfo));
-            std::cout<<"status is 2 and clear slot map"<<std::endl;
-        }
-        
-        outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
-        
-        if (DEBUG == true){
-            filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"VISapaSlotListInfo.json");
-        }
-        fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS , outputSlot_FUSED);
-    }
-=======
     
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status);
@@ -313,7 +280,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     }
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS , outputSlot_FUSED);
     
->>>>>>> 0102 stable
     if (apa_status == 1){
         clear_flag = false;
         memset(&outputSlot_FUSED, 0, sizeof(apaSlotListInfo));
@@ -515,11 +481,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     if (apa_status == 1 || apa_status == 6 || apa_status == 7 || apa_status == 0){
         memset(&psd2planning, 0, sizeof(Sfus::Sfsuion2DecPlan));
         LOGD("psd2planning now: %f",psd2planning.targetSlot.slotCorners.cornerA.x);
-<<<<<<< HEAD
-        LOGD("psd2planning clear! status: %d",apa_status);
-=======
         LOGD("psd2planning clear! apastatus: %d",apa_status);
->>>>>>> 0102 stable
         EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
     }else{
         LOGD("[PSD2PLANNING] apastatus: %d, target slot: TYPE: %d, SOURCE: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
@@ -553,15 +515,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     //     psd2planning.targetSlot.slotCorners.cornerD.y);
     //     EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
     // }
-<<<<<<< HEAD
-    
-    //**********VCU 发送车位列表
-    Sfus::FusionSlotInfovector psd2vcu;
-    
-    // 当状态变成泊车时
-    if (apa_status != 5){
-        std::cout<<"The apa staus is not 5!"<<std::endl;
-=======
     
     //**********VCU 发送车位列表
     Sfus::FusionSlotInfovector psd2vcu;
@@ -569,7 +522,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     // 当状态变成泊车时
     if (apa_status != 5){
         LOGD("The apa staus is not 5!");
->>>>>>> 0102 stable
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
         psd2vcu.slotNum = tempsize;
         if (psd2vcu.slotNum > 0){
@@ -578,11 +530,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
             for (auto& psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
                 if (i >= tempsize || i >= 50){
-<<<<<<< HEAD
-                    std::cout<<"die in VCU and size is:"<<tempsize<<std::endl;
-=======
                     LOGD("die in VCU and size is:",tempsize);
->>>>>>> 0102 stable
                     break;
                 }
 
@@ -610,20 +558,12 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                     // psd2vcu.FusionSlotInfo[i].pt[3].y = psd2vcu.FusionSlotInfo[i].pt[2].y;
                     psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[2].x/ MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[3].z = 0;
-<<<<<<< HEAD
-                    psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
-=======
                     LOGD("[VCU occupied] isodtype:%d", psd_m_output.rectInfo.iSodType);
                     if (psd_m_output.rectInfo.iSodType == 1){
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
                     }else {
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                     }
-<<<<<<< HEAD
-                    // psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
->>>>>>> 0102 stable
-=======
->>>>>>> Add JSON record of apastatus, HMI/VCU select id
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
                 }
@@ -646,58 +586,32 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                     // psd2vcu.FusionSlotInfo[i].pt[3].y = psd2vcu.FusionSlotInfo[i].pt[0].y;
                     psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[0].x / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[3].z = 0;
-<<<<<<< HEAD
-                    psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
-=======
                     LOGD("[VCU occupied] isodtype:%d", psd_m_output.rectInfo.iSodType);
                     if (psd_m_output.rectInfo.iSodType == 1){
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
                     }else {
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                     }
-<<<<<<< HEAD
-                    // psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
->>>>>>> 0102 stable
-=======
->>>>>>> Add JSON record of apastatus, HMI/VCU select id
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
                 }
 
-<<<<<<< HEAD
-                //ID选择后互斥
-                // ID从1000开始算
-                if (final_select_ID-1000 >= 0 && tempsize > 0){
-=======
                 LOGD("[tempsize]:%d",tempsize);
                 //ID选择后互斥
                 // ID从1000开始算
                 if (final_select_ID-1000 >= 0){
->>>>>>> 0102 stable
                     for (int i = 0; i < tempsize; i++) {
                         if (psd2vcu.FusionSlotInfo[i].slotLabel == final_select_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 5; // 设置为SELECTED状态
                         } else {
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                         }
-<<<<<<< HEAD
-=======
                         
->>>>>>> 0102 stable
                     }
                 }
                 i++;
             }
         }
-<<<<<<< HEAD
-        EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
-    }else{
-        std::cout<<"The apa staus is 5!"<<std::endl;
-
-        memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
-        psd2vcu.FusionSlotInfo[0].displayLabel = 0;
-        psd2vcu.FusionSlotInfo[0].slotLabel = final_select_ID;
-=======
         // For Test VCU slot lists
         for (int icnt = 0; icnt < tempsize; icnt++){
             LOGD("[PSD2VCUSLOTLIST] apastatus: %d, target slot: TYPE: %d, OCCUPIED:%d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
@@ -721,7 +635,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
         psd2vcu.FusionSlotInfo[0].slotLabel = final_select_ID; //ID
         psd2vcu.FusionSlotInfo[0].displayLabel = 0;
->>>>>>> 0102 stable
 
         //ABCD顺序调整为VCU专用顺序
         //左侧
@@ -763,17 +676,12 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         LOGD("[SELECTID] selected slot:(%f,%f),(%f,%f),(%f,%f),(%f,%f)", psd2vcu.FusionSlotInfo[0].pt[0].x,psd2vcu.FusionSlotInfo[0].pt[0].y,
                                                                          psd2vcu.FusionSlotInfo[0].pt[1].x,psd2vcu.FusionSlotInfo[0].pt[1].y,
                                                                          psd2vcu.FusionSlotInfo[0].pt[2].x,psd2vcu.FusionSlotInfo[0].pt[2].y,
-<<<<<<< HEAD
-                                                                         psd2vcu.FusionSlotInfo[0].pt[3].x,psd2vcu.FusionSlotInfo[0].pt[3].y)
-        LOGD("[SELECTID] SEND VCU TARGET SLOT!!!!")
-=======
                                                                          psd2vcu.FusionSlotInfo[0].pt[3].x,psd2vcu.FusionSlotInfo[0].pt[3].y);
         
         rotatePoint(psd2vcu, pose_globaldata);
 
                                                                     
         LOGD("[SELECTID] SEND VCU TARGET SLOT!!!!");
->>>>>>> 0102 stable
         EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
     }
 
@@ -853,14 +761,8 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
     if (DEBUG == true){
         filetojson.SaveUssInfoToJson(userData,"USSapaSlotListInfo.json");
     }
-<<<<<<< HEAD
-
-    fusionslot.fillVisonstruct(userData, outputSlot_USS);
-    LOGD("USSSLOT SIZE IS:%d",outputSlot_USS.slots_in_cur_frame.size());
-=======
     fusionslot.fillVisonstruct(userData, outputSlot_USS);
     LOGD("USS SLOT SIZE IS:%d",outputSlot_USS.slots_in_cur_frame.size());
->>>>>>> 0102 stable
     auto uss_info = userData;
     fusionslot.postprocessUSSslots(uss_info);
 

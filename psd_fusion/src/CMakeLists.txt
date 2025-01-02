@@ -27,9 +27,7 @@ set(SOURCES
     PSD_FusionModuleIF.cpp
     iou.cpp
     Kalman_filter.cpp
-    # transformation.cpp
     kd_tree.cpp
-    convert.cpp
     )
 
 # 头文件路径

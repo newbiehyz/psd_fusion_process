@@ -401,14 +401,9 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     // 当DR变为0时，清空slot map
     if(status == 0 || status == 1 || status == 6 || status == 7){
         slots_map_.clear();
-<<<<<<< HEAD
-        std::cout<<"status is 2 and clear slot map"<<std::endl;
-    }
-=======
         LOGD("Clear slot map, and the status is:%d", status);
     }
 
->>>>>>> 0102 stable
     m_output_slot.slots_in_cur_frame.clear();
     m_output_slot.WorldoutRect.clear();
     // LOGD("updateVidsion_slot_vehicle_pose, x: %d, y: %d, yaw: %f",m_vehicle_pose.coord.x,m_vehicle_pose.coord.y, m_vehicle_pose.yaw);
@@ -428,10 +423,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
         if((slot.a.y + slot.b.y) / 2 < EFFECTIVE_SLOT_Y_1 || (slot.a.y + slot.b.y) / 2 > EFFECTIVE_SLOT_Y_2) {
             continue;
         }
-<<<<<<< HEAD
-=======
 
->>>>>>> 0102 stable
         if (KF){
             auto quad = std::make_shared<QuadInfo>();
             quad->occupy = slot.occupy;
@@ -554,17 +546,10 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
         
             rect_local.rectInfo.label = slot_id;
             rect_local.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
-<<<<<<< HEAD
-            rect_local.rectInfo.iSodType = (int)slot.second.get()->GetSlotSOD();
-            rect_world.rectInfo.label = slot.second.get()->GetSlotApaId();
-            rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
-            rect_world.rectInfo.iSodType = (int)slot.second.get()->GetSlotSOD();
-=======
             rect_local.rectInfo.iSodType = slot.second.get()->GetOccupy();
             rect_world.rectInfo.label = slot_id;
             rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
             rect_world.rectInfo.iSodType = slot.second.get()->GetOccupy();
->>>>>>> 0102 stable
             for(int i = 0; i < 4; i++){
                 if(corner_world[i].hasNaN()){
                     continue;    
@@ -580,13 +565,8 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
                     rect_world.rectInfo.pt[i].y = corner_world[i].head<2>().y();
                 }
             }
-<<<<<<< HEAD
-            rect_local = shrinkAllSlots(rect_local);
-            rect_world = shrinkAllSlots(rect_world);
-=======
             shrink_quad(rect_local); // TODO 12270132
             // rect_world = shrink_quad(rect_world); // TODO 12270132
->>>>>>> 0102 stable
             
             slot_res.slots_in_cur_frame.push_back(rect_local);
             slot_res.WorldoutRect.push_back(rect_world);
@@ -1940,77 +1920,6 @@ bool PSD_FusionModuleIF::CalibrateSingleSlot(const padVisionSlotCoord &quad,
     return approx_flag;
 }
 
-<<<<<<< HEAD
-// 计算向量的长度
-double PSD_FusionModuleIF::vectorLength(POINT_I p1, POINT_I p2) {
-    int sqrtvalue = 0;
-    sqrtvalue = sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y));
-    return sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y));
-}
-
-// 计算两点之间的方向向量
-POINT_I PSD_FusionModuleIF::vectorFromPoints(POINT_I p1, POINT_I p2) {
-    return POINT_I(p2.x - p1.x, p2.y - p1.y);
-}
-
-// 计算矩形宽度方向的单位向量
-POINT_I PSD_FusionModuleIF::unitVector(POINT_I p1, POINT_I p2) {
-    POINT_I v = vectorFromPoints(p1, p2);
-    double len = vectorLength(p1, p2);
-    return POINT_I(v.x / len, v.y / len);
-}
-
-// 按照方向缩小 垂直车位
-void PSD_FusionModuleIF::shrinkVerticalRectangle(apaSlotInfo original_rect, double vertical_shrink_value) {
-    // 计算AB边的方向向量（宽度方向）
-    POINT_I widthDirection = unitVector(original_rect.rectInfo.pt[0], original_rect.rectInfo.pt[1]);
-
-    // ABCD内缩
-    original_rect.rectInfo.pt[1].x -= vertical_shrink_value * widthDirection.x;
-    original_rect.rectInfo.pt[1].y -= vertical_shrink_value * widthDirection.y;
-    original_rect.rectInfo.pt[2].x -= vertical_shrink_value * widthDirection.x;
-    original_rect.rectInfo.pt[2].y -= vertical_shrink_value * widthDirection.y;
-
-    original_rect.rectInfo.pt[0].x += vertical_shrink_value * widthDirection.x;
-    original_rect.rectInfo.pt[0].y += vertical_shrink_value * widthDirection.y;
-    original_rect.rectInfo.pt[3].x += vertical_shrink_value * widthDirection.x;
-    original_rect.rectInfo.pt[3].y += vertical_shrink_value * widthDirection.y;
-}
-
-// 按照方向缩小 水平车位
-void PSD_FusionModuleIF::shrinkHorizontalRectangle(apaSlotInfo original_rect, double shrink_value) {
-    // 计算AD边的方向向量（宽度方向）
-    POINT_I lengthDirection_right = unitVector(original_rect.rectInfo.pt[0], original_rect.rectInfo.pt[3]);
-    POINT_I lengthDirection_left = unitVector(original_rect.rectInfo.pt[3], original_rect.rectInfo.pt[0]);
-    
-    // AB内缩 分左右
-    if (original_rect.rectInfo.pt[0].x > 0){
-        original_rect.rectInfo.pt[0].x += shrink_value * lengthDirection_right.x;
-        original_rect.rectInfo.pt[0].y += shrink_value * lengthDirection_right.y;
-        original_rect.rectInfo.pt[1].x += shrink_value * lengthDirection_right.x;
-        original_rect.rectInfo.pt[1].y += shrink_value * lengthDirection_right.y;
-    }
-    else{
-        original_rect.rectInfo.pt[0].x -= shrink_value * lengthDirection_left.x;
-        original_rect.rectInfo.pt[0].y -= shrink_value * lengthDirection_left.y;
-        original_rect.rectInfo.pt[1].x -= shrink_value * lengthDirection_left.x;
-        original_rect.rectInfo.pt[1].y -= shrink_value * lengthDirection_left.y;
-    }
-}
-
-apaSlotInfo PSD_FusionModuleIF::shrinkAllSlots(apaSlotInfo &original_rect){
-    //认为PStype是：（rd: int, 0 chuizhi 1 shuiping 2 xielie）
-    if (original_rect.rectInfo.PStype == 0){
-        shrinkVerticalRectangle(original_rect,120); // 垂直车位内缩120
-        return original_rect;
-    }
-    else if (original_rect.rectInfo.PStype == 1){
-        shrinkHorizontalRectangle(original_rect,80); //水平车位内缩80
-        return original_rect;
-    }
-}
-
-=======
 
 void PSD_FusionModuleIF::shrink_quad(apaSlotInfo &original_rect){
     if (original_rect.rectInfo.PStype == 0){//垂直车位
@@ -2046,5 +1955,4 @@ POINT_F PSD_FusionModuleIF::unit_vector(POINT_I p1, POINT_I p2){
 POINT_I PSD_FusionModuleIF::shrink(POINT_I p, POINT_F direction, int shrink){
     return POINT_I(p.x + direction.x * shrink, p.y + direction.y * shrink);
 }
->>>>>>> 0102 stable
 /* EOF */
