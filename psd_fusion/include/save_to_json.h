@@ -18,5 +18,8 @@ class SaveFileToJson{
     void SaveObsToJson(Fus::PkEmapObs &info,const std::string &filename);
     // save ori USS data
     void SaveUssInfoToJson(UssIf_stPLVOutputInfo_t info,const std::string &filename);
+    void SaveApastatusToJson(StatusDecOutput info,const std::string &filename);
+    void SaveSelectSlot2ToJson(Sfus::SelectSlot info,const std::string &filename);
+    void SaveSelectSlotToJson(Sfus::SelectSlot info,const std::string &filename);
 };
 
