@@ -441,7 +441,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             transform2world(m_vehicle_pose,quad);
             
             auto slot_existance = check_slot_existance(quad);
-            if (slot_existance != nullptr) {
+            if (slot_existance != nullptr) { //找到存在的车位
                 Eigen::Vector3d pose{m_vehicle_pose.coord.x, m_vehicle_pose.coord.y, m_vehicle_pose.yaw};
                 Eigen::Vector3f diff = pose.cast<float>() - slot_existance->GetSlotCenter();
                 float dist = diff.head<2>().norm();

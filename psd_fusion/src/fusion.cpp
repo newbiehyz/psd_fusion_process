@@ -14,6 +14,10 @@ const int PERPENDICULAR_OFFSET_2 = 6000;
 const int PERPENDICULAR_OFFSET_3 = 3400;
 #define PI 3.14
 
+typedef IOU::Vec2<double> Vec2d;
+typedef Vec2d VPoint;
+typedef std::vector<VPoint> Vertexes;
+
 slotfusion::slotfusion()
 {
 
@@ -24,9 +28,8 @@ slotfusion::~slotfusion()
 
 }
 
-void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION) 
+void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION) 
 {
-    
     std::cout<<"The Vison slot num is:"<<outputSlot_VIS.slots_in_cur_frame.size()<<std::endl;
     std::cout<<"The USS slot num is:"<<outputSlot_USS.slots_in_cur_frame.size()<<std::endl;
     outputSlot_FUSION = outputSlot_VIS;
@@ -44,37 +47,74 @@ void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaS
 
     for (const auto &slot_USS : outputSlot_USS.slots_in_cur_frame) 
     {
-        // TPose local_uss;
-        // APA_SPACE::SApaPSRect USS_slot;
-        // for (int icnt = 0; icnt < 4; icnt++){
-        //     local_uss.point.x = slot_USS.rectInfo.pt[icnt].x;
-        //     local_uss.point.y = slot_USS.rectInfo.pt[icnt].y;
-        //     local_uss = transtoworld.TransformPose(local_uss);
-        //     USS_slot.pt[icnt].x = local_uss.point.x;
-        //     USS_slot.pt[icnt].y = local_uss.point.y;
-        // }
-        
-        bool overlapFound = false; 
-        for (const auto &slot_VIS : outputSlot_VIS.slots_in_cur_frame){
-            double overlap = calculateOverlap(slot_USS.rectInfo, slot_VIS.rectInfo);
-            std::cout<<"The overlap is:"<<overlap<<std::endl;
-            std::cout<<"VIS slot id is:"<<slot_VIS.rectInfo.label<<std::endl;
-            std::cout<<"USS slot id is:"<<slot_USS.rectInfo.label<<std::endl;
-            if (overlap > IOU_THRESHOLD){
-                overlapFound = true;
-                std::cout<<"Found overlap slots"<<std::endl;
-                break;
-            }
-        }
-
-        if (!overlapFound){
-            //如果视觉车位和超声车不位重叠，则将USS车位列表加入融合列表内
+        // IOU
+        bool mis_detect_flag = true;
+        auto it = existed_in_psinfo(slot_USS, outputSlot_VIS, mis_detect_flag);
+        if(!mis_detect_flag) {
+            break;
+        }else{
             outputSlot_FUSION.slots_in_cur_frame.push_back(slot_USS);
             std::cout<<"USS slot not match in vison slot and push bash to Fusion slots!"<<std::endl;
         }
+        
+        // bool overlapFound = false; 
+        // double overlap = 0.0;
+        // for (const auto &slot_VIS : outputSlot_VIS.slots_in_cur_frame){
+        //     // overlap = calculateOverlap(slot_USS.rectInfo, slot_VIS.rectInfo);
+        //     // std::cout<<"The overlap is:"<<overlap<<std::endl;
+        //     std::cout<<"VIS slot id is:"<<slot_VIS.rectInfo.label<<std::endl;
+        //     std::cout<<"USS slot id is:"<<slot_USS.rectInfo.label<<std::endl;
+        //     // if (overlap > IOU_THRESHOLD){
+        //     //     overlapFound = true;
+        //     //     std::cout<<"Found overlap slots"<<std::endl;
+        //     //     break;
+        //     // }
+
+            
+
+        // }
+
+        // if (!overlapFound){
+        //     //如果视觉车位和超声车不位重叠，则将USS车位列表加入融合列表内
+        //     outputSlot_FUSION.slots_in_cur_frame.push_back(slot_USS);
+        //     std::cout<<"USS slot not match in vison slot and push bash to Fusion slots!"<<std::endl;
+        // }
     }
     std::cout<<"The fusion slot num is:"<<outputSlot_FUSION.slots_in_cur_frame.size()<<std::endl;
 }
+
+vector<apaSlotInfo>::iterator slotfusion::existed_in_psinfo(const apaSlotInfo& rect_new, apaSlotListInfo& vison_slot_list, bool& mis_detect_flag)
+{
+
+    double iou = 0;;
+    if(vison_slot_list.slots_in_cur_frame.size() == 0) {
+        vector<apaSlotInfo>::iterator it = vison_slot_list.slots_in_cur_frame.end();
+        return it;
+    }
+
+    //size>0时，反向遍历psinfo。IOU>0.4重复，0.2-0.4misdetect，<0.2认为没有相同车位继续循环
+    vector<apaSlotInfo>::iterator it = vison_slot_list.slots_in_cur_frame.end() - 1;
+    for( ; it >= vison_slot_list.slots_in_cur_frame.begin(); it--) 
+    {
+        std::cout<<"VIS slot id is:"<<it->rectInfo.label<<std::endl;
+        std::cout<<"USS slot id is:"<<rect_new.rectInfo.label<<std::endl;
+        Vertexes vert_new, vert;
+        IOU::changePoint(rect_new, vert_new);
+        IOU::changePoint(*it, vert);
+        iou = IOU::iouEx(vert_new, vert);
+        
+        if (iou >= 0.2) {
+            mis_detect_flag = false;
+            break;
+        }
+        else if (iou >= 0.0 && iou < 0.2) {
+            mis_detect_flag = true;
+        }
+        
+    }
+    return it;
+}
+
 
 static inline float Getslotangle(UssIf_stSlotProperty_t uss_point){
     Eigen::Vector2f dir1 = {floor((uss_point.stSlotPt[1].x - uss_point.stSlotPt[2].x) / 2), floor((uss_point.stSlotPt[1].y - uss_point.stSlotPt[2].y) / 2)};
@@ -198,6 +238,28 @@ void slotfusion::postprocessUSSslots(UssIf_stPLVOutputInfo_t &total_uss_slot){
     }
 }
 
+bool slotfusion::deleteinvalidslot(UssIf_stSlotProperty_t uss_slot){
+    // delete invalid slots
+     // 一个车位有效的条件
+    if (uss_slot.enmSlotType == 0 || uss_slot.enmSlotType == 3) {
+        return false; // 类型为0和3的车位无效
+    }
+
+    if (uss_slot.enmSlotType == 1) {
+        if (uss_slot.u16SlotDepth < 500 || uss_slot.u16SlotLength < 250) {
+            return false; // 类型为1的车位深度小于500或长度小于250无效
+        }
+    }
+
+    if (uss_slot.enmSlotType == 2) {
+        if (uss_slot.u16SlotDepth < 250 || uss_slot.u16SlotLength < 500) {
+            return false; // 类型为2的车位深度小于250或长度小于500无效
+        }
+    }
+
+    return true; // 其他情况，车位有效
+}
+
 void slotfusion::fillVisonstruct(const UssIf_stPLVOutputInfo_t &total_uss_slot, apaSlotListInfo &uss_slots){
     // 与视觉车位类型统一的PLV车位列表
     // 数据类型统一，含义统一
@@ -211,7 +273,7 @@ void slotfusion::fillVisonstruct(const UssIf_stPLVOutputInfo_t &total_uss_slot, 
             for (int i = 0; i < total_uss_slot.UssIf_stSlotInfo[icnt].u8SlotNum; ++i) 
             {
                 UssIf_stSlotProperty_t slotProperty = total_uss_slot.UssIf_stSlotInfo[icnt].UssIf_stSlotProperty[i];
-                
+                if(!deleteinvalidslot(slotProperty)){break;}
                 apaSlotInfo slotInfo;
                 APA_SPACE::SApaPSRect& rectInfo = slotInfo.rectInfo;
 
