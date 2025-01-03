@@ -388,7 +388,13 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         psd2planning.SfusionSrchSlots[k].slotID = psd_m_output.rectInfo.label;
         LOGD("rectinfo_label:%d",psd_m_output.rectInfo.label);
         psd2planning.SfusionSrchSlots[k].slotType = slottype_rd2decplan(psd_m_output.rectInfo.PStype);
-        psd2planning.SfusionSrchSlots[k].slotSource = Sfus::SLOTSRC_VIS;
+        if (psd2planning.SfusionSrchSlots[k].slotID > 1000 && psd2planning.SfusionSrchSlots[k].slotID < 10000){
+            psd2planning.SfusionSrchSlots[k].slotSource = Sfus::SLOTSRC_VIS;
+        } else if (psd2planning.SfusionSrchSlots[k].slotID >= 10000){
+            psd2planning.SfusionSrchSlots[k].slotSource = Sfus::SLOTSRC_USS;
+        } else {
+            psd2planning.SfusionSrchSlots[k].slotSource = Sfus::SLOTSRC_NULL;
+        }
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.x = psd_m_output.rectInfo.pt[0].x;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.y = psd_m_output.rectInfo.pt[0].y;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerB.x = psd_m_output.rectInfo.pt[1].x;
@@ -487,7 +493,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         psd2planning.targetSlot.slotCorners.cornerA.x,
         psd2planning.targetSlot.slotCorners.cornerA.y,
         psd2planning.targetSlot.slotCorners.cornerB.x,
-        psd2planning.targetSlot.slotCorners.cornerB.y,/*  */
+        psd2planning.targetSlot.slotCorners.cornerB.y,
         psd2planning.targetSlot.slotCorners.cornerC.x,
         psd2planning.targetSlot.slotCorners.cornerC.y,
         psd2planning.targetSlot.slotCorners.cornerD.x,
