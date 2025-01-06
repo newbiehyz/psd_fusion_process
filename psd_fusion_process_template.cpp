@@ -296,7 +296,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         memset(&outputSlot_VIS, 0, sizeof(apaSlotListInfo));
     }
     
-    
     // 当泊车完成或者中断，清空车位列表
     if (apa_status == 1 || apa_status == 6 || apa_status == 7){
         outputSlot_FUSED.slots_in_cur_frame.clear();
@@ -709,8 +708,19 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
         }
         LOGD("TEST_2025_01:(%d,%d,%f)", dr_cul_x, dr_cul_y, dr_cul_theta);
-        pose_globaldata.coord.x -= dr_cul_x;
-        pose_globaldata.coord.y -= dr_cul_y;
+        if (pose_globaldata.coord.x < dr_cul_x){
+            pose_globaldata.coord.x -= dr_cul_x;
+        }else{
+            pose_globaldata.coord.x = -(pose_globaldata.coord.x - dr_cul_x);
+        }
+
+        if (pose_globaldata.coord.y > dr_cul_y){
+            pose_globaldata.coord.y -= dr_cul_y;
+        }else{
+            pose_globaldata.coord.y = -(pose_globaldata.coord.y - dr_cul_y);
+        }
+        
+        
         pose_globaldata.yaw -= dr_cul_theta;
         pose_globaldata.yaw = unifyAngle(pose_globaldata.yaw);
         LOGD("TEST_2025_01:(%d,%d)", pose_globaldata.coord.x, pose_globaldata.coord.y);
