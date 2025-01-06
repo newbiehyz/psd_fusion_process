@@ -67,6 +67,10 @@ public:
     PSD_FusionModuleIF PSD_FusionModuleIFrunable;
     bool clear_flag = false;
     int tempsize;
+    bool dr_first = true;
+    int dr_cul_x = 0;
+    int dr_cul_y = 0;
+    float dr_cul_theta = 0.0;
 };
 
 #endif

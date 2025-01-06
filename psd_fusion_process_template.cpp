@@ -130,6 +130,20 @@ float degreesToRadians(float degrees){
     return degrees * static_cast<float>(M_PI) / 180.0f;
 }
 
+// 将角度归一化到 [-180, 180)
+inline float unifyAngle(float angle_deg)
+{
+    angle_deg = std::fmod(angle_deg, 360.0f);
+
+    if (angle_deg < 0.0f)
+        angle_deg += 360.0f;
+
+    if (angle_deg >= 180.0f)
+        angle_deg -= 360.0f;
+
+    return angle_deg;
+}
+
 inline static void rotatePoint(Sfus::FusionSlotInfovector &vcu_slot_list, padVehiclePose vehicle_pose){
     float angle_rad = degreesToRadians(vehicle_pose.yaw);
     float cos_theta = std::cos(-angle_rad);
@@ -286,6 +300,8 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     // 当泊车完成或者中断，清空车位列表
     if (apa_status == 1 || apa_status == 6 || apa_status == 7){
         outputSlot_FUSED.slots_in_cur_frame.clear();
+        dr_first = true;
+        LOGD("dr_first:%d",dr_first);
     }
 
     // // 输出视觉原始角点
@@ -684,6 +700,20 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                                                                          psd2vcu.FusionSlotInfo[0].pt[2].x,psd2vcu.FusionSlotInfo[0].pt[2].y,
                                                                          psd2vcu.FusionSlotInfo[0].pt[3].x,psd2vcu.FusionSlotInfo[0].pt[3].y);
         
+        if (dr_first){
+            dr_cul_x = pose_globaldata.coord.x;
+            dr_cul_y = pose_globaldata.coord.y;
+            dr_cul_theta = pose_globaldata.yaw;
+
+            dr_first = false;
+
+        }
+        LOGD("TEST_2025_01:(%d,%d,%f)", dr_cul_x, dr_cul_y, dr_cul_theta);
+        pose_globaldata.coord.x -= dr_cul_x;
+        pose_globaldata.coord.y -= dr_cul_y;
+        pose_globaldata.yaw -= dr_cul_theta;
+        pose_globaldata.yaw = unifyAngle(pose_globaldata.yaw);
+        LOGD("TEST_2025_01:(%d,%d)", pose_globaldata.coord.x, pose_globaldata.coord.y);
         rotatePoint(psd2vcu, pose_globaldata);
 
                                                                     
