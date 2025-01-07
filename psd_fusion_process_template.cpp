@@ -273,28 +273,34 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
         memset(&oneslot, 0, sizeof(padVisionSlotCoord));
         singleframeslots.clear();
+        singleframeslotsID = 0;
+        outputSlot_VIS.slots_in_cur_frame.clear();
+        outputSlot_USS.slots_in_cur_frame.clear();
+        outputSlot_FUSED.slots_in_cur_frame.clear();
         LOGD("CLEAR singleframeslots, size: %d",singleframeslots.size());
     }
     // 检查状态1：输入
     LOGD("CHECK singleframeslots size: %d",singleframeslots.size());
-
-
+    LOGD("[CHECK SIZE] before update, vis: %d, uss: %d, fused: %d",outputSlot_VIS.slots_in_cur_frame.size()
+                                                ,outputSlot_USS.slots_in_cur_frame.size()
+                                                ,outputSlot_FUSED.slots_in_cur_frame.size());
     // part3 算法
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
+
         
     if (DEBUG == true){
         filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"VISapaSlotListInfo.json");
     }
     // 清空车位3：Update输出
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-        memset(&outputSlot_VIS, 0, sizeof(apaSlotListInfo));
-        memset(&outputSlot_USS, 0, sizeof(apaSlotListInfo));
-        memset(&outputSlot_FUSED, 0, sizeof(apaSlotListInfo));
+        outputSlot_VIS.slots_in_cur_frame.clear();
+        outputSlot_USS.slots_in_cur_frame.clear();
+        outputSlot_FUSED.slots_in_cur_frame.clear();
     }
     // 检查状态3：Update输出
-    LOGD("CHECK SIZE, vis: %d, uss: %d, fused: %d",outputSlot_VIS.slots_in_cur_frame.size()
+    LOGD("[CHECK SIZE] after update, vis: %d, uss: %d, fused: %d",outputSlot_VIS.slots_in_cur_frame.size()
                                                   ,outputSlot_USS.slots_in_cur_frame.size()
                                                   ,outputSlot_FUSED.slots_in_cur_frame.size());
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS , outputSlot_FUSED);
@@ -722,51 +728,51 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
             dr_first = false;
         }
 
-        LOGD("TEST_2025_01:(%d,%d,%f)", dr_cul_x, dr_cul_y, dr_cul_theta);
-        if (psd2planning.targetSlot.slotCorners.cornerA.x <= 0 ||  psd2planning.targetSlot.slotCorners.cornerB.x <= 0){ // left
-            if(pose_globaldata.coord.x < dr_cul_x){
-                pose_globaldata.coord.x -= dr_cul_x;
-            }else{
-                pose_globaldata.coord.x = -(pose_globaldata.coord.x - dr_cul_x);
-            }
+        // LOGD("TEST_2025_01:(%d,%d,%f)", dr_cul_x, dr_cul_y, dr_cul_theta);
+        // if (psd2planning.targetSlot.slotCorners.cornerA.x <= 0 ||  psd2planning.targetSlot.slotCorners.cornerB.x <= 0){ // left
+        //     if(pose_globaldata.coord.x < dr_cul_x){
+        //         pose_globaldata.coord.x -= dr_cul_x;
+        //     }else{
+        //         pose_globaldata.coord.x = -(pose_globaldata.coord.x - dr_cul_x);
+        //     }
 
-            if (pose_globaldata.coord.y > dr_cul_y){
-                pose_globaldata.coord.y -= dr_cul_y;
-            }else{
-                pose_globaldata.coord.y = -(pose_globaldata.coord.y - dr_cul_y);
-            }
-            LOGD("TEST_2025_01:Left slot(%d,%d)", pose_globaldata.coord.x, pose_globaldata.coord.y);
-        }else{  //right
-            if(pose_globaldata.coord.x < dr_cul_x){
-                pose_globaldata.coord.x -= dr_cul_x;
-                LOGD("TEST_2025_01:less-x");
-            }else{
-                pose_globaldata.coord.x = (pose_globaldata.coord.x - dr_cul_x);
-                LOGD("TEST_2025_01:greater-x");
-            }
+        //     if (pose_globaldata.coord.y > dr_cul_y){
+        //         pose_globaldata.coord.y -= dr_cul_y;
+        //     }else{
+        //         pose_globaldata.coord.y = -(pose_globaldata.coord.y - dr_cul_y);
+        //     }
+        //     LOGD("TEST_2025_01:Left slot(%d,%d)", pose_globaldata.coord.x, pose_globaldata.coord.y);
+        // }else{  //right
+        //     if(pose_globaldata.coord.x < dr_cul_x){
+        //         pose_globaldata.coord.x -= dr_cul_x;
+        //         LOGD("TEST_2025_01:less-x");
+        //     }else{
+        //         pose_globaldata.coord.x = (pose_globaldata.coord.x - dr_cul_x);
+        //         LOGD("TEST_2025_01:greater-x");
+        //     }
 
-            if (pose_globaldata.coord.y > dr_cul_y){
-                pose_globaldata.coord.y -= dr_cul_y;
-                LOGD("TEST_2025_01:greater-y");
-            }else{
-                pose_globaldata.coord.y = (pose_globaldata.coord.y - dr_cul_y);
-                LOGD("TEST_2025_01:less-y");
-            }
-            LOGD("TEST_2025_01:Right slot(%d,%d)", pose_globaldata.coord.x, pose_globaldata.coord.y);
-        }
-        
-        pose_globaldata.yaw -= dr_cul_theta;
-        pose_globaldata.yaw = unifyAngle(pose_globaldata.yaw);
-
-        // if (dr_cul_theta < 0){
-        //     pose_globaldata.coord.x = -(pose_globaldata.coord.x - dr_cul_x);
-        //     pose_globaldata.coord.y = -(pose_globaldata.coord.y - dr_cul_y);
-        // }else{
-        //     pose_globaldata.coord.x = pose_globaldata.coord.x - dr_cul_x;
-        //     pose_globaldata.coord.y = pose_globaldata.coord.y - dr_cul_y;
+        //     if (pose_globaldata.coord.y > dr_cul_y){
+        //         pose_globaldata.coord.y -= dr_cul_y;
+        //         LOGD("TEST_2025_01:greater-y");
+        //     }else{
+        //         pose_globaldata.coord.y = (pose_globaldata.coord.y - dr_cul_y);
+        //         LOGD("TEST_2025_01:less-y");
+        //     }
+        //     LOGD("TEST_2025_01:Right slot(%d,%d)", pose_globaldata.coord.x, pose_globaldata.coord.y);
         // }
-        // float theta_temp = pose_globaldata.yaw - dr_cul_theta;
+        
+        // pose_globaldata.yaw -= dr_cul_theta;
         // pose_globaldata.yaw = unifyAngle(pose_globaldata.yaw);
+
+        if (dr_cul_theta < 0){
+            pose_globaldata.coord.x = -(pose_globaldata.coord.x - dr_cul_x);
+            pose_globaldata.coord.y = -(pose_globaldata.coord.y - dr_cul_y);
+        }else{
+            pose_globaldata.coord.x = pose_globaldata.coord.x - dr_cul_x;
+            pose_globaldata.coord.y = pose_globaldata.coord.y - dr_cul_y;
+        }
+        float theta_temp = pose_globaldata.yaw - dr_cul_theta;
+        pose_globaldata.yaw = unifyAngle(pose_globaldata.yaw);
        
         rotatePoint(psd2vcu, pose_globaldata);
 

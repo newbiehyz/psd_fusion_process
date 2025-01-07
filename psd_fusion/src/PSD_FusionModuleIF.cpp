@@ -385,9 +385,9 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
 
     std::lock_guard<std::mutex> lock(m_psinfo_mutex);
     
-    if(slots.size() <= 0) {
-        return;
-    }
+    // if(slots.size() <= 0) {
+    //     return;
+    // }
 
     // 清空上一帧车位
     m_frame_id = frameid;
@@ -403,6 +403,9 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
         LOGD("CLEAR slot map and m_output_slot, status is:%d, slots_map size: %d, m_output_slot size: %d", 
                                             status,slots_map_.size(),m_output_slot.slots_in_cur_frame.size());
     }
+    LOGD("CHECK slot map and m_output_slot, status is:%d, slots_map size: %d, m_output_slot size: %d", 
+                                            status,slots_map_.size(),m_output_slot.slots_in_cur_frame.size());
+
 
     m_output_slot.slots_in_cur_frame.clear();
     m_output_slot.WorldoutRect.clear();
