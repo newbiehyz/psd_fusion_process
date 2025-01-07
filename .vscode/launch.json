@@ -8,13 +8,8 @@
         "args": [],
         "stopAtEntry": false,
         "externalConsole": false,
-<<<<<<< HEAD
-        "cwd": "/home/hyz/03_s32g/02_slotFusion/20241121_emos5/patac-557e-emos_5.0.3_1223merge_stable_12281412/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/build",
-        "program": "/home/hyz/03_s32g/02_slotFusion/20241121_emos5/patac-557e-emos_5.0.3_1223merge_stable_12281412/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/build/test_executable",
-=======
-        "cwd": "/home/hyz/03_s32g/02_slotFusion/20241121_emos5/patac-557e-emos_5.0.3_1223merge/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/build",
-        "program": "/home/hyz/03_s32g/02_slotFusion/20241121_emos5/patac-557e-emos_5.0.3_1223merge/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/build/test_executable",
->>>>>>> 0102 stable
+        "cwd": "/home/hyz/03_s32g/02_slotFusion/20241121_emos5/patac-557e-emos_5.0.3_1223merge_stable_0102/patac-557e-emos_5.0.3_1223merge_stable_12271652/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/build",
+        "program": "/home/hyz/03_s32g/02_slotFusion/20241121_emos5/patac-557e-emos_5.0.3_1223merge_stable_0102/patac-557e-emos_5.0.3_1223merge_stable_12271652/patac-557e-emos/CodeRoot/src/psd_fusion_process/psd_fusion/src/build/test_executable",
         "MIMode": "gdb",
         "miDebuggerPath": "gdb",
         "setupCommands": [

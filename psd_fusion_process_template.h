@@ -65,7 +65,6 @@ public:
     SaveFileToJson filetojson;
     bool DEBUG = false;
     PSD_FusionModuleIF PSD_FusionModuleIFrunable;
-    bool clear_flag = false;
     int tempsize;
     bool dr_first = true;
     int dr_cul_x = 0;

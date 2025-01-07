@@ -382,9 +382,6 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
 void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status)
 {
     auto start_update = std::chrono::steady_clock::now();
-    //check updatevisionslots' input
-    // printf("[_test updatevisionslots] start!!\n");
-    std::cout<<"[_test updatevisionslots check] RD_timestamp: "<< frameid <<","<< "RD's singelframe slots have: " << slots.size() << std::endl;
 
     std::lock_guard<std::mutex> lock(m_psinfo_mutex);
     
@@ -398,15 +395,17 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     m_output_slot.padRealTimeLocation.y = m_vehicle_pose.coord.y;
     m_output_slot.padRealTimeLocation.yaw = -m_vehicle_pose.yaw * PI / 180;
     m_output_slot.ullFrameId = frameid;
-    // 当DR变为0时，清空slot map
+
+    // 清空车位2：update内部变量
     if(status == 0 || status == 1 || status == 6 || status == 7){
         slots_map_.clear();
-        LOGD("Clear slot map, and the status is:%d", status);
+        m_output_slot.slots_in_cur_frame.clear();
+        LOGD("CLEAR slot map and m_output_slot, status is:%d, slots_map size: %d, m_output_slot size: %d", 
+                                            status,slots_map_.size(),m_output_slot.slots_in_cur_frame.size());
     }
 
     m_output_slot.slots_in_cur_frame.clear();
     m_output_slot.WorldoutRect.clear();
-    // LOGD("updateVidsion_slot_vehicle_pose, x: %d, y: %d, yaw: %f",m_vehicle_pose.coord.x,m_vehicle_pose.coord.y, m_vehicle_pose.yaw);
     int next_available_label_idx = m_apa_psinfo.WorldoutRect.size();
     for (auto slot : slots) 
     {
@@ -471,6 +470,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                     new_slot->SetLatestFrameId(static_cast<uint32_t>(frameid));
                     rebuild_slots_tree();
                 }
+                LOGD("slots_map_ size = %d",slots_map_.size());
             }
             
         }else{
@@ -500,40 +500,20 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 rect_car_center.rectInfo.pt[3] = coordConvert_car_center(slot.d); 
                 
                 m_output_slot.slots_in_cur_frame.push_back(rect_car_center);
-                // //check m_output_slot.slots_in_cur_frame
-                // printf("[_test updatevisionslots] slots_in_cur_frame size: %d\n",m_output_slot.slots_in_cur_frame.size());
-                // for (const auto& psd_slot1 : m_output_slot.slots_in_cur_frame)
-                // {
-                //     printf("[_test updatevisionslots] slots_in_cur_frame, isreliable:%d, ",psd_slot1.is_reliable);
-                //     for (int i = 0; i < RECTPointNum; ++i) 
-                //     {
-                //         printf("(%d,%d)",psd_slot1.rectInfo.pt[i].x,psd_slot1.rectInfo.pt[i].y);
-                //     }
-                //     printf("\n");
-                // }
+                //check m_output_slot.slots_in_cur_frame
+                LOGD("[_test updatevisionslots] slots_in_cur_frame size: %d\n",m_output_slot.slots_in_cur_frame.size());
             }  
         }
     }
     delete_invalid_slots();
     collect_confirmed_slots(m_output_slot);
 
-    // check m_output_slot 
-    printf("[_test updatevisionslots] m_output_slot list size: %d\n",m_output_slot.slots_in_cur_frame.size());
-    for (const auto& psd_slot2 : m_output_slot.slots_in_cur_frame)
-    {
-        printf("[_test updatevisionslots] slots_in_cur_frame, isreliable:%d, label:%d, PStype:%d, ",
-        psd_slot2.is_reliable,psd_slot2.rectInfo.label,psd_slot2.rectInfo.PStype);
-        for (int i = 0; i < RECTPointNum; ++i) 
-        {
-            printf("(%d,%d)",psd_slot2.rectInfo.pt[i].x,psd_slot2.rectInfo.pt[i].y);
-        }
-        printf("\n");
-    }
+    // 检查状态2：update内部变量
+    LOGD("CHECK SIZE m_output_slot:%d, slots_map:%d",m_output_slot.slots_in_cur_frame.size(),slots_map_.size());
+    
     auto end_update = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end_update - start_update);
     std::cout<<"[TIMECOST]UPDATE time is:"<< elapsed.count() <<std::endl;
-    
-    printf("[_test updatevisionslots] end!!\n");
 }
 
 void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){

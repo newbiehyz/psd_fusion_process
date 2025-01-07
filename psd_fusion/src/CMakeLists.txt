@@ -28,6 +28,7 @@ set(SOURCES
     iou.cpp
     Kalman_filter.cpp
     kd_tree.cpp
+    convert.cpp
     )
 
 # 头文件路径

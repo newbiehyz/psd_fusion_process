@@ -503,51 +503,51 @@ void TimeTrigger_Timer50(){
     dr_pose.DRStatus = dr_data["DRStatus"];
     dr_pose.timeStamp = dr_data["timeStamp"];
 
-    //Get apastatus info
-    if (!apastatus_dataloaded){
-        std::string filepath = (parentPath / "APAStatus.json").string();
-        loadAllData(filepath, allAPAStatusData);
-        apastatus_dataloaded = true;
-    }
-    static size_t currentIndex = 0;
-    if(currentIndex >= allAPAStatusData.size()){
-        // std::cout<<"所有数据已处理完毕"<<std::endl;
-        return;
-    }
-    const auto &apastatus_data = allAPAStatusData[currentIndex];
-    int  apa_status;
-    apa_status = apastatus_data["aps_apaStatusReq"];
+    // //Get apastatus info
+    // if (!apastatus_dataloaded){
+    //     std::string filepath = (parentPath / "APAStatus.json").string();
+    //     loadAllData(filepath, allAPAStatusData);
+    //     apastatus_dataloaded = true;
+    // }
+    // static size_t currentIndex = 0;
+    // if(currentIndex >= allAPAStatusData.size()){
+    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
+    //     return;
+    // }
+    // const auto &apastatus_data = allAPAStatusData[currentIndex];
+    // int  apa_status;
+    // apa_status = apastatus_data["aps_apaStatusReq"];
 
-    //Get selectslot(VCU) info
-        if (!selectslot_dataloaded){
-        std::string filepath = (parentPath / "SelectSlot.json").string();
-        loadAllData(filepath, allSelectSlotData);
-        selectslot_dataloaded = true;
-    }
-    static size_t currentIndex = 0;
-    if(currentIndex >= allSelectSlotData.size()){
-        // std::cout<<"所有数据已处理完毕"<<std::endl;
-        return;
-    }
-    const auto &selectslot_data = allSelectSlotData[currentIndex];
-    int  VCU_select_ID_ON;
-    VCU_select_ID_ON = selectslot_data["SelectSlotID"];
+    // //Get selectslot(VCU) info
+    //     if (!selectslot_dataloaded){
+    //     std::string filepath = (parentPath / "SelectSlot.json").string();
+    //     loadAllData(filepath, allSelectSlotData);
+    //     selectslot_dataloaded = true;
+    // }
+    // static size_t currentIndex = 0;
+    // if(currentIndex >= allSelectSlotData.size()){
+    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
+    //     return;
+    // }
+    // const auto &selectslot_data = allSelectSlotData[currentIndex];
+    // int  VCU_select_ID_ON;
+    // VCU_select_ID_ON = selectslot_data["SelectSlotID"];
 
 
-    //Get selectslot2(HMI) info
-        if (!selectslot2_dataloaded){
-        std::string filepath = (parentPath / "SelectSlot2.json").string();
-        loadAllData(filepath, allSelectSlot2Data);
-        selectslot2_dataloaded = true;
-    }
-    static size_t currentIndex = 0;
-    if(currentIndex >= allSelectSlot2Data.size()){
-        // std::cout<<"所有数据已处理完毕"<<std::endl;
-        return;
-    }
-    const auto &selectslot2_data = allSelectSlotData2[currentIndex];
-    int  HMI_select_ID;
-    HMI_select_ID = selectslot2_data["SelectSlotID"];
+    // //Get selectslot2(HMI) info
+    //     if (!selectslot2_dataloaded){
+    //     std::string filepath = (parentPath / "SelectSlot2.json").string();
+    //     loadAllData(filepath, allSelectSlot2Data);
+    //     selectslot2_dataloaded = true;
+    // }
+    // static size_t currentIndex = 0;
+    // if(currentIndex >= allSelectSlot2Data.size()){
+    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
+    //     return;
+    // }
+    // const auto &selectslot2_data = allSelectSlotData2[currentIndex];
+    // int  HMI_select_ID;
+    // HMI_select_ID = selectslot2_data["SelectSlotID"];
 
     padVehiclePose  pose_globaldata;
 
@@ -610,7 +610,7 @@ void TimeTrigger_Timer50(){
     std::cout<<"coord.y:"<<pose_globaldata.coord.y<<std::endl;
     std::cout<<"coord.yaw:"<<pose_globaldata.yaw<<std::endl;
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
-    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots);
+    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots,0);
     
     apaSlotListInfo outputSlot_CALVIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     std::cout<<"Update vision slot size: "<< outputSlot_CALVIS.WorldoutRect.size()<<std::endl;
