@@ -57,7 +57,8 @@ public:
     tResult OnSelectSlot2(const Sfus::SelectSlot& userData);
      private:
     bool LoadFromFile(const std::string& filename);
-
+    void Slot2Global(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw);
+    void Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw);
  public:
     apaSlotListInfo outputSlot_FUSED;
     apaSlotListInfo outputSlot_VIS;   
