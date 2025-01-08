@@ -687,8 +687,15 @@ void PSD_FusionModuleIF::transform2world(
     float temp_y = y * LR_BIRD_PIXECL_2_WORLD;
     quad_info->center_ego << temp_x,temp_y, 0.0;
     // quad_info->center_ego = intrinsic_ipm2car_ * quad_info->center_pixel;
-    quad_info->long_dir_pixel = post_result->long_direction;
-    quad_info->wide_dir_pixel = post_result->wide_direction;
+    // quad_info->long_dir_pixel = post_result->long_direction;
+    // quad_info->wide_dir_pixel = post_result->wide_direction;
+    if (post_result->type == 1){
+        quad_info->long_dir_pixel = post_result->wide_direction;
+        quad_info->wide_dir_pixel = post_result->long_direction;
+    }else{
+        quad_info->long_dir_pixel = post_result->long_direction;
+        quad_info->wide_dir_pixel = post_result->wide_direction;
+    }
     quad_info->length_world = post_result->length * std::fabs(intrinsic_ipm2car_(0, 1));
     quad_info->width_world = post_result->width * std::fabs(intrinsic_ipm2car_(1, 0));
 
