@@ -30,8 +30,8 @@ slotfusion::~slotfusion()
 
 void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION) 
 {
-    LOGD("The Vison slot num is: %d",outputSlot_VIS.slots_in_cur_frame.size());
-    LOGD("The USS slot num is: %d",outputSlot_USS.slots_in_cur_frame.size());
+    // LOGD("The Vison slot num is: %d",outputSlot_VIS.slots_in_cur_frame.size());
+    // LOGD("The USS slot num is: %d",outputSlot_USS.slots_in_cur_frame.size());
     outputSlot_FUSION = outputSlot_VIS;
     // CTransformation transtoworld;
     // TPose local_point, global_point;
@@ -80,7 +80,7 @@ void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,apaSlotLis
         //     std::cout<<"USS slot not match in vison slot and push bash to Fusion slots!"<<std::endl;
         // }
     }
-    LOGD("The fusion slot num is: %d",outputSlot_FUSION.slots_in_cur_frame.size());
+    // LOGD("The fusion slot num is: %d",outputSlot_FUSION.slots_in_cur_frame.size());
 }
 
 vector<apaSlotInfo>::iterator slotfusion::existed_in_psinfo(const apaSlotInfo& rect_new, apaSlotListInfo& vison_slot_list, bool& mis_detect_flag)

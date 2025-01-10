@@ -400,12 +400,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     if(status == 0 || status == 1 || status == 6 || status == 7){
         slots_map_.clear();
         m_output_slot.slots_in_cur_frame.clear();
-        LOGD("CLEAR slot map and m_output_slot, status is:%d, slots_map size: %d, m_output_slot size: %d", 
-                                            status,slots_map_.size(),m_output_slot.slots_in_cur_frame.size());
     }
-    LOGD("CHECK slot map and m_output_slot, status is:%d, slots_map size: %d, m_output_slot size: %d", 
-                                            status,slots_map_.size(),m_output_slot.slots_in_cur_frame.size());
-
 
     m_output_slot.slots_in_cur_frame.clear();
     m_output_slot.WorldoutRect.clear();
@@ -473,7 +468,6 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                     new_slot->SetLatestFrameId(static_cast<uint32_t>(frameid));
                     rebuild_slots_tree();
                 }
-                LOGD("slots_map_ size = %d",slots_map_.size());
             }
             
         }else{
@@ -503,8 +497,6 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 rect_car_center.rectInfo.pt[3] = coordConvert_car_center(slot.d); 
                 
                 m_output_slot.slots_in_cur_frame.push_back(rect_car_center);
-                //check m_output_slot.slots_in_cur_frame
-                LOGD("[_test updatevisionslots] slots_in_cur_frame size: %d\n",m_output_slot.slots_in_cur_frame.size());
             }  
         }
     }
@@ -512,7 +504,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     collect_confirmed_slots(m_output_slot);
 
     // 检查状态2：update内部变量
-    LOGD("CHECK SIZE m_output_slot:%d, slots_map:%d",m_output_slot.slots_in_cur_frame.size(),slots_map_.size());
+    // LOGD("CHECK SIZE m_output_slot:%d, slots_map:%d",m_output_slot.slots_in_cur_frame.size(),slots_map_.size());
     
     auto end_update = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end_update - start_update);
@@ -522,7 +514,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
 void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
     slot_res.slots_in_cur_frame.clear();
     slot_res.WorldoutRect.clear();
-    apaSlotInfo rect_local, rect_world;
+    apaSlotInfo rect_local, rect_world, rect_world_shrink;
     int slot_id = 1000;
     for (const auto &slot : slots_map_){
         auto corner_world = slot.second.get()->GetCornersWorld();
@@ -548,8 +540,24 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
                     rect_world.rectInfo.pt[i].y = corner_world[i].head<2>().y();
                 }
             }
-            shrink_quad(rect_local); // TODO 12270132
-            // rect_world = shrink_quad(rect_world); // TODO 12270132
+            LOGD("[SHRINK] before shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
+                                                                       rect_local.rectInfo.pt[0].y,
+                                                                       rect_local.rectInfo.pt[1].x,
+                                                                       rect_local.rectInfo.pt[1].y,
+                                                                       rect_local.rectInfo.pt[2].x,
+                                                                       rect_local.rectInfo.pt[2].y,
+                                                                       rect_local.rectInfo.pt[3].x,
+                                                                       rect_local.rectInfo.pt[3].y)
+            shrink_quad(rect_local); 
+            LOGD("[SHRINK] after shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
+                                                                      rect_local.rectInfo.pt[0].y,
+                                                                      rect_local.rectInfo.pt[1].x,
+                                                                      rect_local.rectInfo.pt[1].y,
+                                                                      rect_local.rectInfo.pt[2].x,
+                                                                      rect_local.rectInfo.pt[2].y,
+                                                                      rect_local.rectInfo.pt[3].x,
+                                                                      rect_local.rectInfo.pt[3].y)
+            // rect_world = shrink_quad(rect_world);
             
             slot_res.slots_in_cur_frame.push_back(rect_local);
             slot_res.WorldoutRect.push_back(rect_world);
@@ -1913,7 +1921,7 @@ bool PSD_FusionModuleIF::CalibrateSingleSlot(const padVisionSlotCoord &quad,
 
 void PSD_FusionModuleIF::shrink_quad(apaSlotInfo &original_rect){
     if (original_rect.rectInfo.PStype == 0){//垂直车位
-        int shrink_amount = 120;
+        int shrink_amount = 75;
         POINT_F AB_unit = unit_vector(original_rect.rectInfo.pt[0],original_rect.rectInfo.pt[1]);
         POINT_F CD_unit = unit_vector(original_rect.rectInfo.pt[2],original_rect.rectInfo.pt[3]);
         

@@ -765,10 +765,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         //     psd2vcu.FusionSlotInfo[0].backInAvailableFlag = 1;
         //     psd2vcu.FusionSlotInfo[0].parkInHeadInSoftButtonCurrentValue = 1;
         // }
-        LOGD("[SELECTID] selected slot:(%f,%f),(%f,%f),(%f,%f),(%f,%f)", psd2vcu.FusionSlotInfo[0].pt[0].x,psd2vcu.FusionSlotInfo[0].pt[0].y,
-                                                                         psd2vcu.FusionSlotInfo[0].pt[1].x,psd2vcu.FusionSlotInfo[0].pt[1].y,
-                                                                         psd2vcu.FusionSlotInfo[0].pt[2].x,psd2vcu.FusionSlotInfo[0].pt[2].y,
-                                                                         psd2vcu.FusionSlotInfo[0].pt[3].x,psd2vcu.FusionSlotInfo[0].pt[3].y);
+       
         
         if (dr_first){
             dr_cul_x = pose_globaldata.coord.x;
@@ -875,6 +872,10 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         for (int icnt = 0; icnt < 4; icnt++){
             LOGD("[TEST slot pt](%f,%f)",psd2vcu.FusionSlotInfo[0].pt[icnt].x, psd2vcu.FusionSlotInfo[0].pt[icnt].y);
         }
+         LOGD("[SELECTID] selected slot:(%f,%f),(%f,%f),(%f,%f),(%f,%f)", psd2vcu.FusionSlotInfo[0].pt[0].x,psd2vcu.FusionSlotInfo[0].pt[0].y,
+                                                                         psd2vcu.FusionSlotInfo[0].pt[1].x,psd2vcu.FusionSlotInfo[0].pt[1].y,
+                                                                         psd2vcu.FusionSlotInfo[0].pt[2].x,psd2vcu.FusionSlotInfo[0].pt[2].y,
+                                                                         psd2vcu.FusionSlotInfo[0].pt[3].x,psd2vcu.FusionSlotInfo[0].pt[3].y);
                                                                     
         LOGD("[SELECTID] SEND VCU TARGET SLOT!!!!");
         if (apa_status != 1){
