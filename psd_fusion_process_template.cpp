@@ -3,17 +3,20 @@
 #include <iostream>
 #include <typeinfo>
 
+//功能开关
 #define OBS_READY true // OBS接口是否接入数据
 #define OFFSET_FOR_RIDE false // 1227试驾 OV049车专用 offset调优角点性能, y=kx+b
 
+//标定量
 #define VEHICLE_LENGTH 5259.9 
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7 
 #define MM_TO_M 1000.0
-
 float cal_k = 1;
 float b = -200;
 
+
 int apa_status;
+int search_hold = 0; //@TODO EMOSVC7_RELEASE
 slotfusion fusionslot;
 StatusDecFusionInput psd2statemachine;
 Sfus::Sfsuion2DecPlan psd2planning; //动态车位列表
@@ -319,11 +322,11 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
 
     //***********************************get perception
-    Fus::PkEmapObs obs_info;
+    Fus::PkEmapObs obs_info_get;
     if (OBS_READY && DEBUG){
-        filetojson.SaveObsToJson(obs_info,"ObsInfo.json");
+        filetojson.SaveObsToJson(obs_info_get,"ObsInfo.json");
     }
-    EMC_perception_fusion_process_GetFieldPkEmapObs(obs_info);
+    EMC_perception_fusion_process_GetFieldPkEmapObs(obs_info_get);
 
 
     //***********************************get statemachine
@@ -369,7 +372,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
     // part3 算法
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
-    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status);
+    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_hold);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
 
         
@@ -636,6 +639,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     
 
     //***********************************VCU 发送车位列表
+    //非GUIDANCE时，显示整个车位列表
     if (apa_status != 5){
         LOGD("The apa staus is not 5!");
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
@@ -753,7 +757,9 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
             EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
         }
         
-    }else{
+    }
+    // 泊入过程中只显示目标车位
+    else{
         LOGD("[SELECTID]The apa staus is 5!");
 
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
@@ -920,6 +926,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     //***********************************PERCEPTION 发送目标车位
     // 拿到目标车位后，发送给planning的目标车位信息，再给perception
     Sfus::SfusionSlots psd2perception;
+    memset(&psd2perception, 0, sizeof(Sfus::SfusionSlots));
     if (psd2planning.targetSlot.slotCorners.cornerA.x != 0){
         psd2perception.slotCorners.cornerA.x = psd2planning.targetSlot.slotCorners.cornerA.x;
         psd2perception.slotCorners.cornerA.y = psd2planning.targetSlot.slotCorners.cornerA.y;
@@ -932,7 +939,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         psd2perception.slotType = psd2planning.targetSlot.slotType;
         psd2perception.slotSource = psd2planning.targetSlot.slotSource;
     }
-        LOGD("[PSD2PLANNING] APASTATUS: %d, TARGET SLOT type: %d, source: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+        LOGD("[PSD2PERCEPTION] APASTATUS: %d, TARGET SLOT type: %d, source: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
         apa_status,
         psd2perception.slotType,
         psd2perception.slotSource,
@@ -993,10 +1000,16 @@ tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
 tResult cpsd_fusion_process::OnStatusDecOutput(const StatusDecOutput& userData)
 {
     apa_status = userData.aps_apaStatusReq;
+    // // @TODO EMOSVC7_RELEASE
+    // search_hold = userData.aps_apaSrchInterupt;
+
+
     LOGD("[APA_Status]:Received APA_status is:%d", apa_status);
+
     if (DEBUG == true){
         filetojson.SaveApastatusToJson(userData, "APAStatus.json");
     }
+
     RETURN_NOERROR;
 }
 
@@ -1056,14 +1069,14 @@ tResult cpsd_fusion_process::OnPreciseEmapGrid(const Fus::PreciseEmapGrid& userD
     RETURN_NOERROR;
 }
 
-Fus::PkEmapObs obs_info;
+// Fus::PkEmapObs obs_info;
 
 tResult cpsd_fusion_process::OnPkEmapObs(const Fus::PkEmapObs& userData)
 {
-    if (OBS_READY){
-        obs_info = userData;
-        filetojson.SaveObsToJson(obs_info,"ObsInfo.json");
-    }
+    // if (OBS_READY){
+    //     obs_info = userData;
+    //     filetojson.SaveObsToJson(obs_info,"ObsInfo.json");
+    // }
     RETURN_NOERROR;
 }
 

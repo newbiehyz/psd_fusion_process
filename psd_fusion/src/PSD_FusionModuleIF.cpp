@@ -379,7 +379,7 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
     }
 }
 
-void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status)
+void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus)
 {
     auto start_update = std::chrono::steady_clock::now();
 

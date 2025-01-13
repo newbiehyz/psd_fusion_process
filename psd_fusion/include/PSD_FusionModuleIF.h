@@ -110,7 +110,7 @@ public:
     virtual bool Destroy();
 
     void UpdateVechiclePose(const padVehiclePose& pose_global);
-    void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status);
+    void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus);
     void CalStopDistance(const Fus::PkEmapObs &empobs, float &stopdis);
     apaSlotListInfo GetOutputSlot()
     {
