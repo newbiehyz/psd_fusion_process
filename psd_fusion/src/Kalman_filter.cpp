@@ -240,12 +240,16 @@ bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const{
     Eigen::Vector3f center;
     center<<slot_state_[0],slot_state_[1], 0.0;
     // 将点转换到矩形的局部坐标系
-    Eigen::Vector3f local_point = (rotation_inv * (point - center))/1000;
+    Eigen::Vector3f local_point = (rotation_inv * (point - center));
     
     // 检查点是否在矩形的范围内
-    float half_length = slot_state_[SLOT_LENGTH] / 2.0f;
-    float half_width = slot_state_[SLOT_WIDTH] / 2.0f;
-    
+    float half_length = slot_state_[SLOT_LENGTH] / 2.0f * 1000;
+    float half_width = slot_state_[SLOT_WIDTH] / 2.0f * 1000;
+
+    if (this->type_ == SLOT_TYPE::PARALLELSLOT){
+        std::swap(half_length, half_width);
+    }
+
     return (local_point.x() >= -half_width && local_point.x() <= half_width &&
             local_point.y() >= -half_length  && local_point.y() <= half_length);
 }

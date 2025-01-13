@@ -59,7 +59,7 @@ int CalcDistance(float ax, float ay, float bx,  float by)
 }
 
 // Draw apaSlotListInfo
-void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &rectanglesA, Loc::App2emap_DR pose) {
+void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &rectanglesA, Loc::App2emap_DR pose, Fus::PkEmapObs obs) {
     // 创建空白图像
     cv::Mat image(800, 800, CV_8UC3, cv::Scalar(255, 255, 255));
 
@@ -160,6 +160,11 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
             cv::rectangle(image, cartopLeft, carbottomRight, color, cv::FILLED);
         }
     };
+
+    for (int i = 0; i < 50; ++i){
+        float x = obs.pkEmapObs[i].obsCenter.x * 1000;
+        float y = obs.pkEmapObs[i].obsCenter.y * 1000;
+    }
 
     // 绘制矩形为红色
     drawRectangles(rectanglesA, cv::Scalar(0, 0, 255));
@@ -392,13 +397,16 @@ std::vector<json> allDRData;
 std::vector<json> allAPAStatusData;
 std::vector<json> allSelectSlotData;
 std::vector<json> allSelectSlot2Data;
+std::vector<json> allObsData;
 std::vector<json> allVisionData;
 std::vector<json> allUSSData;
+
 bool rd_dataloaded = false;
 bool dr_dataloaded = false;
 bool apastatus_dataloaded = false;
 bool selectslot_dataloaded = false;
 bool selectslot2_dataloaded = false;
+bool obs_dataloaded = false;
 bool vison_dataloaded = false;
 bool uss_dataloaded = false;
 bool is_init = false;
@@ -503,6 +511,35 @@ void TimeTrigger_Timer50(){
     dr_pose.DRStatus = dr_data["DRStatus"];
     dr_pose.timeStamp = dr_data["timeStamp"];
 
+    //Get obs info
+    if (!obs_dataloaded){
+        std::string filepath = (parentPath / "ObsInfo.json").string();
+        loadAllData(filepath, allObsData);
+        obs_dataloaded = true;
+    }
+    static size_t currentOBSIndex = 0;
+    if(currentOBSIndex >= allObsData.size()){
+        // std::cout<<"所有数据已处理完毕"<<std::endl;
+        return;
+    }
+    const auto &obs_data = allObsData[currentOBSIndex];
+
+    Fus::PkEmapObs obs_info;
+    const auto& obs_info_array = obs_data["PkEmapObs"];
+    for (int obs_index = 0; obs_index < 50; ++obs_index){
+        const auto & obs_info_array_json = obs_info_array[obs_index];
+        obs_info.pkEmapObs[obs_index].FrameIndex = obs_info_array_json["FrameIndex"];
+        obs_info.pkEmapObs[obs_index].obsID = obs_info_array_json["obsID"];
+        obs_info.pkEmapObs[obs_index].obsTyp = obs_info_array_json["obsTyp"];
+        obs_info.pkEmapObs[obs_index].obsCenter.x = obs_info_array_json["obsCenter"]["x"];
+        obs_info.pkEmapObs[obs_index].obsCenter.y = obs_info_array_json["obsCenter"]["y"];
+        obs_info.pkEmapObs[obs_index].obsCenter.z = obs_info_array_json["obsCenter"]["z"];
+        obs_info.pkEmapObs[obs_index].age = obs_info_array_json["age"];
+
+        std::cout<<"FrameIndex:"<<obs_info.pkEmapObs[obs_index].FrameIndex<<std::endl;
+    }
+
+
     // //Get apastatus info
     // if (!apastatus_dataloaded){
     //     std::string filepath = (parentPath / "APAStatus.json").string();
@@ -519,7 +556,7 @@ void TimeTrigger_Timer50(){
     // apa_status = apastatus_data["aps_apaStatusReq"];
 
     // //Get selectslot(VCU) info
-    //     if (!selectslot_dataloaded){
+    // if (!selectslot_dataloaded){
     //     std::string filepath = (parentPath / "SelectSlot.json").string();
     //     loadAllData(filepath, allSelectSlotData);
     //     selectslot_dataloaded = true;
@@ -535,7 +572,7 @@ void TimeTrigger_Timer50(){
 
 
     // //Get selectslot2(HMI) info
-    //     if (!selectslot2_dataloaded){
+    // if (!selectslot2_dataloaded){
     //     std::string filepath = (parentPath / "SelectSlot2.json").string();
     //     loadAllData(filepath, allSelectSlot2Data);
     //     selectslot2_dataloaded = true;
@@ -548,6 +585,7 @@ void TimeTrigger_Timer50(){
     // const auto &selectslot2_data = allSelectSlotData2[currentIndex];
     // int  HMI_select_ID;
     // HMI_select_ID = selectslot2_data["SelectSlotID"];
+
 
     padVehiclePose  pose_globaldata;
 
@@ -610,11 +648,11 @@ void TimeTrigger_Timer50(){
     std::cout<<"coord.y:"<<pose_globaldata.coord.y<<std::endl;
     std::cout<<"coord.yaw:"<<pose_globaldata.yaw<<std::endl;
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
-    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots,0);
+    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, 0, 0);
     
     apaSlotListInfo outputSlot_CALVIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     std::cout<<"Update vision slot size: "<< outputSlot_CALVIS.WorldoutRect.size()<<std::endl;
-    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_CALVIS, dr_pose);
+    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_CALVIS, dr_pose, obs_info);
 
     // ********************************Load Obs data
     // Calculate stop distance
@@ -629,8 +667,9 @@ void TimeTrigger_Timer50(){
     // // obs.pkEmapObs[1].obsCenter.y = 2280;
     // obs.pkEmapObs[1].obsCenter.x = 3800;
     // obs.pkEmapObs[1].obsCenter.y = 6300;
-    // float stop_dis;
-    // PSD_FusionModuleIFrunable.CalStopDistance(obs, stop_dis);
+    float stop_dis;
+    PSD_FusionModuleIFrunable.CalStopDistance(obs_info, stop_dis);
+    std::cout<<"Stop distance:"<<stop_dis<<std::endl;
 
     // *******************************Load original USS data 
     // Get USS info
@@ -713,6 +752,7 @@ void TimeTrigger_Timer50(){
     currentDRIndex++;
     // currentVisionIndex++;
     // currentUSSIndex++;
+    currentOBSIndex++;
 }
 
 int main(int argc, char **argv) {

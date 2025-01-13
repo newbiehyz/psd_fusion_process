@@ -230,6 +230,8 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 {
     auto start = std::chrono::steady_clock::now();
     
+
+
     // part2 输入，上游：RD, DR, peception, VCU select ID, statemachine
     //***********************************get rd (frameid and singleframeslot)
     rd::QuadParkingSlots rd_info;
@@ -243,9 +245,9 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     }
 
     //frameid
-    // LOGD("[_test rd_info timestampNs] J5 SEND timestampNs: %llu",rd_info.frameTimeStampNs);
+    // LOGD("[INPUT rd_info timestampNs] J5 SEND timestampNs: %llu",rd_info.frameTimeStampNs);
     singleframeslotsID = rd_info.frameTimeStampNs;
-    // LOGD("[_test rd_info timestampNs] S32G RECEIVE timestampNs: %llu",singleframeslotsID);
+    // LOGD("[INPUT rd_info timestampNs] S32G RECEIVE timestampNs: %llu",singleframeslotsID);
 
     //singleframeslot
     if (!rd_info.quadParkingSlotList.empty()){
@@ -280,7 +282,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                 oneslot.d.x = int(parkingSlot.br.x);
                 oneslot.d.y = int(parkingSlot.br.y);
                 oneslot.occupy = parkingSlot.label;
-                // LOGD("[_test rd_info singleframeslots] S32G RECEIVE LEFT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.b.x,oneslot.b.y,oneslot.a.x,oneslot.a.y,
+                // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE LEFT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.b.x,oneslot.b.y,oneslot.a.x,oneslot.a.y,
             // oneslot.d.x,oneslot.d.y,oneslot.c.x,oneslot.c.y);
             }
             else {
@@ -294,7 +296,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                 oneslot.d.x = int(parkingSlot.bl.x);
                 oneslot.d.y = int(parkingSlot.bl.y);
                 oneslot.occupy = parkingSlot.label;
-            //     LOGD("[_test rd_info singleframeslots] S32G RECEIVE RIGHT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.a.x,oneslot.a.y,oneslot.b.x,oneslot.b.y,
+            //     LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE RIGHT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.a.x,oneslot.a.y,oneslot.b.x,oneslot.b.y,
             // oneslot.c.x,oneslot.c.y,oneslot.d.x,oneslot.d.y);
             }
             singleframeslots.push_back(oneslot);
@@ -311,7 +313,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         if (DEBUG == true){
             filetojson.SaveDRInfoToJson(dr_pose, "DR_POSE.json");
         }
-        // LOGD("[_test dr_pose] J5 SEND x: %f, y: %f, yaw: %f, timestamp: %llu",dr_pose.x, dr_pose.y, dr_pose.canAng,dr_pose.timeStamp);
+        // LOGD("[INPUT dr_pose] J5 SEND x: %f, y: %f, yaw: %f, timestamp: %llu",dr_pose.x, dr_pose.y, dr_pose.canAng,dr_pose.timeStamp);
         //@TODO dr_pose long int
         
         pose_globaldata.coord.x = int(dr_pose.x);
@@ -323,10 +325,20 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
     //***********************************get perception
     Fus::PkEmapObs obs_info_get;
+    EMC_perception_fusion_process_GetFieldPkEmapObs(obs_info_get);
+    for (int i = 0; i < 50; ++i){
+        LOGD("INPUT obs_info frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%f,%f,%f), age: %d",
+        obs_info_get.pkEmapObs[i].FrameIndex,
+        obs_info_get.pkEmapObs[i].obsID,
+        obs_info_get.pkEmapObs[i].obsTyp,
+        obs_info_get.pkEmapObs[i].obsCenter.x,
+        obs_info_get.pkEmapObs[i].obsCenter.y,
+        obs_info_get.pkEmapObs[i].obsCenter.z,
+        obs_info_get.pkEmapObs[i].age)
+    }
     if (OBS_READY && DEBUG){
         filetojson.SaveObsToJson(obs_info_get,"ObsInfo.json");
     }
-    EMC_perception_fusion_process_GetFieldPkEmapObs(obs_info_get);
 
 
     //***********************************get statemachine
@@ -1070,7 +1082,6 @@ tResult cpsd_fusion_process::OnPreciseEmapGrid(const Fus::PreciseEmapGrid& userD
 }
 
 // Fus::PkEmapObs obs_info;
-
 tResult cpsd_fusion_process::OnPkEmapObs(const Fus::PkEmapObs& userData)
 {
     // if (OBS_READY){

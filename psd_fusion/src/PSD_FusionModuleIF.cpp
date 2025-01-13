@@ -247,10 +247,11 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
 }
 
 void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &stopdis){
+    POINT_I wheelstop_dis, point_a, point_b, point_c, point_d;;
     for (auto &obs : empobs.pkEmapObs){
         if (obs.obsTyp == Fus::OBS_WHEELSTOP){
             Eigen::Vector3f obs_point3f;
-            obs_point3f << obs.obsCenter.x, obs.obsCenter.y, obs.obsCenter.z;
+            obs_point3f << obs.obsCenter.x * 1000.0, obs.obsCenter.y * 1000.0, obs.obsCenter.z * 1000.0;
 
             //TODO
             if (slots_map_.empty()) {
@@ -260,7 +261,9 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
             if (slots_map_.size() < 2) {
                 if (slots_map_.begin()->second->point_in_rect(obs_point3f)){
                     const auto& check_slot = slots_map_.begin()->second;
-                    POINT_I wheelstop_dis, point_a, point_b;
+                    
+                    wheelstop_dis.x = obs_point3f.x();
+                    wheelstop_dis.y = obs_point3f.y();
                 
                     if (check_slot->GetSlotType() == SLOT_TYPE::VERTICALSLOT){
                     point_a.x = check_slot->GetApoint().x();
@@ -270,7 +273,6 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
 
                     stopdis = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
                 }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
-                    POINT_I point_c, point_d;
 
                     point_a.x = check_slot->GetApoint().x();
                     point_a.y = check_slot->GetApoint().y();
@@ -300,7 +302,6 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
             
             // 找到最近的停车位
             if(check_slot->point_in_rect(obs_point3f)){
-                POINT_I wheelstop_dis, point_a, point_b;
                 
                 wheelstop_dis.x = obs_point3f.x();
                 wheelstop_dis.y = obs_point3f.y();
@@ -313,7 +314,6 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
 
                     stopdis = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
                 }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
-                    POINT_I point_c, point_d;
 
                     point_a.x = check_slot->GetApoint().x();
                     point_a.y = check_slot->GetApoint().y();
@@ -540,23 +540,23 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
                     rect_world.rectInfo.pt[i].y = corner_world[i].head<2>().y();
                 }
             }
-            LOGD("[SHRINK] before shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
-                                                                       rect_local.rectInfo.pt[0].y,
-                                                                       rect_local.rectInfo.pt[1].x,
-                                                                       rect_local.rectInfo.pt[1].y,
-                                                                       rect_local.rectInfo.pt[2].x,
-                                                                       rect_local.rectInfo.pt[2].y,
-                                                                       rect_local.rectInfo.pt[3].x,
-                                                                       rect_local.rectInfo.pt[3].y)
+            // LOGD("[SHRINK] before shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
+            //                                                            rect_local.rectInfo.pt[0].y,
+            //                                                            rect_local.rectInfo.pt[1].x,
+            //                                                            rect_local.rectInfo.pt[1].y,
+            //                                                            rect_local.rectInfo.pt[2].x,
+            //                                                            rect_local.rectInfo.pt[2].y,
+            //                                                            rect_local.rectInfo.pt[3].x,
+            //                                                            rect_local.rectInfo.pt[3].y)
             shrink_quad(rect_local); 
-            LOGD("[SHRINK] after shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
-                                                                      rect_local.rectInfo.pt[0].y,
-                                                                      rect_local.rectInfo.pt[1].x,
-                                                                      rect_local.rectInfo.pt[1].y,
-                                                                      rect_local.rectInfo.pt[2].x,
-                                                                      rect_local.rectInfo.pt[2].y,
-                                                                      rect_local.rectInfo.pt[3].x,
-                                                                      rect_local.rectInfo.pt[3].y)
+            // LOGD("[SHRINK] after shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
+            //                                                           rect_local.rectInfo.pt[0].y,
+            //                                                           rect_local.rectInfo.pt[1].x,
+            //                                                           rect_local.rectInfo.pt[1].y,
+            //                                                           rect_local.rectInfo.pt[2].x,
+            //                                                           rect_local.rectInfo.pt[2].y,
+            //                                                           rect_local.rectInfo.pt[3].x,
+            //                                                           rect_local.rectInfo.pt[3].y)
             // rect_world = shrink_quad(rect_world);
             
             slot_res.slots_in_cur_frame.push_back(rect_local);
