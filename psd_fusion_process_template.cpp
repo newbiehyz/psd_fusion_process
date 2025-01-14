@@ -232,7 +232,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     
 
 
-    // part2 输入，上游：RD, DR, peception, VCU select ID, statemachine
+    // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
     //***********************************get rd (frameid and singleframeslot)
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -301,6 +301,10 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
             }
             singleframeslots.push_back(oneslot);
         }
+    }
+    else{
+        LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE NO SLOTS! frameTimeStampNs: %llu",rd_info.frameTimeStampNs);
+
     }
     
 
@@ -376,12 +380,16 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
 
 
-
-
     // part3 算法
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_hold);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
+
+    float stop_dis;
+    PSD_FusionModuleIFrunable.CalStopDistance(obs_info_get, stop_dis);
+    LOGD("Stopper distance: %f",stop_dis);
+
+
 
         
     if (DEBUG == true){
@@ -393,26 +401,68 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         outputSlot_USS.slots_in_cur_frame.clear();
         outputSlot_FUSED.slots_in_cur_frame.clear();
     }
-    // 检查状态3：Update输出
-    LOGD("[CHECK SIZE] after update, vis: %d, uss: %d, fused: %d",outputSlot_VIS.slots_in_cur_frame.size()
-                                                  ,outputSlot_USS.slots_in_cur_frame.size()
-                                                  ,outputSlot_FUSED.slots_in_cur_frame.size());
+
+    //***********************************get USS
+    UssIf_stPLVOutputInfo_t uss_info;
+    S2S_MCore_Bridge_GetSigUssIf_stPLVOutputInfo(&uss_info);
+    if (DEBUG == true){
+        filetojson.SaveUssInfoToJson(uss_info,"USSapaSlotListInfo.json");
+    }
+    fusionslot.fillVisonstruct(uss_info, outputSlot_USS);
+    LOGD("USS SLOT SIZE IS:%d",outputSlot_USS.slots_in_cur_frame.size());
+    auto uss_info_restruct = uss_info;
+    fusionslot.postprocessUSSslots(uss_info_restruct);
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS , outputSlot_FUSED);
     
-    // 清空车位4：最好是把PSD2的变量清空
+    // 清空车位
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
         tempsize = 0;
         singleframeslots.clear();
         outputSlot_FUSED.slots_in_cur_frame.clear();
         outputSlot_VIS.slots_in_cur_frame.clear();
+        outputSlot_USS.slots_in_cur_frame.clear();
         dr_first = true;
         LOGD("dr_first:%d",dr_first);
     }
     
-    // 输出视觉原始角点
+    // 输出VIS USS FUSION车位列表
     for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
-        LOGD("ORIGIN VISSLOTS: TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
         outputSlot_VIS.slots_in_cur_frame.size(),
+        psd_m_output.rectInfo.label,
+        psd_m_output.rectInfo.PStype,
+        psd_m_output.rectInfo.pt[0].x,
+        psd_m_output.rectInfo.pt[0].y,
+        psd_m_output.rectInfo.pt[1].x,
+        psd_m_output.rectInfo.pt[1].y,
+        psd_m_output.rectInfo.pt[2].x,
+        psd_m_output.rectInfo.pt[2].y,
+        psd_m_output.rectInfo.pt[3].x,
+        psd_m_output.rectInfo.pt[3].y);
+    }
+
+    for (auto & psd_m_output : outputSlot_USS.slots_in_cur_frame){
+        LOGD("[ORIGIN USSSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, SOD: %d, DownSlotSOD: %d, iMinOtherSideDist: %d, iRoadEdgeDist: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        outputSlot_USS.slots_in_cur_frame.size(),
+        psd_m_output.rectInfo.label,
+        psd_m_output.rectInfo.PStype,
+        psd_m_output.rectInfo.iSodType,
+        psd_m_output.rectInfo.iDownSlotSOD,
+        psd_m_output.rectInfo.iMinOtherSideDist,
+        psd_m_output.rectInfo.iRoadEdgeDist,
+        psd_m_output.rectInfo.pt[0].x,
+        psd_m_output.rectInfo.pt[0].y,
+        psd_m_output.rectInfo.pt[1].x,
+        psd_m_output.rectInfo.pt[1].y,
+        psd_m_output.rectInfo.pt[2].x,
+        psd_m_output.rectInfo.pt[2].y,
+        psd_m_output.rectInfo.pt[3].x,
+        psd_m_output.rectInfo.pt[3].y);
+    }
+
+    for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
+        LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        outputSlot_USS.slots_in_cur_frame.size(),
         psd_m_output.rectInfo.label,
         psd_m_output.rectInfo.PStype,
         psd_m_output.rectInfo.pt[0].x,
@@ -989,9 +1039,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     LOGD("SELECT ID: %d, aps_parktype = %d, aps_apaParkPlaceNum: %d",final_select_ID,psd2statemachine.aps_apaParkType,psd2statemachine.aps_apaParkPlaceNum);
     S2S_MCore_Bridge_SetSigStatusDecFusionInput(&psd2statemachine);
 
-
-    LOGD("psd2planning size: %d, psd2vcu size:%d, psd2location size: %d",sizeof(psd2planning),sizeof(psd2vcu),sizeof(psd2location));
-    
     auto end = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout<<"[TIMECOST]Timetrigger100 time is:"<< elapsed.count() <<std::endl;
@@ -1021,18 +1068,15 @@ tResult cpsd_fusion_process::OnStatusDecOutput(const StatusDecOutput& userData)
     RETURN_NOERROR;
 }
 
-
-UssIf_stSlotInfo_t PLV_total_slots;
-
 tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo_t& userData)
 {
-    if (DEBUG == true){
-        filetojson.SaveUssInfoToJson(userData,"USSapaSlotListInfo.json");
-    }
-    fusionslot.fillVisonstruct(userData, outputSlot_USS);
-    LOGD("USS SLOT SIZE IS:%d",outputSlot_USS.slots_in_cur_frame.size());
-    auto uss_info = userData;
-    fusionslot.postprocessUSSslots(uss_info);
+    // if (DEBUG == true){
+    //     filetojson.SaveUssInfoToJson(userData,"USSapaSlotListInfo.json");
+    // }
+    // fusionslot.fillVisonstruct(userData, outputSlot_USS);
+    // LOGD("USS SLOT SIZE IS:%d",outputSlot_USS.slots_in_cur_frame.size());
+    // auto uss_info = userData;
+    // fusionslot.postprocessUSSslots(uss_info);
 
     RETURN_NOERROR;
 }

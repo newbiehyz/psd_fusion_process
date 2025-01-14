@@ -266,32 +266,33 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
                     wheelstop_dis.y = obs_point3f.y();
                 
                     if (check_slot->GetSlotType() == SLOT_TYPE::VERTICALSLOT){
-                    point_a.x = check_slot->GetApoint().x();
-                    point_a.y = check_slot->GetApoint().y();
-                    point_b.x = check_slot->GetBpoint().x();
-                    point_b.y = check_slot->GetBpoint().y();
+                        point_a.x = check_slot->GetApoint().x();
+                        point_a.y = check_slot->GetApoint().y();
+                        point_b.x = check_slot->GetBpoint().x();
+                        point_b.y = check_slot->GetBpoint().y();
 
-                    stopdis = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
-                }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
+                        stopdis = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
+                    }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
 
-                    point_a.x = check_slot->GetApoint().x();
-                    point_a.y = check_slot->GetApoint().y();
-                    point_b.x = check_slot->GetBpoint().x();
-                    point_b.y = check_slot->GetBpoint().y();
+                        point_a.x = check_slot->GetApoint().x();
+                        point_a.y = check_slot->GetApoint().y();
+                        point_b.x = check_slot->GetBpoint().x();
+                        point_b.y = check_slot->GetBpoint().y();
 
-                    point_c.x = check_slot->GetCpoint().x();
-                    point_c.y = check_slot->GetCpoint().y();
-                    point_d.x = check_slot->GetDpoint().x();
-                    point_d.y = check_slot->GetDpoint().y();
+                        point_c.x = check_slot->GetCpoint().x();
+                        point_c.y = check_slot->GetCpoint().y();
+                        point_d.x = check_slot->GetDpoint().x();
+                        point_d.y = check_slot->GetDpoint().y();
 
-                    float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
-                    float temp_dis2 = CalPointAndLineDistance(wheelstop_dis, point_a, point_d);
-                    
-                    stopdis = std::max(temp_dis1, temp_dis2); 
-                }else{
+                        float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
+                        float temp_dis2 = CalPointAndLineDistance(wheelstop_dis, point_a, point_d);
+                        
+                        stopdis = std::max(temp_dis1, temp_dis2); 
+                    }
+                else{
                     stopdis = 0.0;
                 }
-                }
+            }
                     
                 return;
             };
@@ -373,6 +374,46 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
                 }else{
                     stopdis = 0.0;
                 }
+                }
+            }
+        }else if(obs.obsTyp == Fus::OBS_SLOT_LOCK){
+            Eigen::Vector3f obs_point3f;
+            obs_point3f << obs.obsCenter.x * 1000.0, obs.obsCenter.y * 1000.0, obs.obsCenter.z * 1000.0;
+            //没找到车位
+            if (slots_map_.empty()) {
+                return;
+            }
+            //只有一个车位
+            if (slots_map_.size() < 2) {
+                if (slots_map_.begin()->second->point_in_rect(obs_point3f)){
+                    LOGD("LOCK IN SLOT");
+               
+                }
+                else{
+                    LOGD("LOCK NOT IN SLOT");
+                }
+            };
+            //多个车位，找到最近的停车位
+            point_t obs_point2f{obs_point3f.x(), obs_point3f.y()};
+            auto nearest_index = slots_tree_->nearest_index(obs_point2f);
+            const auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
+            if(check_slot->point_in_rect(obs_point3f)){
+                LOGD("LOCK IN SLOT");
+            }
+            else{
+                LOGD("LOCK NOT IN SLOT");
+            }
+            //在obs_point2f周围的半径2000mm内搜索其他邻近停车位
+            auto neighbor_indexes = slots_tree_->neighborhood_indices(obs_point2f, 2000);
+            for (const auto& index : neighbor_indexes) {
+                if (index == nearest_index) continue;
+       
+                const auto& check_slot = slots_map_.at(slots_remap_.at(index));
+                if (check_slot->point_in_rect(obs_point3f)){
+                    LOGD("LOCK IN SLOT");
+                }
+                else{
+                    LOGD("LOCK NOT IN SLOT");
                 }
             }
         }

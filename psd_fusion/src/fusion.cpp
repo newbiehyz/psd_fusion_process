@@ -241,18 +241,19 @@ void slotfusion::postprocessUSSslots(UssIf_stPLVOutputInfo_t &total_uss_slot){
 bool slotfusion::deleteinvalidslot(UssIf_stSlotProperty_t uss_slot){
     // delete invalid slots
      // 一个车位有效的条件
-    if (uss_slot.enmSlotType == 0 || uss_slot.enmSlotType == 3) {
-        return false; // 类型为0和3的车位无效
-    }
-
-    if (uss_slot.enmSlotType == 1) {
-        if (uss_slot.u16SlotDepth < 500 || uss_slot.u16SlotLength < 250) {
+    // if (uss_slot.enmSlotType == 0 || uss_slot.enmSlotType == 3) {
+    //     return false; // 类型为0和3的车位无效
+    // }
+    if (uss_slot.enmSlotType == 1) { // chuizhi
+        if (uss_slot.u16SlotDepth < 605 || uss_slot.u16SlotLength < 250) {
+            LOGD("USS_DEL:The USS slot is be deleted!");
             return false; // 类型为1的车位深度小于500或长度小于250无效
         }
     }
 
-    if (uss_slot.enmSlotType == 2) {
-        if (uss_slot.u16SlotDepth < 250 || uss_slot.u16SlotLength < 500) {
+    if (uss_slot.enmSlotType == 2) { // pingxing
+        if (uss_slot.u16SlotDepth < 250 || uss_slot.u16SlotLength < 605) {
+            LOGD("USS_DEL:The USS slot is be deleted!");
             return false; // 类型为2的车位深度小于250或长度小于500无效
         }
     }
@@ -267,7 +268,7 @@ void slotfusion::fillVisonstruct(const UssIf_stPLVOutputInfo_t &total_uss_slot, 
     int USS_total_slotnum = total_uss_slot.UssIf_stSlotInfo[0].u8SlotNum + total_uss_slot.UssIf_stSlotInfo[1].u8SlotNum;
     uss_slots.slots_in_cur_frame.reserve(USS_total_slotnum);
     int slot_id = 10000;
-
+    LOGD("USS_DEL:The USS slot size is:%d",USS_total_slotnum);
     for(int icnt = 0; icnt < 2; icnt++){
         if(total_uss_slot.UssIf_stSlotInfo[icnt].u8SlotNum  != 0){
             for (int i = 0; i < total_uss_slot.UssIf_stSlotInfo[icnt].u8SlotNum; ++i) 
