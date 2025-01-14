@@ -378,10 +378,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
 
 
-
-
-
-
     // part3 算法
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_hold);
@@ -600,14 +596,14 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                 psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
                 psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
                 psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
-                if (final_select_ID > 1000 && final_select_ID < 10000){
+                if (final_select_ID >= 1000 && final_select_ID < 10000){
                     psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
                 }
                 else if (final_select_ID >= 10000){
                     psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_USS;
                 }
-                else {
-                    psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_NULL;
+                else{
+                    psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
                 }
             }
         }

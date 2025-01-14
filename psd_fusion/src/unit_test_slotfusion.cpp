@@ -104,6 +104,39 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
     double translate_x = center_img_x - center_slots_x * scale;
     double translate_y = center_img_y - center_slots_y * scale;
 
+    float obs_x, obs_y;
+    for (int i = 0; i < 50; ++i) {
+        obs_x = (obs.pkEmapObs[i].obsCenter.x * 1000);
+        obs_y = (obs.pkEmapObs[i].obsCenter.y * 1000);
+
+        // 如果坐标为 0，跳过绘制
+        if (obs_x == 0 || obs_y == 0) {
+            continue;
+        }
+
+        // 应用缩放和平移
+        float scaled_obs_x = obs_x * scale + translate_x;
+        float scaled_obs_y = obs_y * scale + translate_y;
+
+        // 绘制圆
+        cv::circle(image, cv::Point(scaled_obs_x, scaled_obs_y), 20, cv::Scalar(0, 0, 0), -1);
+
+        // 准备文字内容
+        std::string text = "(" + std::to_string(static_cast<int>(obs_x)) + ", " +
+                        std::to_string(static_cast<int>(obs_y)) + ")";
+
+        // 确定文本位置（圆的正上方）
+        int text_offset_y = 25; // 文本与圆之间的垂直偏移量
+        cv::Point textPosition(scaled_obs_x, scaled_obs_y - text_offset_y);
+
+        // 绘制文本
+        cv::putText(image, text, textPosition, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
+    }
+
+
+
+    
+
     // 应用缩放和平移并绘制矩形
     auto drawRectangles = [&](const apaSlotListInfo &rectangles, const cv::Scalar &color) {
         for (const auto &rect : rectangles.WorldoutRect) {
@@ -158,13 +191,10 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
                               pose.y * scale + translate_y + rectSize);
 
             cv::rectangle(image, cartopLeft, carbottomRight, color, cv::FILLED);
+
         }
     };
 
-    for (int i = 0; i < 50; ++i){
-        float x = obs.pkEmapObs[i].obsCenter.x * 1000;
-        float y = obs.pkEmapObs[i].obsCenter.y * 1000;
-    }
 
     // 绘制矩形为红色
     drawRectangles(rectanglesA, cv::Scalar(0, 0, 255));
