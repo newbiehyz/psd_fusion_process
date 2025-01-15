@@ -386,11 +386,11 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
             //只有一个车位
             if (slots_map_.size() < 2) {
                 if (slots_map_.begin()->second->point_in_rect(obs_point3f)){
-                    LOGD("LOCK IN SLOT");
+                    // LOGD("LOCK IN SLOT");
                
                 }
                 else{
-                    LOGD("LOCK NOT IN SLOT");
+                    // LOGD("LOCK NOT IN SLOT");
                 }
             };
             //多个车位，找到最近的停车位
@@ -398,10 +398,10 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
             auto nearest_index = slots_tree_->nearest_index(obs_point2f);
             const auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
             if(check_slot->point_in_rect(obs_point3f)){
-                LOGD("LOCK IN SLOT");
+                // LOGD("LOCK IN SLOT");
             }
             else{
-                LOGD("LOCK NOT IN SLOT");
+                // LOGD("LOCK NOT IN SLOT");
             }
             //在obs_point2f周围的半径2000mm内搜索其他邻近停车位
             auto neighbor_indexes = slots_tree_->neighborhood_indices(obs_point2f, 2000);
@@ -410,10 +410,10 @@ void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &st
        
                 const auto& check_slot = slots_map_.at(slots_remap_.at(index));
                 if (check_slot->point_in_rect(obs_point3f)){
-                    LOGD("LOCK IN SLOT");
+                    // LOGD("LOCK IN SLOT");
                 }
                 else{
-                    LOGD("LOCK NOT IN SLOT");
+                    // LOGD("LOCK NOT IN SLOT");
                 }
             }
         }
@@ -489,7 +489,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 }
                 // 已经存在与之对应的车位，用角点信息进行更新
                 slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
-                // slot_existance->Update(quad);
+                slot_existance->Update(quad);
                 
             } else {
                 auto result = std::make_shared<ParkingSlotResult>();

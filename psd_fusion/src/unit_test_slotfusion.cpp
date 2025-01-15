@@ -74,7 +74,8 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
     int maxY = std::numeric_limits<int>::lowest();
 
     auto updateBounds = [&](const apaSlotListInfo &rectangles) {
-        for (const auto &rect : rectangles.WorldoutRect) {
+        // for (const auto &rect : rectangles.WorldoutRect) {
+        for (const auto &rect : rectangles.slots_in_cur_frame) {
             for (const auto &pt : rect.rectInfo.pt) {
                 minX = std::min(minX, pt.x);
                 maxX = std::max(maxX, pt.x);
@@ -104,6 +105,7 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
     double translate_x = center_img_x - center_slots_x * scale;
     double translate_y = center_img_y - center_slots_y * scale;
 
+    // 画障碍物
     float obs_x, obs_y;
     for (int i = 0; i < 50; ++i) {
         obs_x = (obs.pkEmapObs[i].obsCenter.x * 1000);
@@ -119,7 +121,7 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
         float scaled_obs_y = obs_y * scale + translate_y;
 
         // 绘制圆
-        cv::circle(image, cv::Point(scaled_obs_x, scaled_obs_y), 20, cv::Scalar(0, 0, 0), -1);
+        cv::circle(image, cv::Point(scaled_obs_x, scaled_obs_y), 10, cv::Scalar(0, 0, 0), -1);
 
         // 准备文字内容
         std::string text = "(" + std::to_string(static_cast<int>(obs_x)) + ", " +
@@ -133,14 +135,10 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
         cv::putText(image, text, textPosition, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
     }
 
-
-
-    
-
     // 应用缩放和平移并绘制矩形
     auto drawRectangles = [&](const apaSlotListInfo &rectangles, const cv::Scalar &color) {
-        for (const auto &rect : rectangles.WorldoutRect) {
-            
+        // for (const auto &rect : rectangles.WorldoutRect) {
+        for (const auto &rect : rectangles.slots_in_cur_frame) {
             cv::Point center;
             center.x = ((rect.rectInfo.pt[0].x + rect.rectInfo.pt[2].x) / 2.0)* scale + translate_x;
             center.y = ((rect.rectInfo.pt[0].y + rect.rectInfo.pt[2].y) / 2.0)* scale + translate_y;
@@ -180,28 +178,51 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
                 cv::putText(image, text, scaledPoint + cv::Point(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.4, color, 1);
             }
 
-            // 绘制车辆位姿
-            // 定义矩形的大小
-            int rectSize = 30; // 矩形从中心点向四周延伸的像素数
-            cv::Point vehicle_pose(pose.x * scale + translate_x,
-                                   pose.y * scale + translate_y);
-            cv::Point cartopLeft(pose.x * scale + translate_x - rectSize, 
-                              pose.y * scale + translate_y - rectSize);
-            cv::Point carbottomRight(pose.x * scale + translate_x + rectSize, 
-                              pose.y * scale + translate_y + rectSize);
+            // 定义圆形的半径
+            int radius = 30; // 根据需要调整半径大小，单位像素
+            
+            pose.x = 0;
+            pose.y = 0;
 
-            cv::rectangle(image, cartopLeft, carbottomRight, color, cv::FILLED);
+            // 计算车辆中心点在图像上的位置
+            cv::Point vehicle_pose_pt(
+                static_cast<int>(pose.x * scale + translate_x),
+                static_cast<int>(pose.y * scale + translate_y)
+            );
 
-        }
-    };
+            // 将 yaw 角度从度转换为弧度
+            float yaw_rad = pose.canAng * M_PI / 180.0f - M_PI_2;
 
+            // 绘制车辆的圆形表示
+            cv::circle(image, vehicle_pose_pt, radius, color, cv::FILLED);
+    
+            // 可选：绘制圆形边框
+            cv::circle(image, vehicle_pose_pt, radius, cv::Scalar(0, 0, 0), 2);
 
-    // 绘制矩形为红色
-    drawRectangles(rectanglesA, cv::Scalar(0, 0, 255));
+            // 绘制车辆的 yaw 角作为箭头
+            float arrow_length = 70.0f; // 箭头长度，单位像素
 
-    // 保存图像
-    cv::imwrite(filename, image);
-    std::cout << "Image saved to: " << filename << std::endl;
+            // 根据 yaw 角计算箭头终点
+            // 注意：在图像坐标系中，Y 轴向下，因此 sin(yaw_rad) 应该取负
+            cv::Point arrow_end_pt(
+                static_cast<int>(vehicle_pose_pt.x + arrow_length * std::cos(yaw_rad)),
+                static_cast<int>(vehicle_pose_pt.y - arrow_length * std::sin(yaw_rad))
+            );
+
+            // 绘制箭头
+            cv::arrowedLine(image, vehicle_pose_pt, arrow_end_pt, cv::Scalar(255, 0, 0), 2, cv::LINE_AA, 0, 0.3);
+
+            // 可选：在箭头终点添加 "Yaw" 标签
+            cv::putText(image, "Yaw", arrow_end_pt + cv::Point(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 0, 0), 1);
+                }
+            };
+
+            // 绘制矩形为红色
+            drawRectangles(rectanglesA, cv::Scalar(0, 0, 255));
+
+            // 保存图像
+            cv::imwrite(filename, image);
+            std::cout << "Image saved to: " << filename << std::endl;
 }
 
 void drawUSSslotToJPG(const std::string &filename, const UssIf_stPLVOutputInfo_t &data, Loc::App2emap_DR pose, UssIf_stPLVOutputInfo_t post_uss_info){
@@ -326,6 +347,8 @@ void drawUSSslotToJPG(const std::string &filename, const UssIf_stPLVOutputInfo_t
     drawRectangles(post_uss_info, cv::Scalar(0,255,0));
     // 绘制车辆位姿
     int rectSize = 30; // 矩形从中心点向四周延伸的像素数
+    pose.x = 0;
+    pose.y = 0;
     cv::Point vehicle_pose(
         static_cast<int>(pose.x * scale + translate_x),
         static_cast<int>(pose.y * scale + translate_y)
@@ -341,6 +364,119 @@ void drawUSSslotToJPG(const std::string &filename, const UssIf_stPLVOutputInfo_t
     } else {
         std::cerr << "Failed to save image to: " << filename << std::endl;
     }
+}
+
+void drawVCUslotToJPG(const std::string &filename, const Sfus::FusionSlotInfovector &data, Loc::App2emap_DR pose){
+    // 创建空白图像
+    cv::Mat image(800, 800, CV_8UC3, cv::Scalar(255, 255, 255));
+
+    std::string timestampText = "(VCU)timestamp " + std::to_string(0);
+    cv::putText(image, timestampText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 2);
+
+    // 计算输入的全局坐标范围
+    float minX = std::numeric_limits<float>::max();
+    float maxX = std::numeric_limits<float>::lowest();
+    float minY = std::numeric_limits<float>::max();
+    float maxY = std::numeric_limits<float>::lowest();
+
+     // Lambda 函数用于更新坐标范围
+    auto updateBounds = [&](const Sfus::FusionSlotInfovector &info) {
+        for (const auto &pt : info.FusionSlotInfo[0].pt) {
+                    minX = std::min(minX, static_cast<float>(pt.x));
+                    maxX = std::max(maxX, static_cast<float>(pt.x));
+                    minY = std::min(minY, static_cast<float>(pt.y));
+                    maxY = std::max(maxY, static_cast<float>(pt.y));
+                }
+        };
+
+    // 更新坐标范围
+    updateBounds(data);
+
+    // 图像中心点
+    double center_img_x = image.cols / 2.0;
+    double center_img_y = image.rows / 2.0;
+
+    // 矩形的中心点
+    double center_slots_x = (minX + maxX) / 2.0;
+    double center_slots_y = (minY + maxY) / 2.0;
+
+    // 缩放因子，保持宽高比例并留边距
+    double scale_x = (image.cols * 0.8) / (maxX - minX);
+    double scale_y = (image.rows * 0.8) / (maxY - minY);
+    double scale = std::min(scale_x, scale_y);
+
+    // 偏移量（将缩放后的矩形中心移到图像中心）
+    double translate_x = center_img_x;
+    double translate_y = center_img_y;
+
+    // Lambda 函数用于绘制处理前的超声车位矩形和相关信息
+    auto drawRectangles = [&](const Sfus::FusionSlotInfovector &info, const cv::Scalar &color) {
+        // for (const auto &slotInfo : info.FusionSlotInfo) {
+                // 计算矩形中心点
+                float center_x = (info.FusionSlotInfo[0].pt[0].x + info.FusionSlotInfo[0].pt[2].x) / 2.0f;
+                float center_y = (info.FusionSlotInfo[0].pt[0].y + info.FusionSlotInfo[0].pt[2].y) / 2.0f;
+                cv::Point center(
+                    static_cast<int>(center_x * scale + translate_x),
+                    static_cast<int>(center_y * scale + translate_y)
+                );
+
+                // 计算长度和宽度
+                float length = CalcDistance(info.FusionSlotInfo[0].pt[0].x, info.FusionSlotInfo[0].pt[0].y, info.FusionSlotInfo[0].pt[1].x, info.FusionSlotInfo[0].pt[1].y);
+                float width1 = CalcDistance(info.FusionSlotInfo[0].pt[2].x, info.FusionSlotInfo[0].pt[2].y, info.FusionSlotInfo[0].pt[1].x, info.FusionSlotInfo[0].pt[1].y);
+                float width2 = CalcDistance(info.FusionSlotInfo[0].pt[0].x, info.FusionSlotInfo[0].pt[0].y, info.FusionSlotInfo[0].pt[3].x, info.FusionSlotInfo[0].pt[3].y);
+                float width = (width1 + width2) / 2.0f;
+
+                // 添加尺寸文本
+                std::string lw_text = "W: " + std::to_string((int)width) + ", L: " + std::to_string((int)length);
+                cv::putText(image, lw_text, center + cv::Point(0, -10), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+
+                // 缩放和平移点
+                std::vector<cv::Point> scaledPoints;
+                for (int i = 0; i < 4; ++i) {
+                    cv::Point scaledPoint(
+                        static_cast<int>(info.FusionSlotInfo[0].pt[i].x * scale + translate_x),
+                        static_cast<int>(info.FusionSlotInfo[0].pt[i].y * scale + translate_y)
+                    );
+                    scaledPoints.push_back(scaledPoint);
+                }
+
+                // 绘制四边形
+                cv::polylines(image, scaledPoints, true, color, 1);
+
+                // 绘制角点坐标
+                for (int i = 0; i < 4; ++i) {
+                    cv::Point scaledPoint = scaledPoints[i];
+                    cv::circle(image, scaledPoint, 3, color, -1);
+                    std::string text = "(" + std::to_string(static_cast<int>((scaledPoint.x - translate_x)/scale)) + ", " +
+                                       std::to_string(static_cast<int>((scaledPoint.y - translate_y)/scale )) + ")";
+                    cv::putText(image, text, scaledPoint + cv::Point(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.3, color, 1);
+                }
+            // }
+    };
+
+    // 调用绘制函数，使用红色
+    drawRectangles(data, cv::Scalar(0, 0, 255));
+    // 绘制车辆位姿
+    int radius = 10; // 根据需要调整半径大小，单位像素
+    pose.x = 0.0;
+    pose.y = 0.0;
+    cv::Point vehicle_pose(
+        static_cast<int>(pose.x * scale + translate_x),
+        static_cast<int>(pose.y * scale + translate_y)
+    );
+    // 绘制车辆的圆形表示
+    cv::circle(image, vehicle_pose, radius, cv::Scalar(0, 0, 255), cv::FILLED);
+    
+    // 可选：绘制圆形边框
+    cv::putText(image, "Vehicle", vehicle_pose + cv::Point(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+
+    // 保存图像
+    if (cv::imwrite(filename, image)) {
+        std::cout << "Image saved to: " << filename << std::endl;
+    } else {
+        std::cerr << "Failed to save image to: " << filename << std::endl;
+    }
+
 }
 
 void drawRDslotToJPG(const std::string &filename, const rd::QuadParkingSlots &data) {
@@ -422,6 +558,77 @@ void drawRDslotToJPG(const std::string &filename, const rd::QuadParkingSlots &da
     // std::cout << "图像已保存到: " << filename << std::endl;
 }
 
+inline static void Slot2Global(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw)
+{
+    float theta = yaw * acos(-1) / 180.;
+    
+    float slot_Apt_temp_x = slot.targetSlot.slotCorners.cornerA.x * cos(theta) + slot.targetSlot.slotCorners.cornerA.y * sin(theta) + x;
+    float slot_Apt_temp_y = slot.targetSlot.slotCorners.cornerA.y * cos(theta) - slot.targetSlot.slotCorners.cornerA.x * sin(theta) + y;
+    
+    float slot_Bpt_temp_x = slot.targetSlot.slotCorners.cornerB.x * cos(theta) + slot.targetSlot.slotCorners.cornerB.y * sin(theta) + x;
+    float slot_Bpt_temp_y = slot.targetSlot.slotCorners.cornerB.y * cos(theta) - slot.targetSlot.slotCorners.cornerB.x * sin(theta) + y;
+
+    float slot_Cpt_temp_x = slot.targetSlot.slotCorners.cornerC.x * cos(theta) + slot.targetSlot.slotCorners.cornerC.y * sin(theta) + x;
+    float slot_Cpt_temp_y = slot.targetSlot.slotCorners.cornerC.y * cos(theta) - slot.targetSlot.slotCorners.cornerC.x * sin(theta) + y;
+
+    float slot_Dpt_temp_x = slot.targetSlot.slotCorners.cornerD.x * cos(theta) + slot.targetSlot.slotCorners.cornerD.y * sin(theta) + x;
+    float slot_Dpt_temp_y = slot.targetSlot.slotCorners.cornerD.y * cos(theta) - slot.targetSlot.slotCorners.cornerD.x * sin(theta) + y;
+    
+    slot.targetSlot.slotCorners.cornerA.x = slot_Apt_temp_x;
+    slot.targetSlot.slotCorners.cornerA.y = slot_Apt_temp_y;
+
+    slot.targetSlot.slotCorners.cornerB.x = slot_Bpt_temp_x;
+    slot.targetSlot.slotCorners.cornerB.y = slot_Bpt_temp_y;
+
+    slot.targetSlot.slotCorners.cornerC.x = slot_Cpt_temp_x;
+    slot.targetSlot.slotCorners.cornerC.y = slot_Cpt_temp_y;
+    
+    slot.targetSlot.slotCorners.cornerD.x = slot_Dpt_temp_x;
+    slot.targetSlot.slotCorners.cornerD.y = slot_Dpt_temp_y;
+}
+
+inline static void Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw)
+{
+    float theta = yaw * static_cast<float>(M_PI) / 180.0f;
+
+    float tmp_A_x = slot.targetSlot.slotCorners.cornerA.x - x;
+    float tmp_A_y = slot.targetSlot.slotCorners.cornerA.y - y;
+    float tmp_B_x = slot.targetSlot.slotCorners.cornerB.x - x;
+    float tmp_B_y = slot.targetSlot.slotCorners.cornerB.y - y;
+    float tmp_C_x = slot.targetSlot.slotCorners.cornerC.x - x;
+    float tmp_C_y = slot.targetSlot.slotCorners.cornerC.y - y;
+    float tmp_D_x = slot.targetSlot.slotCorners.cornerD.x - x;
+    float tmp_D_y = slot.targetSlot.slotCorners.cornerD.y - y;
+    
+    float slot_Apt_temp_x = tmp_A_x * cos(theta) - tmp_A_y * sin(theta);
+    float slot_Apt_temp_y = tmp_A_x * sin(theta) + tmp_A_y * cos(theta);
+    
+    float slot_Bpt_temp_x = tmp_B_x * cos(theta) - tmp_B_y * sin(theta);
+    float slot_Bpt_temp_y = tmp_B_x * sin(theta) + tmp_B_y * cos(theta);
+
+    float slot_Cpt_temp_x = tmp_C_x * cos(theta) - tmp_C_y * sin(theta);
+    float slot_Cpt_temp_y = tmp_C_x * sin(theta) + tmp_C_y * cos(theta);
+
+    float slot_Dpt_temp_x = tmp_D_x * cos(theta) - tmp_D_y * sin(theta);
+    float slot_Dpt_temp_y = tmp_D_x * sin(theta) + tmp_D_y * cos(theta);
+    
+    slot.targetSlot.slotCorners.cornerA.x = slot_Apt_temp_x;
+    slot.targetSlot.slotCorners.cornerA.y = slot_Apt_temp_y;
+
+    slot.targetSlot.slotCorners.cornerB.x = slot_Bpt_temp_x;
+    slot.targetSlot.slotCorners.cornerB.y = slot_Bpt_temp_y;
+
+    slot.targetSlot.slotCorners.cornerC.x = slot_Cpt_temp_x;
+    slot.targetSlot.slotCorners.cornerC.y = slot_Cpt_temp_y;
+    
+    slot.targetSlot.slotCorners.cornerD.x = slot_Dpt_temp_x;
+    slot.targetSlot.slotCorners.cornerD.y = slot_Dpt_temp_y;
+}
+
+float degreesToRadians(float degrees){
+    return degrees * static_cast<float>(M_PI) / 180.0f;
+}
+
 std::vector<json> allRDData;
 std::vector<json> allDRData;
 std::vector<json> allAPAStatusData;
@@ -430,7 +637,6 @@ std::vector<json> allSelectSlot2Data;
 std::vector<json> allObsData;
 std::vector<json> allVisionData;
 std::vector<json> allUSSData;
-
 bool rd_dataloaded = false;
 bool dr_dataloaded = false;
 bool apastatus_dataloaded = false;
@@ -520,7 +726,7 @@ void TimeTrigger_Timer50(){
             rd_info.quadParkingSlotList.push_back(slot);
         }
     std::string jpg = "RD_" + std::to_string(rd_info.frameTimeStampNs) + ".jpg";
-    drawRDslotToJPG(jpg, rd_info);
+    // drawRDslotToJPG(jpg, rd_info);
     
     // Get DR info
     if (!dr_dataloaded){
@@ -568,54 +774,6 @@ void TimeTrigger_Timer50(){
 
         std::cout<<"FrameIndex:"<<obs_info.pkEmapObs[obs_index].FrameIndex<<std::endl;
     }
-
-
-    // //Get apastatus info
-    // if (!apastatus_dataloaded){
-    //     std::string filepath = (parentPath / "APAStatus.json").string();
-    //     loadAllData(filepath, allAPAStatusData);
-    //     apastatus_dataloaded = true;
-    // }
-    // static size_t currentIndex = 0;
-    // if(currentIndex >= allAPAStatusData.size()){
-    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
-    //     return;
-    // }
-    // const auto &apastatus_data = allAPAStatusData[currentIndex];
-    // int  apa_status;
-    // apa_status = apastatus_data["aps_apaStatusReq"];
-
-    // //Get selectslot(VCU) info
-    // if (!selectslot_dataloaded){
-    //     std::string filepath = (parentPath / "SelectSlot.json").string();
-    //     loadAllData(filepath, allSelectSlotData);
-    //     selectslot_dataloaded = true;
-    // }
-    // static size_t currentIndex = 0;
-    // if(currentIndex >= allSelectSlotData.size()){
-    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
-    //     return;
-    // }
-    // const auto &selectslot_data = allSelectSlotData[currentIndex];
-    // int  VCU_select_ID_ON;
-    // VCU_select_ID_ON = selectslot_data["SelectSlotID"];
-
-
-    // //Get selectslot2(HMI) info
-    // if (!selectslot2_dataloaded){
-    //     std::string filepath = (parentPath / "SelectSlot2.json").string();
-    //     loadAllData(filepath, allSelectSlot2Data);
-    //     selectslot2_dataloaded = true;
-    // }
-    // static size_t currentIndex = 0;
-    // if(currentIndex >= allSelectSlot2Data.size()){
-    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
-    //     return;
-    // }
-    // const auto &selectslot2_data = allSelectSlotData2[currentIndex];
-    // int  HMI_select_ID;
-    // HMI_select_ID = selectslot2_data["SelectSlotID"];
-
 
     padVehiclePose  pose_globaldata;
 
@@ -669,6 +827,51 @@ void TimeTrigger_Timer50(){
         is_init = true;
     }
     
+    // //Get apastatus info
+    // if (!apastatus_dataloaded){
+    //     std::string filepath = (parentPath / "APAStatus.json").string();
+    //     loadAllData(filepath, allAPAStatusData);
+    //     apastatus_dataloaded = true;
+    // }
+    // static size_t currentIndex = 0;
+    // if(currentIndex >= allAPAStatusData.size()){
+    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
+    //     return;
+    // }
+    // const auto &apastatus_data = allAPAStatusData[currentIndex];
+    // int  apa_status;
+    // apa_status = apastatus_data["aps_apaStatusReq"];
+
+    // //Get selectslot(VCU) info
+    // if (!selectslot_dataloaded){
+    //     std::string filepath = (parentPath / "SelectSlot.json").string();
+    //     loadAllData(filepath, allSelectSlotData);
+    //     selectslot_dataloaded = true;
+    // }
+    // static size_t currentIndex = 0;
+    // if(currentIndex >= allSelectSlotData.size()){
+    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
+    //     return;
+    // }
+    // const auto &selectslot_data = allSelectSlotData[currentIndex];
+    // int  VCU_select_ID_ON;
+    // VCU_select_ID_ON = selectslot_data["SelectSlotID"];
+
+
+    // //Get selectslot2(HMI) info
+    // if (!selectslot2_dataloaded){
+    //     std::string filepath = (parentPath / "SelectSlot2.json").string();
+    //     loadAllData(filepath, allSelectSlot2Data);
+    //     selectslot2_dataloaded = true;
+    // }
+    // static size_t currentIndex = 0;
+    // if(currentIndex >= allSelectSlot2Data.size()){
+    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
+    //     return;
+    // }
+    // const auto &selectslot2_data = allSelectSlotData2[currentIndex];
+    // int  HMI_select_ID;
+    // HMI_select_ID = selectslot2_data["SelectSlotID"];
 
     pose_globaldata.coord.x = int(dr_pose.x);
     pose_globaldata.coord.y = int(dr_pose.y);
@@ -682,7 +885,7 @@ void TimeTrigger_Timer50(){
     
     apaSlotListInfo outputSlot_CALVIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     std::cout<<"Update vision slot size: "<< outputSlot_CALVIS.WorldoutRect.size()<<std::endl;
-    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_CALVIS, dr_pose, obs_info);
+    // drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_CALVIS, dr_pose);
 
     // ********************************Load Obs data
     // Calculate stop distance
@@ -697,91 +900,202 @@ void TimeTrigger_Timer50(){
     // // obs.pkEmapObs[1].obsCenter.y = 2280;
     // obs.pkEmapObs[1].obsCenter.x = 3800;
     // obs.pkEmapObs[1].obsCenter.y = 6300;
-    float stop_dis;
+    float stop_dis = 0.0;
     PSD_FusionModuleIFrunable.CalStopDistance(obs_info, stop_dis);
     std::cout<<"Stop distance:"<<stop_dis<<std::endl;
 
     // *******************************Load original USS data 
     // Get USS info
-    // if (!uss_dataloaded){
-    //     std::string filepath = (parentPath / "USSapaSlotListInfo.json").string();    
-    //     loadAllData(filepath, allUSSData);
-    //     uss_dataloaded = true;
-    // }
-    // static size_t currentUSSIndex = 0;
-    // if(currentUSSIndex >= allUSSData.size()){
-    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
-    //     return;
-    // }
-    // const auto &uss_data = allUSSData[currentUSSIndex];
-    // UssIf_stPLVOutputInfo_t uss_info;
-    // uss_info.enmPLVActiveSts =  static_cast<UssIf_enmActiveSts_t>((int)uss_data["enmPLVActiveSts"]);
-    // // 解析 UssIf_stSlotInfo 数组
-    // const auto& slotInfoArray = uss_data["UssIf_stSlotInfo"];
-    // size_t slot_info_size = sizeof(uss_info.UssIf_stSlotInfo)/sizeof(uss_info.UssIf_stSlotInfo[0]);
-    // // 注意：UssIf_stSlotInfo是std::array大小为4，如果JSON中超过4个只取前4个，少于4个则只解析那么多。
-    // for (size_t i = 0; i < slot_info_size && i < slotInfoArray.size(); ++i) {
-    //     const auto& slotInfoJson = slotInfoArray[i];
-    //     UssIf_stSlotInfo_t uss_slot_info;
-    //     uss_slot_info.u8SlotNum = slotInfoJson["u8SlotNum"];
+    if (!uss_dataloaded){
+        std::string filepath = (parentPath / "USSapaSlotListInfo.json").string();    
+        loadAllData(filepath, allUSSData);
+        uss_dataloaded = true;
+    }
+    static size_t currentUSSIndex = 0;
+    if(currentUSSIndex >= allUSSData.size()){
+        // std::cout<<"所有数据已处理完毕"<<std::endl;
+        return;
+    }
+    const auto &uss_data = allUSSData[currentUSSIndex];
+    UssIf_stPLVOutputInfo_t uss_info;
+    uss_info.enmPLVActiveSts =  static_cast<UssIf_enmActiveSts_t>((int)uss_data["enmPLVActiveSts"]);
+    // 解析 UssIf_stSlotInfo 数组
+    const auto& slotInfoArray = uss_data["UssIf_stSlotInfo"];
+    size_t slot_info_size = sizeof(uss_info.UssIf_stSlotInfo)/sizeof(uss_info.UssIf_stSlotInfo[0]);
+    // 注意：UssIf_stSlotInfo是std::array大小为4，如果JSON中超过4个只取前4个，少于4个则只解析那么多。
+    for (size_t i = 0; i < slot_info_size && i < slotInfoArray.size(); ++i) {
+        const auto& slotInfoJson = slotInfoArray[i];
+        UssIf_stSlotInfo_t uss_slot_info;
+        uss_slot_info.u8SlotNum = slotInfoJson["u8SlotNum"];
 
-    //     const auto& slotPropArray = slotInfoJson["UssIf_stSlotProperty"];
-    //     // UssIf_stSlotProperty为std::array大小为3，同理进行安全访问
-    //     size_t slot_prop_size = sizeof(uss_slot_info.UssIf_stSlotProperty)/sizeof(uss_slot_info.UssIf_stSlotProperty[0]);
-    //     for (size_t p = 0; p < slot_prop_size && p < slotPropArray.size(); ++p) {
-    //         const auto& slotPropJson = slotPropArray[p];
-    //         UssIf_stSlotProperty_t uss_slot_prop;
-    //         uss_slot_prop.u16SlotID = slotPropJson["u16SlotID"];
-    //         uss_slot_prop.enmSlotType = static_cast<UssIf_enmSlotType_t>((int)slotPropJson["enmSlotType"]);
-    //         uss_slot_prop.enmSlotBottomType = static_cast<UssIf_enmSlotBottomType_t>((int)slotPropJson["enmSlotBottomType"]);
-    //         uss_slot_prop.u16SlotLength = slotPropJson["u16SlotLength"];
-    //         uss_slot_prop.u16SlotDepth = slotPropJson["u16SlotDepth"];
-    //         uss_slot_prop.u64Timestamp = slotPropJson["u64Timestamp"];
+        const auto& slotPropArray = slotInfoJson["UssIf_stSlotProperty"];
+        // UssIf_stSlotProperty为std::array大小为3，同理进行安全访问
+        size_t slot_prop_size = sizeof(uss_slot_info.UssIf_stSlotProperty)/sizeof(uss_slot_info.UssIf_stSlotProperty[0]);
+        for (size_t p = 0; p < slot_prop_size && p < slotPropArray.size(); ++p) {
+            const auto& slotPropJson = slotPropArray[p];
+            UssIf_stSlotProperty_t uss_slot_prop;
+            uss_slot_prop.u16SlotID = slotPropJson["u16SlotID"];
+            uss_slot_prop.enmSlotType = static_cast<UssIf_enmSlotType_t>((int)slotPropJson["enmSlotType"]);
+            uss_slot_prop.enmSlotBottomType = static_cast<UssIf_enmSlotBottomType_t>((int)slotPropJson["enmSlotBottomType"]);
+            uss_slot_prop.u16SlotLength = slotPropJson["u16SlotLength"];
+            uss_slot_prop.u16SlotDepth = slotPropJson["u16SlotDepth"];
+            uss_slot_prop.u64Timestamp = slotPropJson["u64Timestamp"];
 
-    //         // 解析 stSlotPt (4个点)
-    //         const auto& slotPtArray = slotPropJson["stSlotPt"];
-    //         size_t slot_pt_size = sizeof(uss_slot_prop.stSlotPt)/sizeof(uss_slot_prop.stSlotPt[0]);
-    //         for (size_t ptIdx = 0; ptIdx < slot_pt_size && ptIdx < slotPtArray.size(); ++ptIdx) {
-    //             uss_slot_prop.stSlotPt[ptIdx].x = slotPtArray[ptIdx]["x"];
-    //             uss_slot_prop.stSlotPt[ptIdx].y = slotPtArray[ptIdx]["y"];
-    //         }
+            // 解析 stSlotPt (4个点)
+            const auto& slotPtArray = slotPropJson["stSlotPt"];
+            size_t slot_pt_size = sizeof(uss_slot_prop.stSlotPt)/sizeof(uss_slot_prop.stSlotPt[0]);
+            for (size_t ptIdx = 0; ptIdx < slot_pt_size && ptIdx < slotPtArray.size(); ++ptIdx) {
+                uss_slot_prop.stSlotPt[ptIdx].x = slotPtArray[ptIdx]["x"];
+                uss_slot_prop.stSlotPt[ptIdx].y = slotPtArray[ptIdx]["y"];
+            }
 
-    //         // // 如果有 stInSlotObstaclePt
-    //         // if (slotPropJson.contains("stInSlotObstaclePt")) {
-    //         //     const auto& obsPtArray = slotPropJson["stInSlotObstaclePt"];
-    //         //     for (size_t obsIdx = 0; obsIdx < uss_slot_prop.stInSlotObstaclePt.size() && obsIdx < obsPtArray.size(); ++obsIdx) {
-    //         //         uss_slot_prop.stInSlotObstaclePt[obsIdx].x = obsPtArray[obsIdx]["x"];
-    //         //         uss_slot_prop.stInSlotObstaclePt[obsIdx].y = obsPtArray[obsIdx]["y"];
-    //         //     }
-    //         // }
+            // // 如果有 stInSlotObstaclePt
+            // if (slotPropJson.contains("stInSlotObstaclePt")) {
+            //     const auto& obsPtArray = slotPropJson["stInSlotObstaclePt"];
+            //     for (size_t obsIdx = 0; obsIdx < uss_slot_prop.stInSlotObstaclePt.size() && obsIdx < obsPtArray.size(); ++obsIdx) {
+            //         uss_slot_prop.stInSlotObstaclePt[obsIdx].x = obsPtArray[obsIdx]["x"];
+            //         uss_slot_prop.stInSlotObstaclePt[obsIdx].y = obsPtArray[obsIdx]["y"];
+            //     }
+            // }
 
-    //         // 解析剩余字段
-    //         if (slotPropJson.contains("u16UssOppositeSpace")) uss_slot_prop.u16UssOppositeSpace = slotPropJson["u16UssOppositeSpace"];
-    //         if (slotPropJson.contains("u16UssTransverseSpace")) uss_slot_prop.u16UssTransverseSpace = slotPropJson["u16UssTransverseSpace"];
-    //         if (slotPropJson.contains("u16ObjDistanceBetweenLineABToSlotBottom")) uss_slot_prop.u16ObjDistanceBetweenLineABToSlotBottom = slotPropJson["u16ObjDistanceBetweenLineABToSlotBottom"];
-    //         if (slotPropJson.contains("enmDownSlotSODType")) uss_slot_prop.enmDownSlotSODType = static_cast<UssIf_enmDownSlotSODType_t>((int)slotPropJson["enmDownSlotSODType"]);
+            // 解析剩余字段
+            if (slotPropJson.contains("u16UssOppositeSpace")) uss_slot_prop.u16UssOppositeSpace = slotPropJson["u16UssOppositeSpace"];
+            if (slotPropJson.contains("u16UssTransverseSpace")) uss_slot_prop.u16UssTransverseSpace = slotPropJson["u16UssTransverseSpace"];
+            if (slotPropJson.contains("u16ObjDistanceBetweenLineABToSlotBottom")) uss_slot_prop.u16ObjDistanceBetweenLineABToSlotBottom = slotPropJson["u16ObjDistanceBetweenLineABToSlotBottom"];
+            if (slotPropJson.contains("enmDownSlotSODType")) uss_slot_prop.enmDownSlotSODType = static_cast<UssIf_enmDownSlotSODType_t>((int)slotPropJson["enmDownSlotSODType"]);
 
-    //         uss_slot_info.UssIf_stSlotProperty[p] = uss_slot_prop;
-    //     }
+            uss_slot_info.UssIf_stSlotProperty[p] = uss_slot_prop;
+        }
 
-    //     uss_info.UssIf_stSlotInfo[i] = uss_slot_info;
-    // }
+        uss_info.UssIf_stSlotInfo[i] = uss_slot_info;
+    }
 
-    // auto pre_post_uss_slots = uss_info;
-    // slotfusion sf;
-    // sf.mergeUSSleftandright(total_slots, uss_info);
-    // sf.postprocessUSSslots(uss_info);
+    auto pre_post_uss_slots = uss_info;
+    slotfusion sf;
+    apaSlotListInfo outputSlotUSS;
+    
+    uint32_t time1 = uss_info.UssIf_stSlotInfo[0].UssIf_stSlotProperty[0].u64Timestamp;
+
+    sf.fillVisonstruct(uss_info, outputSlotUSS);
+    sf.postprocessUSSslots(uss_info);
     // std::string uss_jpg = "USS_" + std::to_string(uss_info.UssIf_stSlotInfo->UssIf_stSlotProperty[0].u64Timestamp) + ".jpg";
+    int index = 0;
+    std::string uss_jpg = "USS_" + std::to_string(index) + ".jpg";
+    // index++;
     // drawUSSslotToJPG(uss_jpg, pre_post_uss_slots, dr_pose, uss_info);
 
-    // apaSlotListInfo outputSlot_FUSED;
+    apaSlotListInfo outputSlot_FUSED;
     
-    // sf.mergeSlotLists(apaUSSSlotlistInfos, apaSlotlistInfos, outputSlot_FUSED);
+    sf.mergeSlotLists(outputSlotUSS, outputSlot_CALVIS, outputSlot_FUSED);
+    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_FUSED, dr_pose, obs_info);
+    
+
+    // test VCU 
+    Sfus::FusionSlotInfovector vcu_slot;
+    Sfus::Sfsuion2DecPlan target_slot;
+
+    // 360 degree
+    // vcu_slot.FusionSlotInfo[0].pt[0].x = -1.526200;
+    // vcu_slot.FusionSlotInfo[0].pt[0].y = 1.952000;
+    // vcu_slot.FusionSlotInfo[0].pt[1].x = -1.421200;
+    // vcu_slot.FusionSlotInfo[0].pt[1].y = 7.711000;
+    // vcu_slot.FusionSlotInfo[0].pt[2].x = -3.794200;
+    // vcu_slot.FusionSlotInfo[0].pt[2].y = 7.760000;
+    // vcu_slot.FusionSlotInfo[0].pt[3].x = -3.899200;
+    // vcu_slot.FusionSlotInfo[0].pt[3].y = 2.001000;
+    // target_slot.targetSlot.slotCorners.cornerA.x = 2001.0;
+    // target_slot.targetSlot.slotCorners.cornerA.y = 224.0;
+    // target_slot.targetSlot.slotCorners.cornerB.x = 1952.0;
+    // target_slot.targetSlot.slotCorners.cornerB.y = 2597.0;
+    // target_slot.targetSlot.slotCorners.cornerC.x = 7711.0;
+    // target_slot.targetSlot.slotCorners.cornerC.y = 2702.0;
+    // target_slot.targetSlot.slotCorners.cornerD.x = 7760.0;
+    // target_slot.targetSlot.slotCorners.cornerD.y = 329.0;
+    // int dr_cul_x = 251;
+    // int dr_cul_y = -8438;
+    // float dr_cul_theta = 4.778870;
+
+    // 180 degree
+    // vcu_slot.FusionSlotInfo[0].pt[0].x = -0.428200;
+    // vcu_slot.FusionSlotInfo[0].pt[0].y = -2.104000;
+    // vcu_slot.FusionSlotInfo[0].pt[1].x = -2.700200;
+    // vcu_slot.FusionSlotInfo[0].pt[1].y = -2.013000;
+    // vcu_slot.FusionSlotInfo[0].pt[2].x = -2.902200;
+    // vcu_slot.FusionSlotInfo[0].pt[2].y = -7.738000;
+    // vcu_slot.FusionSlotInfo[0].pt[3].x = -0.630200;
+    // vcu_slot.FusionSlotInfo[0].pt[3].y = -7.829000;
+    // target_slot.targetSlot.slotCorners.cornerA.x = -2013.0;
+    // target_slot.targetSlot.slotCorners.cornerA.y = 1423.0;
+    // target_slot.targetSlot.slotCorners.cornerB.x = -2104.0;
+    // target_slot.targetSlot.slotCorners.cornerB.y = 3695.0;
+    // target_slot.targetSlot.slotCorners.cornerC.x = -7829.0;
+    // target_slot.targetSlot.slotCorners.cornerC.y = 3493.0;
+    // target_slot.targetSlot.slotCorners.cornerD.x = -7738.0;
+    // target_slot.targetSlot.slotCorners.cornerD.y = 1221.0;
+    // int dr_cul_x = -16413;
+    // int dr_cul_y = 38608;
+    // float dr_cul_theta = -177.667236;
+
+    // 270 degree
+    // vcu_slot.FusionSlotInfo[0].pt[0].x = -1.919200;
+    // vcu_slot.FusionSlotInfo[0].pt[0].y = 1.764000;
+    // vcu_slot.FusionSlotInfo[0].pt[1].x = -2.097200;
+    // vcu_slot.FusionSlotInfo[0].pt[1].y = 7.534000;
+    // vcu_slot.FusionSlotInfo[0].pt[2].x = -4.541200;
+    // vcu_slot.FusionSlotInfo[0].pt[2].y = 7.472000;
+    // vcu_slot.FusionSlotInfo[0].pt[3].x = -4.363200;
+    // vcu_slot.FusionSlotInfo[0].pt[3].y = 1.702000;
+    // target_slot.targetSlot.slotCorners.cornerA.x = 1702.0;
+    // target_slot.targetSlot.slotCorners.cornerA.y = -240.0;
+    // target_slot.targetSlot.slotCorners.cornerB.x = 1764.0;
+    // target_slot.targetSlot.slotCorners.cornerB.y = 2204.0;
+    // target_slot.targetSlot.slotCorners.cornerC.x = 7534.0;
+    // target_slot.targetSlot.slotCorners.cornerC.y = 2026.0;
+    // target_slot.targetSlot.slotCorners.cornerD.x = 7472.0;
+    // target_slot.targetSlot.slotCorners.cornerD.y = -418.0;
+    // int dr_cul_x = 49064;
+    // int dr_cul_y = -3957;
+    // float dr_cul_theta = -86.83;
+
+    // if (dr_pose.timeStamp > 1736143069604){   // 360 degree
+    // if (dr_pose.timeStamp > 1736132099769){  //180 degree      
+    // // if (dr_pose.timeStamp > 1736227520046){   //270 degree 
+    //     Slot2Global(target_slot, dr_cul_x, dr_cul_y, dr_cul_theta);
+    //     Slot2Local(target_slot, dr_pose.x, dr_pose.y, dr_pose.canAng);
+    // }
+          
+    
+    // if (target_slot.targetSlot.slotCorners.cornerA.x <= 0 ||  target_slot.targetSlot.slotCorners.cornerB.x <= 0){
+    //     vcu_slot.FusionSlotInfo[0].pt[0].x = (target_slot.targetSlot.slotCorners.cornerB.y) / 1000.0;
+    //     vcu_slot.FusionSlotInfo[0].pt[0].y = target_slot.targetSlot.slotCorners.cornerB.x / 1000.0;
+
+    //     vcu_slot.FusionSlotInfo[0].pt[1].x = (target_slot.targetSlot.slotCorners.cornerA.y) / 1000.0;
+    //     vcu_slot.FusionSlotInfo[0].pt[1].y = target_slot.targetSlot.slotCorners.cornerA.x / 1000.0;
+        
+    //     vcu_slot.FusionSlotInfo[0].pt[2].x = (target_slot.targetSlot.slotCorners.cornerD.y) / 1000.0;
+    //     vcu_slot.FusionSlotInfo[0].pt[2].y = target_slot.targetSlot.slotCorners.cornerD.x / 1000.0;
+        
+    //     vcu_slot.FusionSlotInfo[0].pt[3].x = (target_slot.targetSlot.slotCorners.cornerC.y) / 1000.0;
+    //     vcu_slot.FusionSlotInfo[0].pt[3].y = target_slot.targetSlot.slotCorners.cornerC.x / 1000.0;
+    // }else{
+    //     vcu_slot.FusionSlotInfo[0].pt[0].x = (target_slot.targetSlot.slotCorners.cornerB.y) / 1000.0;
+    //     vcu_slot.FusionSlotInfo[0].pt[0].y = target_slot.targetSlot.slotCorners.cornerB.x / 1000.0;
+
+    //     vcu_slot.FusionSlotInfo[0].pt[1].x = (target_slot.targetSlot.slotCorners.cornerC.y) / 1000.0;
+    //     vcu_slot.FusionSlotInfo[0].pt[1].y = target_slot.targetSlot.slotCorners.cornerC.x / 1000.0;
+        
+    //     vcu_slot.FusionSlotInfo[0].pt[2].x = (target_slot.targetSlot.slotCorners.cornerD.y) / 1000.0;
+    //     vcu_slot.FusionSlotInfo[0].pt[2].y = target_slot.targetSlot.slotCorners.cornerD.x / 1000.0;
+        
+    //     vcu_slot.FusionSlotInfo[0].pt[3].x = (target_slot.targetSlot.slotCorners.cornerA.y) / 1000.0;
+    //     vcu_slot.FusionSlotInfo[0].pt[3].y = target_slot.targetSlot.slotCorners.cornerA.x / 1000.0;
+    // }
+    // drawVCUslotToJPG("VCU slot.jpg", vcu_slot, dr_pose);
 
     currentIndex++;
     currentDRIndex++;
     // currentVisionIndex++;
-    // currentUSSIndex++;
+    currentUSSIndex++;
     currentOBSIndex++;
 }
 
@@ -794,7 +1108,7 @@ int main(int argc, char **argv) {
         // 计算已经消耗的时间
         auto end = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
+        std::cout<<"Algo time is:"<< elapsed.count() <<std::endl;
         // 计算需要等待的时间，确保每次循环间隔为50毫秒
         auto sleepTime = std::chrono::milliseconds(100) - elapsed;
         if (sleepTime > std::chrono::milliseconds(0)) {

@@ -25,7 +25,8 @@ Fsm::FusionSlotInfo2Location psd2location;
 
 int HMI_select_ID = 0; //HMI只发1s。HMI_select是HMI发的ID，
 int HMI_temp_ID = 0;  //HMI_temp_ID是存下来的ID
-int VCU_select_ID_ON = 0; //VCU发送的ID
+// int VCU_select_ID_ON = 0; //VCU发送的ID
+int VCU_select_ID_GET = 0; //用GET获取的VCU发送的ID
 int final_select_ID = 0; //VCU和HMI最终统一的ID
 
 CDT_PSD_FUSION_PROCESS_TEMPLATE(cpsd_fusion_process)
@@ -238,16 +239,15 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     unsigned long long singleframeslotsID;
     std::vector<padVisionSlotCoord> singleframeslots;  //中间结构体，转存rd单帧车位列表
     padVisionSlotCoord oneslot; 
-
+    
     EMC_TROS_Bridge_Parking_GetFieldQuadParkingSlots(rd_info); //rd::Header, rd::QuadParkingSlot
     if (DEBUG == true){
         filetojson.SaveQuadParkingSlotsInfoToJson(rd_info, "RDinfo.json");
     }
 
     //frameid
-    // LOGD("[INPUT rd_info timestampNs] J5 SEND timestampNs: %llu",rd_info.frameTimeStampNs);
+    LOGD("[INPUT rd_info timestampNs] J5 SEND timestampNs: %llu",rd_info.frameTimeStampNs);
     singleframeslotsID = rd_info.frameTimeStampNs;
-    // LOGD("[INPUT rd_info timestampNs] S32G RECEIVE timestampNs: %llu",singleframeslotsID);
 
     //singleframeslot
     if (!rd_info.quadParkingSlotList.empty()){
@@ -304,7 +304,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     }
     else{
         LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE NO SLOTS! frameTimeStampNs: %llu",rd_info.frameTimeStampNs);
-
     }
     
 
@@ -329,9 +328,10 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
     //***********************************get perception
     Fus::PkEmapObs obs_info_get;
+
     EMC_perception_fusion_process_GetFieldPkEmapObs(obs_info_get);
     for (int i = 0; i < 50; ++i){
-        LOGD("INPUT obs_info frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%f,%f,%f), age: %d",
+        LOGD("[INPUT obs_info] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%f,%f,%f), age: %d",
         obs_info_get.pkEmapObs[i].FrameIndex,
         obs_info_get.pkEmapObs[i].obsID,
         obs_info_get.pkEmapObs[i].obsTyp,
@@ -347,14 +347,24 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
     //***********************************get statemachine
     StatusDecOutput statemachine_info;
+
     S2S_MCore_Bridge_GetSigStatusDecOutput(&statemachine_info);
-    LOGD("S2S_MCore_Bridge_GetSigStatusDecOutput APASTATUS: %d",statemachine_info.aps_apaStatusReq);
+    LOGD("[INPUT apastatus]: %d",statemachine_info.aps_apaStatusReq);
+    apa_status = statemachine_info.aps_apaStatusReq;
+    if (DEBUG == true){
+        filetojson.SaveApastatusToJson(statemachine_info, "APAStatus.json");
+    }
 
 
     //***********************************get VCU select slot
     Sfus::SelectSlot VCU_select_ID;
+
     EMC_SoAd_Bridge_GetFieldSelectSlot(VCU_select_ID);
-    LOGD("EMC_SoAd_Bridge_GetFieldSelectSlot GET VCU ID: %d",VCU_select_ID.SelectSlotID);
+    LOGD("[INPUT vcu_select] %d",VCU_select_ID.SelectSlotID);
+    VCU_select_ID_GET = VCU_select_ID.SelectSlotID;
+    if (DEBUG == true){
+        filetojson.SaveSelectSlotToJson(VCU_select_ID, "SelectSlot.json");
+    }
 
 
     // 清空车位1：输入
@@ -385,7 +395,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_hold);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
 
-    float stop_dis;
+    float stop_dis = 0.0;
     PSD_FusionModuleIFrunable.CalStopDistance(obs_info_get, stop_dis);
     LOGD("Stopper distance: %f",stop_dis);
 
@@ -462,7 +472,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
     for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
         LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
-        outputSlot_USS.slots_in_cur_frame.size(),
+        outputSlot_FUSED.slots_in_cur_frame.size(),
         psd_m_output.rectInfo.label,
         psd_m_output.rectInfo.PStype,
         psd_m_output.rectInfo.pt[0].x,
@@ -475,15 +485,15 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         psd_m_output.rectInfo.pt[3].y);
     }
 
-    // 1227试驾  OV049车专用 offset调优角点性能。表现为y轴方向融合后y 大于 实测值y 230mm
-    if (OFFSET_FOR_RIDE){
-        for (auto & offset_slot : outputSlot_VIS.slots_in_cur_frame){
-            offset_slot.rectInfo.pt[0].y = cal_k * (offset_slot.rectInfo.pt[0].y) + b; 
-            offset_slot.rectInfo.pt[1].y = cal_k * (offset_slot.rectInfo.pt[1].y) + b; 
-            offset_slot.rectInfo.pt[2].y = cal_k * (offset_slot.rectInfo.pt[2].y) + b; 
-            offset_slot.rectInfo.pt[3].y = cal_k * (offset_slot.rectInfo.pt[3].y) + b; 
-        }
-    }
+    // // 1227试驾  OV049车专用 offset调优角点性能。表现为y轴方向融合后y 大于 实测值y 230mm
+    // if (OFFSET_FOR_RIDE){
+    //     for (auto & offset_slot : outputSlot_VIS.slots_in_cur_frame){
+    //         offset_slot.rectInfo.pt[0].y = cal_k * (offset_slot.rectInfo.pt[0].y) + b; 
+    //         offset_slot.rectInfo.pt[1].y = cal_k * (offset_slot.rectInfo.pt[1].y) + b; 
+    //         offset_slot.rectInfo.pt[2].y = cal_k * (offset_slot.rectInfo.pt[2].y) + b; 
+    //         offset_slot.rectInfo.pt[3].y = cal_k * (offset_slot.rectInfo.pt[3].y) + b; 
+    //     }
+    // }
     // // 输出OFFSET角点
     // if (OFFSET_FOR_RIDE){
     //     for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
@@ -601,16 +611,16 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     }
     //VCU 部分，从OnSelectSlot接收
     //VCU接收的点选车位 与 HMI接收的点选车位 二选一
-    if (VCU_select_ID_ON != 0 && HMI_temp_ID == 0) {
-        final_select_ID = VCU_select_ID_ON; 
+    if (VCU_select_ID_GET != 0 && HMI_temp_ID == 0) {
+        final_select_ID = VCU_select_ID_GET; 
     } 
-    else if (VCU_select_ID_ON == 0 && HMI_temp_ID != 0) {
+    else if (VCU_select_ID_GET == 0 && HMI_temp_ID != 0) {
         final_select_ID = HMI_temp_ID;
     } 
-    else if (VCU_select_ID_ON != 0 && HMI_temp_ID != 0 && (VCU_select_ID_ON == HMI_temp_ID)) {
+    else if (VCU_select_ID_GET != 0 && HMI_temp_ID != 0 && (VCU_select_ID_GET == HMI_temp_ID)) {
         final_select_ID = HMI_temp_ID;
     }
-    else if (VCU_select_ID_ON == 0 && HMI_temp_ID == 0){
+    else if (VCU_select_ID_GET == 0 && HMI_temp_ID == 0){
         final_select_ID = 0;
     }
     else {
@@ -619,16 +629,17 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     // APAStatus == standby/finish/error时，清零目标车位
     Fsm::Slotlabel psd2apahandel_targetID;
     if (apa_status == 1 || apa_status == 6 || apa_status == 7){
+        HMI_temp_ID = 0;
+        HMI_select_ID = 0;
         final_select_ID = 0;
-        VCU_select_ID_ON = 0;
-        // psd2apahandel_targetID.targetSlotLabel = final_select_ID;
+        VCU_select_ID_GET = 0;
     }
     // 目标车位ID发送给下游规划，VCU（psd2vcu结构体）
     if (final_select_ID){
         psd2apahandel_targetID.targetSlotLabel = final_select_ID;
         EMC_psd_fusion_process_SetFieldSlotlabel(psd2apahandel_targetID);
     }
-    LOGD("[PSD2VCUSELECTID] HMI %d, VCU %d, final %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);
+    LOGD("[PSD2VCUSELECTID] HMI %d, VCU %d, final %d",HMI_temp_ID,VCU_select_ID_GET,final_select_ID);
 
 
     //***********************************PLANNING 发送目标车位
@@ -660,8 +671,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     }
     if (apa_status == 1 || apa_status == 6 || apa_status == 7 || apa_status == 0){
         memset(&psd2planning, 0, sizeof(Sfus::Sfsuion2DecPlan));
-        LOGD("psd2planning now: %f",psd2planning.targetSlot.slotCorners.cornerA.x);
-        LOGD("psd2planning clear! apastatus: %d",apa_status);
         EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
     }else{
         LOGD("[PSD2PLANNING] APASTATUS: %d, TARGET SLOT type: %d, source: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
@@ -704,7 +713,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         psd2vcu.slotNum = tempsize;
         if (psd2vcu.slotNum > 0){
             int i = 0;
-            LOGD("PSD2VCU apastatus: %d, outputslot_fused size: %d",apa_status,outputSlot_FUSED.slots_in_cur_frame.size());
+            LOGD("PSD2VCU apa_status: %d, outputslot_fused size: %d",apa_status,outputSlot_FUSED.slots_in_cur_frame.size());
 
             for (auto& psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
                 if (i >= tempsize || i >= 50){
@@ -798,7 +807,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         }
         // For Test VCU slot lists
         for (int icnt = 0; icnt < tempsize; icnt++){
-            LOGD("[PSD2VCUSLOTLIST] apastatus: %d, target slot: TYPE: %d, OCCUPIED:%d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            LOGD("[PSD2VCUSLOTLIST] apa_status: %d, target slot: TYPE: %d, OCCUPIED:%d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
             apa_status,
             psd2vcu.FusionSlotInfo[icnt].slotType,
             psd2vcu.FusionSlotInfo[icnt].slotStatusType,
@@ -1039,6 +1048,10 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     LOGD("SELECT ID: %d, aps_parktype = %d, aps_apaParkPlaceNum: %d",final_select_ID,psd2statemachine.aps_apaParkType,psd2statemachine.aps_apaParkPlaceNum);
     S2S_MCore_Bridge_SetSigStatusDecFusionInput(&psd2statemachine);
 
+
+
+
+
     auto end = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout<<"[TIMECOST]Timetrigger100 time is:"<< elapsed.count() <<std::endl;
@@ -1054,16 +1067,16 @@ tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
 
 tResult cpsd_fusion_process::OnStatusDecOutput(const StatusDecOutput& userData)
 {
-    apa_status = userData.aps_apaStatusReq;
-    // // @TODO EMOSVC7_RELEASE
-    // search_hold = userData.aps_apaSrchInterupt;
+    // apa_status = userData.aps_apaStatusReq;
+    // // // @TODO EMOSVC7_RELEASE
+    // // search_hold = userData.aps_apaSrchInterupt;
 
 
-    LOGD("[APA_Status]:Received APA_status is:%d", apa_status);
+    // LOGD("[APA_Status]:Received APA_status is:%d", apa_status);
 
-    if (DEBUG == true){
-        filetojson.SaveApastatusToJson(userData, "APAStatus.json");
-    }
+    // if (DEBUG == true){
+    //     filetojson.SaveApastatusToJson(userData, "APAStatus.json");
+    // }
 
     RETURN_NOERROR;
 }
@@ -1188,11 +1201,11 @@ tResult cpsd_fusion_process::OnHMI_InputInfo(const HMI_InputInfo& userData)
 
 tResult cpsd_fusion_process::OnSelectSlot(const Sfus::SelectSlot& userData)
 {
-    VCU_select_ID_ON = userData.SelectSlotID;
-    LOGD("[SELECTID] GET VCU ID!!!!")
-    if (DEBUG == true){
-        filetojson.SaveSelectSlotToJson(userData, "SelectSlot.json");
-    }
+    // VCU_select_ID_ON = userData.SelectSlotID;
+    // LOGD("[SELECTID] GET VCU ID!!!!")
+    // if (DEBUG == true){
+    //     filetojson.SaveSelectSlotToJson(userData, "SelectSlot.json");
+    // }
     RETURN_NOERROR;
 }
 
