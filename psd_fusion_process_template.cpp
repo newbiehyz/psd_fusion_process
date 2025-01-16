@@ -398,13 +398,13 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
     float stop_dis = 0.0;
     int obs_location = 0;
-    PSD_FusionModuleIFrunable.CalStopDistance(obs_info_get, stop_dis, obs_location);
+    PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stop_dis, obs_location);
     LOGD("Stopper distance: %f",stop_dis);
     LOGD("Obs location: %f",obs_location);
 
     //每个车位，属性增加SodLocation
     for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
-        PSD_FusionModuleIFrunable.CalStopDistance(obs_info_get, stop_dis, obs_location);
+        PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stop_dis, obs_location);
         psd_m_output.rectInfo.iSodLocation = obs_location; // @TODO VC7 新增障碍物在车位内的位置
         // @TODO 给UI CONTROL和VCU发障碍物在车位内的位置
     }
