@@ -405,6 +405,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     //每个车位，属性增加SodLocation
     for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
         PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stop_dis, obs_location);
+        psd_m_output.rectInfo.iStopperDistance = stop_dis;
         psd_m_output.rectInfo.iSodLocation = obs_location; // @TODO VC7 新增障碍物在车位内的位置
         // @TODO 给UI CONTROL和VCU发障碍物在车位内的位置
     }
@@ -588,6 +589,8 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         } else {
             psd2planning.SfusionSrchSlots[k].slotSource = Sfus::SLOTSRC_NULL;
         }
+        psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.x = psd_m_output.rectInfo.iStopperDistance;
+
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.x = psd_m_output.rectInfo.pt[0].x;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.y = psd_m_output.rectInfo.pt[0].y;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerB.x = psd_m_output.rectInfo.pt[1].x;
@@ -597,11 +600,12 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerD.x = psd_m_output.rectInfo.pt[3].x;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerD.y = psd_m_output.rectInfo.pt[3].y;
 
-        LOGD("[PSD2PLANNING] TOTAL SLOT NUM: %d, Slot#%d, type: %d, source: %d (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f)",
+        LOGD("[PSD2PLANNING] TOTAL SLOT NUM: %d, Slot#%d, type: %d, source: %d, stopdis: %f (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f)",
                 planning_slotnum,
                 psd2planning.SfusionSrchSlots[k].slotID,
                 psd2planning.SfusionSrchSlots[k].slotType,
                 psd2planning.SfusionSrchSlots[k].slotSource,
+                psd2planning.SfusionSrchSlots[k].stopper_Dis,
                 psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.x,
                 psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.y,
                 psd2planning.SfusionSrchSlots[k].slotCorners.cornerB.x,
@@ -669,6 +673,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                 psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
                 psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
                 psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
+                psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.iStopperDistance;
                 if (final_select_ID >= 1000 && final_select_ID < 10000){
                     psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
                 }
@@ -685,10 +690,11 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         memset(&psd2planning, 0, sizeof(Sfus::Sfsuion2DecPlan));
         EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
     }else{
-        LOGD("[PSD2PLANNING] APASTATUS: %d, TARGET SLOT type: %d, source: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+        LOGD("[PSD2PLANNING] APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
         apa_status,
         psd2planning.targetSlot.slotType,
         psd2planning.targetSlot.slotSource,
+        psd2planning.targetSlot.stopper_Dis,
         psd2planning.targetSlot.slotCorners.cornerA.x,
         psd2planning.targetSlot.slotCorners.cornerA.y,
         psd2planning.targetSlot.slotCorners.cornerB.x,

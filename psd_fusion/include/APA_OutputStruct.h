@@ -136,6 +136,7 @@ struct SApaPSRect
 	int flag;					 //desay算法内部用，
     int iExtrudeSOD;			 //车位相邻障碍物突出
 	int iSodLocation;			 //用于车位内障碍物位置，0为NO，1为AB，2为BC，3为CD，4为DA
+	float iStopperDistance; 	 //限位器到入口边的距离
 	SApaPSRect()
 	{
 		iSceneType			= E_SCENE_DEFAULT;
@@ -153,6 +154,7 @@ struct SApaPSRect
 		iOtherSideSOD 		= 0;
 		isDriveSpaceEnough 	= false;
 		iSodLocation		= -1;
+		iStopperDistance	= 0.0;
 
 		for(int i = 0; i < RECTPointNum; i++)
 		{
