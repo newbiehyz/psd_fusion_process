@@ -246,19 +246,19 @@ bool slotfusion::deleteinvalidslot(UssIf_stSlotProperty_t uss_slot){
     // }
     LOGD("USS_SLOT: type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
     
-    // if (uss_slot.enmSlotType == 1) { // chuizhi
-    //     if (uss_slot.u16SlotDepth < 605 || uss_slot.u16SlotLength < 250) {
-    //         LOGD("USS_SLOT_DEL:The USS vertical slot is be deleted! type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
-    //         return false; // 类型为1的车位深度小于500或长度小于250无效
-    //     }
-    // }
+    if (uss_slot.enmSlotType == 1) { // chuizhi
+        if (uss_slot.u16SlotLength < 260) {
+            LOGD("USS_SLOT_DEL:The USS vertical slot is be deleted! type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
+            return false; // 类型为1的车位长度小于260无效
+        }
+    }
 
-    // if (uss_slot.enmSlotType == 2) { // pingxing
-    //     if (uss_slot.u16SlotDepth < 250 || uss_slot.u16SlotLength < 605) {
-    //         LOGD("USS_SLOT_DEL:The parallel USS slot is be deleted! type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
-    //         return false; // 类型为2的车位深度小于250或长度小于500无效
-    //     }
-    // }
+    if (uss_slot.enmSlotType == 2) { // pingxing
+        if (uss_slot.u16SlotDepth < 100) {
+            LOGD("USS_SLOT_DEL:The parallel USS slot is be deleted! type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
+            return false; // 类型为2的车位深度小于100无效
+        }
+    }
 
     return true; // 其他情况，车位有效
 }

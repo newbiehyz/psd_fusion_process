@@ -395,9 +395,18 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_hold);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
 
+
     float stop_dis = 0.0;
-    PSD_FusionModuleIFrunable.CalStopDistance(obs_info_get, stop_dis);
+    int obs_location = 0;
+    PSD_FusionModuleIFrunable.CalStopDistance(obs_info_get, stop_dis, obs_location);
     LOGD("Stopper distance: %f",stop_dis);
+
+    //每个车位，属性增加SodLocation
+    for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
+        PSD_FusionModuleIFrunable.CalStopDistance(obs_info_get, stop_dis, obs_location);
+        psd_m_output.rectInfo.iSodLocation = obs_location; // @TODO VC7 新增障碍物在车位内的位置
+        //
+    }
 
 
 
@@ -437,10 +446,11 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     
     // 输出VIS USS FUSION车位列表
     for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
-        LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, SODloc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
         outputSlot_VIS.slots_in_cur_frame.size(),
         psd_m_output.rectInfo.label,
         psd_m_output.rectInfo.PStype,
+        psd_m_output.rectInfo.iSodLocation,
         psd_m_output.rectInfo.pt[0].x,
         psd_m_output.rectInfo.pt[0].y,
         psd_m_output.rectInfo.pt[1].x,
@@ -471,10 +481,11 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     }
 
     for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-        LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, SODloc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
         outputSlot_FUSED.slots_in_cur_frame.size(),
         psd_m_output.rectInfo.label,
         psd_m_output.rectInfo.PStype,
+        psd_m_output.rectInfo.iSodLocation,
         psd_m_output.rectInfo.pt[0].x,
         psd_m_output.rectInfo.pt[0].y,
         psd_m_output.rectInfo.pt[1].x,

@@ -98,6 +98,16 @@ enum //车位上下突出空间的SOD类型
     E_EXTRUDED_U_SOD_D_SOD          //上部空间为SOD，下部分为SOD
 };
 
+enum SOD_IN_SLOT_LOCATION//障碍物在车位内的位置
+{
+	SOD_LOCATION_DEFAULT = -1, //默认
+	SOD_LOCATION_NO = 0, //障碍物不在车位内
+	SOD_LOCATION_AB = 1, //障碍物离AB边更近
+	SOD_LOCATION_BC = 2, //障碍物离BC边更近
+	SOD_LOCATION_CD = 3, //障碍物离CD边更近
+	SOD_LOCATION_DA = 4, //障碍物离DA边更近
+};
+
 struct LineEquParam //直线方程系数 ax+by+c=0
 {
 	float a;
@@ -125,6 +135,7 @@ struct SApaPSRect
 	int iHasGL;					 //是否有地锁，-1为默认值，1为有地锁，0为没地锁
 	int flag;					 //desay算法内部用，
     int iExtrudeSOD;			 //车位相邻障碍物突出
+	int iSodLocation;			 //用于车位内障碍物位置，0为NO，1为AB，2为BC，3为CD，4为DA
 	SApaPSRect()
 	{
 		iSceneType			= E_SCENE_DEFAULT;
@@ -139,8 +150,9 @@ struct SApaPSRect
     	iExtrudeSOD         = E_EXTRUDED_DEFAULT;
 		PStype				= 1;
 		label 				= 0;
-		iOtherSideSOD 		= -1;
+		iOtherSideSOD 		= 0;
 		isDriveSpaceEnough 	= false;
+		iSodLocation		= -1;
 
 		for(int i = 0; i < RECTPointNum; i++)
 		{
