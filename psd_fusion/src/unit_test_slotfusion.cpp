@@ -59,7 +59,7 @@ int CalcDistance(float ax, float ay, float bx,  float by)
 }
 
 // Draw apaSlotListInfo
-void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &rectanglesA, Loc::App2emap_DR pose, Fus::PkEmapObs obs) {
+void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &rectanglesA, Loc::App2emap_DR pose, Fus::PkEmapObs obs, int obs_location) {
     // 创建空白图像
     cv::Mat image(800, 800, CV_8UC3, cv::Scalar(255, 255, 255));
 
@@ -120,19 +120,43 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
         float scaled_obs_x = obs_x * scale + translate_x;
         float scaled_obs_y = obs_y * scale + translate_y;
 
-        // 绘制圆
+        // 绘制障碍物（圆）
         cv::circle(image, cv::Point(scaled_obs_x, scaled_obs_y), 10, cv::Scalar(0, 0, 0), -1);
 
-        // 准备文字内容
+        // 准备角点文字内容
         std::string text = "(" + std::to_string(static_cast<int>(obs_x)) + ", " +
                         std::to_string(static_cast<int>(obs_y)) + ")";
-
         // 确定文本位置（圆的正上方）
         int text_offset_y = 25; // 文本与圆之间的垂直偏移量
         cv::Point textPosition(scaled_obs_x, scaled_obs_y - text_offset_y);
-
         // 绘制文本
         cv::putText(image, text, textPosition, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
+
+        //准备位置文字内容
+        std::string text_loc;
+        switch (obs_location){
+            case 0:
+                text_loc = "NO OBS";
+                break;
+            case 1:
+                text_loc = "near AB";
+                break;
+            case 2:
+                text_loc = "near BC";
+                break;
+            case 3:
+                text_loc = "near CD";
+                break;
+            case 4:
+                text_loc = "near DA";
+                break;
+            default:
+                break;
+        }
+        int text_offset_y_loc = 40;
+        cv::Point locTextPosition(scaled_obs_x, scaled_obs_y - text_offset_y_loc);
+        cv::putText(image, text_loc, locTextPosition, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
+
     }
 
     // 应用缩放和平移并绘制矩形
@@ -901,8 +925,10 @@ void TimeTrigger_Timer50(){
     // obs.pkEmapObs[1].obsCenter.x = 3800;
     // obs.pkEmapObs[1].obsCenter.y = 6300;
     float stop_dis = 0.0;
-    PSD_FusionModuleIFrunable.CalStopDistance(obs_info, stop_dis);
+    int obs_location = -1;
+    PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info, stop_dis, obs_location);
     std::cout<<"Stop distance:"<<stop_dis<<std::endl;
+    std::cout<<"Obs location::"<<obs_location<<std::endl;
 
     // *******************************Load original USS data 
     // Get USS info
@@ -987,7 +1013,7 @@ void TimeTrigger_Timer50(){
     apaSlotListInfo outputSlot_FUSED;
     
     sf.mergeSlotLists(outputSlotUSS, outputSlot_CALVIS, outputSlot_FUSED);
-    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_FUSED, dr_pose, obs_info);
+    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_FUSED, dr_pose, obs_info, obs_location);
     
 
     // test VCU 

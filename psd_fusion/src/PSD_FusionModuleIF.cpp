@@ -246,7 +246,7 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
     return -1;
 }
 
-void PSD_FusionModuleIF::CalStopDistance(const Fus::PkEmapObs &empobs, float &stopdis, int obs_location){
+void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &stopdis, int &obs_location){
     POINT_I wheelstop_dis, point_a, point_b, point_c, point_d;;
     for (auto &obs : empobs.pkEmapObs){
         if (obs.obsTyp == Fus::OBS_WHEELSTOP){

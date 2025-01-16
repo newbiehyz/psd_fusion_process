@@ -244,18 +244,18 @@ bool slotfusion::deleteinvalidslot(UssIf_stSlotProperty_t uss_slot){
     // if (uss_slot.enmSlotType == 0 || uss_slot.enmSlotType == 3) {
     //     return false; // 类型为0和3的车位无效
     // }
-    LOGD("USS_SLOT: type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
+    // LOGD("USS_SLOT: type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
     
     if (uss_slot.enmSlotType == 1) { // chuizhi
         if (uss_slot.u16SlotLength < 260) {
-            LOGD("USS_SLOT_DEL:The USS vertical slot is be deleted! type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
+            // LOGD("USS_SLOT_DEL:The USS vertical slot is be deleted! type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
             return false; // 类型为1的车位长度小于260无效
         }
     }
 
     if (uss_slot.enmSlotType == 2) { // pingxing
         if (uss_slot.u16SlotDepth < 100) {
-            LOGD("USS_SLOT_DEL:The parallel USS slot is be deleted! type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
+            // LOGD("USS_SLOT_DEL:The parallel USS slot is be deleted! type:%d, depth:%d, length:%d", uss_slot.enmSlotType, uss_slot.u16SlotDepth, uss_slot.u16SlotLength);
             return false; // 类型为2的车位深度小于100无效
         }
     }
@@ -270,7 +270,7 @@ void slotfusion::fillVisonstruct(const UssIf_stPLVOutputInfo_t &total_uss_slot, 
     int USS_total_slotnum = total_uss_slot.UssIf_stSlotInfo[0].u8SlotNum + total_uss_slot.UssIf_stSlotInfo[1].u8SlotNum;
     uss_slots.slots_in_cur_frame.reserve(USS_total_slotnum);
     int slot_id = 10000;
-    LOGD("USS_DEL:The USS slot size is:%d",USS_total_slotnum);
+    // LOGD("USS_DEL:The USS slot size is:%d",USS_total_slotnum);
     for(int icnt = 0; icnt < 2; icnt++){
         if(total_uss_slot.UssIf_stSlotInfo[icnt].u8SlotNum  != 0){
             for (int i = 0; i < total_uss_slot.UssIf_stSlotInfo[icnt].u8SlotNum; ++i) 
