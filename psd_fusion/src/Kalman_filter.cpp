@@ -415,7 +415,10 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
 
     // 更新状态量和矩阵
     auto original_length = this->GetSlotLength();
-    this->slot_state_ = this->slot_state_ + kalman_gain * innovation;
+    Eigen::Matrix<float, SLOT_STATE_SIZE, 1> change;
+    auto test = kalman_gain * innovation;
+    change << test[0], test[1], 0.0, 0.0, 0.0, 0.0;
+    this->slot_state_ = this->slot_state_ + change;
 
     if (valid_quad_cnt_ < 3) {
         this->slot_state_(SLOT_LENGTH) = original_length;
