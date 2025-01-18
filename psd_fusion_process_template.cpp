@@ -2,6 +2,7 @@
 #include "psd_fusion_process_template.h"
 #include <iostream>
 #include <typeinfo>
+#include "math.hpp"
 
 //功能开关
 #define OBS_READY true // OBS接口是否接入数据
@@ -199,33 +200,6 @@ void cpsd_fusion_process::Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x
     slot.targetSlot.slotCorners.cornerD.y = slot_Dpt_temp_y;
 }
 
-// inline static void rotatePoint(Sfus::FusionSlotInfovector &vcu_slot_list, padVehiclePose vehicle_pose){
-//     float angle_rad = degreesToRadians(vehicle_pose.yaw);
-//     float cos_theta = std::cos(-angle_rad);
-//     float sin_theta = std::sin(-angle_rad);
-//     float pose_x, pose_y;
-//     pose_x = (vehicle_pose.coord.y - 4123.2)/1000;
-//     pose_y = vehicle_pose.coord.x / 1000;
-//     LOGD("[TEST pose](%d, %d,%f)", vehicle_pose.coord.x, vehicle_pose.coord.y,angle_rad);
-//     // 车辆的旋转中心
-//     float center_x = vehicle_pose.coord.x;
-//     float center_y = vehicle_pose.coord.y;
-
-//     for(int icnt = 0; icnt < 4; icnt++){
-//        // (a) 将点平移到车辆坐标系
-//         float x_tmp = vcu_slot_list.FusionSlotInfo[0].pt[icnt].x - pose_x;
-//         float y_tmp = vcu_slot_list.FusionSlotInfo[0].pt[icnt].y - pose_y;
-
-//         // (b) 以原点(0,0)做标准旋转
-//         float rotated_x = x_tmp * cos_theta - y_tmp * sin_theta;
-//         float rotated_y = x_tmp * sin_theta + y_tmp * cos_theta;
-
-//         // (c) 平移回去
-//         vcu_slot_list.FusionSlotInfo[0].pt[icnt].x = rotated_x;
-//         vcu_slot_list.FusionSlotInfo[0].pt[icnt].y = rotated_y;
-//         LOGD("[TEST slot pt](%f,%f)",vcu_slot_list.FusionSlotInfo[0].pt[icnt].x,vcu_slot_list.FusionSlotInfo[0].pt[icnt].y);
-    // }
-// }
 
 tResult cpsd_fusion_process::TimeTrigger_Timer100()
 {
@@ -395,7 +369,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_hold);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
 
-
     float stop_dis = 0.0;
     int obs_location = 0;
     PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stop_dis, obs_location);
@@ -435,6 +408,24 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     fusionslot.postprocessUSSslots(uss_info_restruct);
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS , outputSlot_FUSED);
     
+  // TODO
+    // *****************************
+    apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
+    for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
+        for (const auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
+            if(math::isNeedSingleframe2Update(slot, single_frame_slot)){
+                for (int icnt = 0; icnt < 4; ++icnt){
+                    slot.rectInfo.pt[icnt].x = single_frame_slot.rectInfo.pt[icnt].x;
+                    slot.rectInfo.pt[icnt].y = single_frame_slot.rectInfo.pt[icnt].y;
+                }
+                break;
+            }else{
+                continue;
+            }
+        }
+    }
+    //******************************
+
     // 清空车位
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
         tempsize = 0;
