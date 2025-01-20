@@ -412,8 +412,9 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     // *****************************
     apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
     for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
-        for (const auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
+        for (auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
             if(math::isNeedSingleframe2Update(slot, single_frame_slot)){
+                PSD_FusionModuleIFrunable.shrink_quad(single_frame_slot);
                 for (int icnt = 0; icnt < 4; ++icnt){
                     slot.rectInfo.pt[icnt].x = single_frame_slot.rectInfo.pt[icnt].x;
                     slot.rectInfo.pt[icnt].y = single_frame_slot.rectInfo.pt[icnt].y;
@@ -843,44 +844,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         psd2vcu.FusionSlotInfo[0].displayLabel = 0;
         Sfus::Sfsuion2DecPlan temp_psd2planning;
         temp_psd2planning = psd2planning;
-        //ABCD顺序调整为VCU专用顺序
-        //左侧
-        // if (psd2planning.targetSlot.slotCorners.cornerA.x <= 0 ||  psd2planning.targetSlot.slotCorners.cornerB.x <= 0){
-        //     psd2vcu.FusionSlotInfo[0].pt[0].x = (psd2planning.targetSlot.slotCorners.cornerB.y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) ) / MM_TO_M; //mm 转 m , VCU坐标系上x右y
-        //     psd2vcu.FusionSlotInfo[0].pt[0].y = psd2planning.targetSlot.slotCorners.cornerB.x / MM_TO_M; //后轴中心转前保中心
-        //     psd2vcu.FusionSlotInfo[0].pt[0].z = 0;
-        //     psd2vcu.FusionSlotInfo[0].pt[1].x = (psd2planning.targetSlot.slotCorners.cornerA.y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) ) / MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[1].y = psd2planning.targetSlot.slotCorners.cornerA.x/ MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[1].z = 0;
-        //     psd2vcu.FusionSlotInfo[0].pt[2].x = (psd2planning.targetSlot.slotCorners.cornerD.y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[2].y = psd2planning.targetSlot.slotCorners.cornerD.x / MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[2].z = 0;
-        //     psd2vcu.FusionSlotInfo[0].pt[3].x = (psd2planning.targetSlot.slotCorners.cornerC.y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[3].y = psd2planning.targetSlot.slotCorners.cornerC.x/ MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[3].z = 0;
-        //     psd2vcu.FusionSlotInfo[0].slotStatusType = 5;
-        //     psd2vcu.FusionSlotInfo[0].backInAvailableFlag = 1;
-        //     psd2vcu.FusionSlotInfo[0].parkInHeadInSoftButtonCurrentValue = 1;
-        // }
-        // //右侧
-        // else{
-        //     psd2vcu.FusionSlotInfo[0].pt[0].x = (psd2planning.targetSlot.slotCorners.cornerB.y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M; //mm 转 m
-        //     psd2vcu.FusionSlotInfo[0].pt[0].y = psd2planning.targetSlot.slotCorners.cornerB.x / MM_TO_M; //后轴中心转前保中心
-        //     psd2vcu.FusionSlotInfo[0].pt[0].z = 0;
-        //     psd2vcu.FusionSlotInfo[0].pt[1].x = (psd2planning.targetSlot.slotCorners.cornerC.y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[1].y = psd2planning.targetSlot.slotCorners.cornerC.x / MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[1].z = 0;
-        //     psd2vcu.FusionSlotInfo[0].pt[2].x = (psd2planning.targetSlot.slotCorners.cornerD.y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[2].y = psd2planning.targetSlot.slotCorners.cornerD.x / MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[2].z = 0;
-        //     psd2vcu.FusionSlotInfo[0].pt[3].x = (psd2planning.targetSlot.slotCorners.cornerA.y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[3].y = psd2planning.targetSlot.slotCorners.cornerA.x / MM_TO_M;
-        //     psd2vcu.FusionSlotInfo[0].pt[3].z = 0;
-        //     psd2vcu.FusionSlotInfo[0].slotStatusType = 5;
-        //     psd2vcu.FusionSlotInfo[0].backInAvailableFlag = 1;
-        //     psd2vcu.FusionSlotInfo[0].parkInHeadInSoftButtonCurrentValue = 1;
-        // }
-       
         
         if (dr_first){
             dr_cul_x = pose_globaldata.coord.x;
@@ -892,50 +855,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
         LOGD("TEST_2025_01:(%d,%d,%f)", dr_cul_x, dr_cul_y, dr_cul_theta);
         LOGD("TEST_2025_01: global dr(%d,%d,%f)", pose_globaldata.coord.x,  pose_globaldata.coord.y,  pose_globaldata.yaw);
-        // if (psd2planning.targetSlot.slotCorners.cornerA.x <= 0 ||  psd2planning.targetSlot.slotCorners.cornerB.x <= 0){ // left
-        //     if(pose_globaldata.coord.x < dr_cul_x){
-        //         pose_globaldata.coord.x -= dr_cul_x;
-        //     }else{
-        //         pose_globaldata.coord.x = -(pose_globaldata.coord.x - dr_cul_x);
-        //     }
-
-        //     if (pose_globaldata.coord.y > dr_cul_y){
-        //         pose_globaldata.coord.y -= dr_cul_y;
-        //     }else{
-        //         pose_globaldata.coord.y = -(pose_globaldata.coord.y - dr_cul_y);
-        //     }
-        //     LOGD("TEST_2025_01:Left slot(%d,%d)", pose_globaldata.coord.x, pose_globaldata.coord.y);
-        // }else{  //right
-        //     if(pose_globaldata.coord.x < dr_cul_x){
-        //         pose_globaldata.coord.x -= dr_cul_x;
-        //         LOGD("TEST_2025_01:less-x");
-        //     }else{
-        //         pose_globaldata.coord.x = (pose_globaldata.coord.x - dr_cul_x);
-        //         LOGD("TEST_2025_01:greater-x");
-        //     }
-
-        //     if (pose_globaldata.coord.y > dr_cul_y){
-        //         pose_globaldata.coord.y -= dr_cul_y;
-        //         LOGD("TEST_2025_01:greater-y");
-        //     }else{
-        //         pose_globaldata.coord.y = (pose_globaldata.coord.y - dr_cul_y);
-        //         LOGD("TEST_2025_01:less-y");
-        //     }
-        //     LOGD("TEST_2025_01:Right slot(%d,%d)", pose_globaldata.coord.x, pose_globaldata.coord.y);
-        // }
         
-        // pose_globaldata.yaw -= dr_cul_theta;
-        // pose_globaldata.yaw = unifyAngle(pose_globaldata.yaw);
-
-        // if (dr_cul_theta < 0){
-        //     pose_globaldata.coord.x = -(pose_globaldata.coord.x - dr_cul_x);
-        //     pose_globaldata.coord.y = -(pose_globaldata.coord.y - dr_cul_y);
-        // }else{
-        //     pose_globaldata.coord.x = pose_globaldata.coord.x - dr_cul_x;
-        //     pose_globaldata.coord.y = pose_globaldata.coord.y - dr_cul_y;
-        // }
-        // float theta_temp = pose_globaldata.yaw - dr_cul_theta;
-        // pose_globaldata.yaw = unifyAngle(pose_globaldata.yaw);
         Slot2Global(temp_psd2planning, dr_cul_x, dr_cul_y, dr_cul_theta);
         Slot2Local(temp_psd2planning, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
        

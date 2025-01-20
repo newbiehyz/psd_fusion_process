@@ -99,6 +99,8 @@ namespace math{
             rect_local.rectInfo.pt[3].x = coordConvert_car_center(slot_d_pt).x;
             rect_local.rectInfo.pt[3].y = coordConvert_car_center(slot_d_pt).y;
 
+            rect_local.rectInfo.PStype = singleframeslot[icnt].bayType;
+
             local_slots.slots_in_cur_frame.push_back(rect_local);
         }
         return local_slots;
@@ -117,9 +119,14 @@ namespace math{
         single_slot_b.x = slot_list_b.rectInfo.pt[1].x;
         single_slot_b.y = slot_list_b.rectInfo.pt[1].y;
 
-        int threadhole_a = CalcDistance(slot_a, single_slot_a);
-        int threadhole_b = CalcDistance(slot_b, single_slot_b);
+        int threadhole_a = CalcDistance_I(slot_a, single_slot_a);
+        int threadhole_b = CalcDistance_I(slot_b, single_slot_b);
 
-        return (threadhole_a + threadhole_b) / 2 > 5;
+        // same slot
+        if ((threadhole_a + threadhole_b) / 2 < 300){
+            return true;
+        }else{
+            return false;
+        }
     }
 }

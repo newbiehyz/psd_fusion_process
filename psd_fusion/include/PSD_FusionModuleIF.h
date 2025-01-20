@@ -163,6 +163,7 @@ private:
                            float &score,
                            float boarder_dis = 2.F);
     void world2car(Eigen::Vector3f &pt);
+ public:
     void shrink_quad(apaSlotInfo &original_rect);
 
 
