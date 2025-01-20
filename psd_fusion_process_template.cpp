@@ -724,7 +724,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         if (psd2vcu.slotNum > 0){
             int i = 0;
             LOGD("PSD2VCU apa_status: %d, outputslot_fused size: %d",apa_status,outputSlot_FUSED.slots_in_cur_frame.size());
-
+            
             for (auto& psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
                 if (i >= tempsize || i >= 50){
                     LOGD("die in VCU and size is:",tempsize);
@@ -792,6 +792,31 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
                 }
+
+                // *****************************Need test**********************************
+                POINT_I VCU_car_pose;
+                VCU_car_pose.x = 0;
+                VCU_car_pose.y = 0;
+
+                std::vector<Fsm::FusionSlotInfo> cloest_slots;
+                std::vector<Fsm::FusionSlotInfo> vcu_slots;
+                for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
+                    if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
+                        Fsm::FusionSlotInfo vcu_slot;
+                        for (int jcnt = 0; jcnt < 4; ++jcnt){
+                            vcu_slot.pt[jcnt].x = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].x;
+                            vcu_slot.pt[jcnt].y = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].y;
+                        }
+                        vcu_slot.slotLabel = psd2vcu.FusionSlotInfo[icnt].slotLabel;
+                        vcu_slot.slotStatusType = psd2vcu.FusionSlotInfo[icnt].slotStatusType;
+                        vcu_slot.slotType = psd2vcu.FusionSlotInfo[icnt].slotType;
+
+                        vcu_slots.push_back(vcu_slot);
+                    }
+                }
+                
+                cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_slots ,4);
+                // ***************************************************************
 
                 LOGD("[tempsize]:%d",tempsize);
                 //ID选择后互斥

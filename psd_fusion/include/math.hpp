@@ -12,7 +12,6 @@ namespace math{
         return dis;
     }
 
-
     int CalPointAndLineDistance(const POINT_I& point, const POINT_I& pta, const POINT_I& ptb)
     {
         float threshold = 6000; // in mm
@@ -119,8 +118,8 @@ namespace math{
         single_slot_b.x = slot_list_b.rectInfo.pt[1].x;
         single_slot_b.y = slot_list_b.rectInfo.pt[1].y;
 
-        int threadhole_a = CalcDistance_I(slot_a, single_slot_a);
-        int threadhole_b = CalcDistance_I(slot_b, single_slot_b);
+        int threadhole_a = CalcDistance(slot_a, single_slot_a);
+        int threadhole_b = CalcDistance(slot_b, single_slot_b);
 
         // same slot
         if ((threadhole_a + threadhole_b) / 2 < 300){
