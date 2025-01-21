@@ -1,6 +1,9 @@
 #pragma once
 
 #include "apa_define.h"
+#include "psd_fusion_process_header.h"
+#include "psd_fusion_process_template.h"
+
 
 #define INVALID_VALUE 99999999
 #define VEHICLE_LENGTH 5259.9
@@ -11,7 +14,6 @@ namespace math{
         float dis = sqrt((a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y));
         return dis;
     }
-
 
     int CalPointAndLineDistance(const POINT_I& point, const POINT_I& pta, const POINT_I& ptb)
     {
@@ -118,12 +120,15 @@ namespace math{
         single_slot_a.y = slot_list_b.rectInfo.pt[0].y;
         single_slot_b.x = slot_list_b.rectInfo.pt[1].x;
         single_slot_b.y = slot_list_b.rectInfo.pt[1].y;
+        LOGD("single_frame slot compare: outputSlot_FUSED: (%d, %d), (%d, %d)",slot_a.x,slot_a.y,slot_b.x,slot_b.y);
+        LOGD("single_frame slot compare: singleframe_local: (%d, %d), (%d, %d)",single_slot_a.x,single_slot_a.y,single_slot_b.x,single_slot_b.y);
 
-        int threadhole_a = CalcDistance_I(slot_a, single_slot_a);
-        int threadhole_b = CalcDistance_I(slot_b, single_slot_b);
+        int threadhole_a = CalcDistance(slot_a, single_slot_a);
+        int threadhole_b = CalcDistance(slot_b, single_slot_b);
+        LOGD("single_frame slot compare: threadhole_a: %d, threadhole_b: %d",threadhole_a, threadhole_b);
 
         // same slot
-        if ((threadhole_a + threadhole_b) / 2 < 300){
+        if ((threadhole_a + threadhole_b) / 2 < 800){
             return true;
         }else{
             return false;

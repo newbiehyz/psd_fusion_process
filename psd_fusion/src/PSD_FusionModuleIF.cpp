@@ -571,7 +571,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 }
                 // 已经存在与之对应的车位，用角点信息进行更新
                 slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
-                slot_existance->Update(quad);
+                // slot_existance->Update(quad);
                 
             } else {
                 auto result = std::make_shared<ParkingSlotResult>();

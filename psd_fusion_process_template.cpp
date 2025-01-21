@@ -410,12 +410,21 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     
   // TODO
     // *****************************
+    
     apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
     for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
+        // LOGD("single_frame update! fused size:%d", outputSlot_FUSED.slots_in_cur_frame.size());
+        // LOGD("single_frame update! singleframe_local_slots size:%d", singleframe_local_slots.slots_in_cur_frame.size());
+        
         for (auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
             if(math::isNeedSingleframe2Update(slot, single_frame_slot)){
+                // LOGD("single_frame update! apa_status:%d", apa_status);
+                
                 PSD_FusionModuleIFrunable.shrink_quad(single_frame_slot);
                 for (int icnt = 0; icnt < 4; ++icnt){
+                    // LOGD("single_frame update! fused_slot(%d, %d)", slot.rectInfo.pt[icnt].x, slot.rectInfo.pt[icnt].y);
+                    // LOGD("single_frame update! single_slot(%d, %d)", single_frame_slot.rectInfo.pt[icnt].x, single_frame_slot.rectInfo.pt[icnt].y);
+
                     slot.rectInfo.pt[icnt].x = single_frame_slot.rectInfo.pt[icnt].x;
                     slot.rectInfo.pt[icnt].y = single_frame_slot.rectInfo.pt[icnt].y;
                 }
@@ -724,7 +733,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         if (psd2vcu.slotNum > 0){
             int i = 0;
             LOGD("PSD2VCU apa_status: %d, outputslot_fused size: %d",apa_status,outputSlot_FUSED.slots_in_cur_frame.size());
-
+            
             for (auto& psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
                 if (i >= tempsize || i >= 50){
                     LOGD("die in VCU and size is:",tempsize);
@@ -792,6 +801,31 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
                 }
+
+                // *****************************Need test**********************************
+                POINT_I VCU_car_pose;
+                VCU_car_pose.x = 0;
+                VCU_car_pose.y = 0;
+
+                std::vector<Fsm::FusionSlotInfo> cloest_slots;
+                std::vector<Fsm::FusionSlotInfo> vcu_slots;
+                for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
+                    if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
+                        Fsm::FusionSlotInfo vcu_slot;
+                        for (int jcnt = 0; jcnt < 4; ++jcnt){
+                            vcu_slot.pt[jcnt].x = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].x;
+                            vcu_slot.pt[jcnt].y = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].y;
+                        }
+                        vcu_slot.slotLabel = psd2vcu.FusionSlotInfo[icnt].slotLabel;
+                        vcu_slot.slotStatusType = psd2vcu.FusionSlotInfo[icnt].slotStatusType;
+                        vcu_slot.slotType = psd2vcu.FusionSlotInfo[icnt].slotType;
+
+                        vcu_slots.push_back(vcu_slot);
+                    }
+                }
+                
+                cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_slots ,4);
+                // ***************************************************************
 
                 LOGD("[tempsize]:%d",tempsize);
                 //ID选择后互斥
