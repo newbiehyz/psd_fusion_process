@@ -502,7 +502,7 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
     }
 }
 
-void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus)
+void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int search_interrupt)
 {
     auto start_update = std::chrono::steady_clock::now();
 
@@ -519,8 +519,8 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     m_output_slot.padRealTimeLocation.yaw = -m_vehicle_pose.yaw * PI / 180;
     m_output_slot.ullFrameId = frameid;
 
-    // 清空车位2：update内部变量
-    if(status == 0 || status == 1 || status == 6 || status == 7){
+    // 清空车位2：update内部变量 //@TODO VC7 RELEASE
+    if (status == 0 || status == 1 || status == 6 || status == 7 || search_interrupt == 2){
         slots_map_.clear();
         m_output_slot.slots_in_cur_frame.clear();
     }

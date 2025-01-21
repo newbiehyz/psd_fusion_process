@@ -17,7 +17,8 @@ float b = -200;
 
 
 int apa_status;
-int search_hold = 0; //@TODO EMOSVC7_RELEASE
+int search_interrupt = 0; //@TODO VC7 RELEASE
+
 slotfusion fusionslot;
 StatusDecFusionInput psd2statemachine;
 Sfus::Sfsuion2DecPlan psd2planning; //动态车位列表
@@ -26,9 +27,10 @@ Fsm::FusionSlotInfo2Location psd2location;
 
 int HMI_select_ID = 0; //HMI只发1s。HMI_select是HMI发的ID，
 int HMI_temp_ID = 0;  //HMI_temp_ID是存下来的ID
-// int VCU_select_ID_ON = 0; //VCU发送的ID
 int VCU_select_ID_GET = 0; //用GET获取的VCU发送的ID
+int RECOMMEND_ID = 0; //推荐车位的ID（类似于已点击，点泊车立即泊车）
 int final_select_ID = 0; //VCU和HMI最终统一的ID
+int final_ID = 0; //结合选择、推荐后的最终ID
 
 CDT_PSD_FUSION_PROCESS_TEMPLATE(cpsd_fusion_process)
 
@@ -200,6 +202,38 @@ void cpsd_fusion_process::Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x
     slot.targetSlot.slotCorners.cornerD.y = slot_Dpt_temp_y;
 }
 
+int cpsd_fusion_process::SelectRecommendID(int &hmi_temp, const int &hmi_select, const int &vcu_select, int &recommend)
+{
+    //HMI 部分
+    //中间变量保存HMI发送的 [0 - ID - 0]，一秒内发送五次
+    if (hmi_select){
+        hmi_temp = hmi_select;
+    }
+    //VCU 部分，已从GET获取
+    //VCU接收的点选车位 与 HMI接收的点选车位 二选一
+    if (vcu_select != 0 && hmi_temp == 0) {
+        final_select_ID = vcu_select; 
+    } 
+    else if (vcu_select == 0 && hmi_temp != 0) {
+        final_select_ID = hmi_temp;
+    } 
+    else if (vcu_select != 0 && hmi_temp != 0 && (vcu_select == hmi_temp)) {
+        final_select_ID = hmi_temp;
+    }
+    else if (vcu_select == 0 && hmi_temp == 0){
+        final_select_ID = 0;
+    }
+    else {
+        final_select_ID = vcu_select;
+    }
+    //结合HMI和VCU，得到final_select_ID。与recommend比较
+    if (final_select_ID){ 
+        return final_select_ID;
+    }
+    else{
+        return recommend;
+    }
+}
 
 tResult cpsd_fusion_process::TimeTrigger_Timer100()
 {
@@ -324,8 +358,11 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
     S2S_MCore_Bridge_GetSigStatusDecOutput(&statemachine_info);
     LOGD("[INPUT apastatus]: %d",statemachine_info.aps_apaStatusReq);
+    // LOGD("[INPUT search_interrupt]: %d",statemachine_info.aps_apaStatusReq); // @TODO VC7 RELEASE
+
     apa_status = statemachine_info.aps_apaStatusReq;
-    if (DEBUG == true){
+    // search_interrupt = statemachine_info.aps_apaSrchInterupt; // @TODO VC7 RELEASE
+    if (DEBUG == true){ 
         filetojson.SaveApastatusToJson(statemachine_info, "APAStatus.json");
     }
 
@@ -366,7 +403,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
     // part3 算法
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
-    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_hold);
+    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
 
     float stop_dis = 0.0;
@@ -802,30 +839,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
                 }
 
-                // *****************************Need test**********************************
-                POINT_I VCU_car_pose;
-                VCU_car_pose.x = 0;
-                VCU_car_pose.y = 0;
-
-                std::vector<Fsm::FusionSlotInfo> cloest_slots;
-                std::vector<Fsm::FusionSlotInfo> vcu_slots;
-                for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
-                    if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
-                        Fsm::FusionSlotInfo vcu_slot;
-                        for (int jcnt = 0; jcnt < 4; ++jcnt){
-                            vcu_slot.pt[jcnt].x = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].x;
-                            vcu_slot.pt[jcnt].y = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].y;
-                        }
-                        vcu_slot.slotLabel = psd2vcu.FusionSlotInfo[icnt].slotLabel;
-                        vcu_slot.slotStatusType = psd2vcu.FusionSlotInfo[icnt].slotStatusType;
-                        vcu_slot.slotType = psd2vcu.FusionSlotInfo[icnt].slotType;
-
-                        vcu_slots.push_back(vcu_slot);
-                    }
-                }
-                
-                cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_slots ,4);
-                // ***************************************************************
 
                 LOGD("[tempsize]:%d",tempsize);
                 //ID选择后互斥
@@ -849,6 +862,49 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                 i++;
             }
         }
+
+        // *****************************Need test**********************************
+        POINT_I VCU_car_pose;
+        VCU_car_pose.x = 0;
+        VCU_car_pose.y = 0;
+
+        std::vector<Fsm::FusionSlotInfo> cloest_slots;
+        std::vector<Fsm::FusionSlotInfo> vcu_slots;
+        for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
+            if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
+                Fsm::FusionSlotInfo vcu_slot;
+                for (int jcnt = 0; jcnt < 4; ++jcnt){
+                    vcu_slot.pt[jcnt].x = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].x;
+                    vcu_slot.pt[jcnt].y = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].y;
+                }
+                vcu_slot.slotLabel = psd2vcu.FusionSlotInfo[icnt].slotLabel;
+                vcu_slot.slotStatusType = psd2vcu.FusionSlotInfo[icnt].slotStatusType;
+                vcu_slot.slotType = psd2vcu.FusionSlotInfo[icnt].slotType;
+
+                vcu_slots.push_back(vcu_slot);
+            }
+        }
+        
+        cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_slots ,4);
+        // ***************************************************************
+
+        // *****************************Need test**********************************
+        //@TODO VC7 RELEASE
+        int count = std::min(4, static_cast<int>(cloest_slots.size()));
+        bool recommend_exist = false;
+        for (int i = 0; i < count; ++i) {
+            if (cloest_slots[i].slotStatusType == 3 && !recommend_exist){
+                cloest_slots[i].slotStatusType = 7; //设置为RECOMMEND状态
+                cloest_slots[i].displayLabel = 1;
+                RECOMMEND_ID = cloest_slots[i].slotLabel; //推荐车位ID设置
+                recommend_exist = true;
+            }
+            else if (recommend_exist){
+                cloest_slots[i].displayLabel = i+1;
+            }
+        }
+        // ***************************************************************
+
         // For Test VCU slot lists
         for (int icnt = 0; icnt < tempsize; icnt++){
             LOGD("[PSD2VCUSLOTLIST] apa_status: %d, target slot: TYPE: %d, OCCUPIED:%d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
@@ -1031,8 +1087,8 @@ tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
 tResult cpsd_fusion_process::OnStatusDecOutput(const StatusDecOutput& userData)
 {
     // apa_status = userData.aps_apaStatusReq;
-    // // // @TODO EMOSVC7_RELEASE
-    // // search_hold = userData.aps_apaSrchInterupt;
+    // // // @TODO VC7 RELEASE
+    // // search_interrupt = userData.aps_apaSrchInterupt;
 
 
     // LOGD("[APA_Status]:Received APA_status is:%d", apa_status);
