@@ -59,7 +59,8 @@ public:
     bool LoadFromFile(const std::string& filename);
     void Slot2Global(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw);
     void Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw);
-    int  SelectRecommendID(int &hmi_temp, const int &hmi_select, const int &vcu_select, int &recommend);
+    int  HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select);
+    int RecommendSelectID(const int &final_select, const int &recommend);
  public:
     apaSlotListInfo outputSlot_FUSED;
     apaSlotListInfo outputSlot_VIS;   

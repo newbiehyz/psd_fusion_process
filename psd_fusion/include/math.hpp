@@ -36,13 +36,19 @@ namespace math{
 
         // 计算每个车位和自车的距离
         for(const auto& spot : parking_spots){
-            POINT_I point_a, point_b;
+            POINT_I point_a, point_b, point_c, point_d, slot_center;
             point_a.x = spot.pt[0].x;
             point_a.y = spot.pt[0].y;
             point_b.x = spot.pt[1].x;
             point_b.y = spot.pt[1].y;
+            point_c.y = spot.pt[2].x;
+            point_c.y = spot.pt[2].y;
+            point_d.y = spot.pt[3].x;
+            point_d.y = spot.pt[3].y;
+            slot_center.x = (point_a.x + point_b.x + point_c.x + point_d.x) / 4;
+            slot_center.y = (point_a.y + point_b.y + point_c.y + point_d.y) / 4;
             
-            float dist  = CalPointAndLineDistance(car_position, point_a, point_b);
+            float dist = CalcDistance(car_position, slot_center);
             distances.push_back({spot, dist});
         }
 
