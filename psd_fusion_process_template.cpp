@@ -12,13 +12,17 @@
 #define VEHICLE_LENGTH 5259.9 
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7 
 #define MM_TO_M 1000.0
-#define STILL_THRESHOLD 0.5 //静止阈值，单位second
+#define STILL_THRESHOLD 5 //静止阈值，100ms一帧
 float cal_k = 1;
 float b = -200;
 
 
 int apa_status;
 int search_interrupt = 0; //@TODO VC7 RELEASE
+
+int still_count = 0;
+bool is_Still = true;
+Loc::App2emap_DR previous_dr_pose = {0};
 
 slotfusion fusionslot;
 StatusDecFusionInput psd2statemachine;
@@ -325,7 +329,6 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     //***********************************get dr
     Loc::App2emap_DR dr_pose;
     padVehiclePose  pose_globaldata;
-    bool is_InMotion = false;
 
     if (apa_status != 1){
         EMC_TROS_Bridge_Parking_GetFieldApp2emap_DR(dr_pose); //Loc::App2emap_DR
@@ -339,19 +342,18 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         LOGD("[INPUT dr_pose] S32G RECEIVE x:%d, y: %d, yaw: %f",pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
     
         //静止判断
-        Loc::App2emap_DR previous_dr_pose = {0};
-        auto last_move_time = std::chrono::steady_clock::now();
-        auto now = std::chrono::steady_clock::now();
-
         if (dr_pose.x != previous_dr_pose.x || dr_pose.y != previous_dr_pose.y || dr_pose.canAng != previous_dr_pose.canAng) {
-            is_InMotion = true;  // 有变化，设置为运动中
-            last_move_time = now;  // 更新上次移动时间
+            is_Still = false;  // 有变化，设置为运动中
+            still_count = 0;  // reset
+        }else{
+            still_count++;
         }
-        auto duration_since_last_move = std::chrono::duration_cast<std::chrono::seconds>(now - last_move_time);
-        if (duration_since_last_move.count() > STILL_THRESHOLD) {
-            is_InMotion = false;  // 超过阈值不动，设置为false
+        if (still_count >= STILL_THRESHOLD){
+            is_Still = true;
         }
         previous_dr_pose = dr_pose;
+
+        LOGD("is_Still: %d",is_Still);
     }
 
 
@@ -595,6 +597,12 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     final_select_ID = HMIVCUSelect(HMI_temp_ID,HMI_select_ID,VCU_select_ID_ON);
     LOGD("[PSD2VCUSELECTID] HMI %d, VCU %d, final select %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);
 
+    // 车动起来后，清除点选车位
+    if (is_Still && apa_status == 2){
+        HMI_temp_ID = 0;
+        VCU_select_ID_ON = 0;
+        final_select_ID = 0;
+    }
     // APAStatus == standby/finish/error时，清零车位ID
     if (apa_status == 1 || apa_status == 6 || apa_status == 7){
         HMI_temp_ID = 0;
@@ -723,7 +731,8 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
             int count = std::min(10, static_cast<int>(cloest_slots.size()));
             bool recommend_exist = false;
 
-            if (final_select_ID == 0 && !is_InMotion) { //当没有点选ID时，推荐
+            if (final_select_ID == 0 && is_Still) { //当没有点选ID时，推荐
+                LOGD("Start Recommend!")
                 int near_ID = 1;
 
                 for (int i = 0; i < count; ++i) {
@@ -751,6 +760,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
             }
             else{ //当有点选时
 
+                LOGD("Start Select!")
                 //点选车位作为final_ID
                 final_ID = RecommendSelectID(final_select_ID,RECOMMEND_ID);
 
@@ -774,8 +784,9 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
         // For Test VCU slot lists
         for (int icnt = 0; icnt < slotlist_size; icnt++){
-            LOGD("[PSD2VCUSLOTLIST] apa_status: %d, target slot: TYPE: %d, STATUS:%d, ID: %d, displayID: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            LOGD("[PSD2VCUSLOTLIST] apa_status: %d, slotsize: %d, TYPE: %d, STATUS:%d, ID: %d, displayID: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
             apa_status,
+            slotlist_size,
             psd2vcu.FusionSlotInfo[icnt].slotType,
             psd2vcu.FusionSlotInfo[icnt].slotStatusType,
             psd2vcu.FusionSlotInfo[icnt].slotLabel,
