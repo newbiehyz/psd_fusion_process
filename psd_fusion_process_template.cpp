@@ -12,6 +12,7 @@
 #define VEHICLE_LENGTH 5259.9 
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7 
 #define MM_TO_M 1000.0
+#define STILL_THRESHOLD 0.5 //静止阈值，单位second
 float cal_k = 1;
 float b = -200;
 
@@ -324,19 +325,33 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     //***********************************get dr
     Loc::App2emap_DR dr_pose;
     padVehiclePose  pose_globaldata;
+    bool is_InMotion = false;
 
     if (apa_status != 1){
         EMC_TROS_Bridge_Parking_GetFieldApp2emap_DR(dr_pose); //Loc::App2emap_DR
         if (DEBUG == true){
             filetojson.SaveDRInfoToJson(dr_pose, "DR_POSE.json");
         }
-        // LOGD("[INPUT dr_pose] J5 SEND x: %f, y: %f, yaw: %f, timestamp: %llu",dr_pose.x, dr_pose.y, dr_pose.canAng,dr_pose.timeStamp);
-        //@TODO dr_pose long int
-        
+        LOGD("[INPUT dr_pose] J5 SEND x: %f, y: %f, yaw: %f, timestamp: %llu",dr_pose.x, dr_pose.y, dr_pose.canAng,dr_pose.timeStamp);
         pose_globaldata.coord.x = int(dr_pose.x);
         pose_globaldata.coord.y = int(dr_pose.y);
         pose_globaldata.yaw = dr_pose.canAng; //dr是角度，转换为弧度
         LOGD("[INPUT dr_pose] S32G RECEIVE x:%d, y: %d, yaw: %f",pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+    
+        //静止判断
+        Loc::App2emap_DR previous_dr_pose = {0};
+        auto last_move_time = std::chrono::steady_clock::now();
+        auto now = std::chrono::steady_clock::now();
+
+        if (dr_pose.x != previous_dr_pose.x || dr_pose.y != previous_dr_pose.y || dr_pose.canAng != previous_dr_pose.canAng) {
+            is_InMotion = true;  // 有变化，设置为运动中
+            last_move_time = now;  // 更新上次移动时间
+        }
+        auto duration_since_last_move = std::chrono::duration_cast<std::chrono::seconds>(now - last_move_time);
+        if (duration_since_last_move.count() > STILL_THRESHOLD) {
+            is_InMotion = false;  // 超过阈值不动，设置为false
+        }
+        previous_dr_pose = dr_pose;
     }
 
 
@@ -450,6 +465,8 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     auto uss_info_restruct = uss_info;
     fusionslot.postprocessUSSslots(uss_info_restruct);
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS , outputSlot_FUSED);
+    slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
+    LOGD("slotlist_size:%d",slotlist_size);
     
     // TODO
     // *****************************
@@ -481,7 +498,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
     // 清空车位
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-        tempsize = 0;
+        slotlist_size = 0;
         singleframeslots.clear();
         outputSlot_FUSED.slots_in_cur_frame.clear();
         outputSlot_VIS.slots_in_cur_frame.clear();
@@ -572,25 +589,43 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
 
 
+    //part4 目标车位ID处理。
+
+    // VCU,HMI 双终端接收点选的目标车位
+    final_select_ID = HMIVCUSelect(HMI_temp_ID,HMI_select_ID,VCU_select_ID_ON);
+    LOGD("[PSD2VCUSELECTID] HMI %d, VCU %d, final select %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);
+
+    // APAStatus == standby/finish/error时，清零车位ID
+    if (apa_status == 1 || apa_status == 6 || apa_status == 7){
+        HMI_temp_ID = 0;
+        HMI_select_ID = 0;
+        VCU_select_ID_GET = 0;
+        VCU_select_ID_ON = 0;
+        final_select_ID = 0;
+        RECOMMEND_ID = 0;
+        final_ID = 0;
+    }
 
 
 
 
 
-    // part4 输出，下游：VCU，VCU点选推荐，APAHANDLE, PERCEPTION, VCU, PLANNING，STATEMACHINE
+
+
+    // part5 输出。下游：VCU，APAHANDLE, PERCEPTION, VCU, PLANNING，STATEMACHINE
     //***********************************VCU 发送车位列表
     //非GUIDANCE时，显示整个车位列表
     if (apa_status != 5){
         LOGD("The apa staus is not 5!");
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
-        psd2vcu.slotNum = tempsize;
+        psd2vcu.slotNum = slotlist_size;
         if (psd2vcu.slotNum > 0){
             int i = 0;
             LOGD("PSD2VCU apa_status: %d, outputslot_fused size: %d",apa_status,outputSlot_FUSED.slots_in_cur_frame.size());
             
             for (auto& psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-                if (i >= tempsize || i >= 50){
-                    LOGD("die in VCU and size is:",tempsize);
+                if (i >= slotlist_size || i >= 50){
+                    LOGD("die in VCU and size is:",slotlist_size);
                     break;
                 }
 
@@ -655,95 +690,96 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
                 }
-
-                //ID选择后互斥
-                if (final_select_ID - 1000 >= 0){
-                    for (int i = 0; i < tempsize; i++) {
-                        //找到目标车位ID 且 非占用
-                        if (psd2vcu.FusionSlotInfo[i].slotLabel == final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 5; // 设置为SELECTED状态
-                        } 
-                        //剩下的非选中车位，占用的保持占用
-                        else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
-                        }
-                        //剩下的非选中车位，不占用的回到available
-                        else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
-                        }
-                    }
-                }
                 i++;
             }
 
-            //
-        }
+            // 从psd2vcu拿到最近的车位列表cloest_slots
+            POINT_I VCU_car_pose;
+            VCU_car_pose.x = 0;
+            VCU_car_pose.y = 0;
 
-        // *****************************Need test**********************************
-        POINT_I VCU_car_pose;
-        VCU_car_pose.x = 0;
-        VCU_car_pose.y = 0;
+            std::vector<Fsm::FusionSlotInfo> cloest_slots;
+            std::vector<Fsm::FusionSlotInfo> vcu_slots;
+            for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
+                if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
+                    Fsm::FusionSlotInfo vcu_slot;
+                    for (int jcnt = 0; jcnt < 4; ++jcnt){
+                        vcu_slot.pt[jcnt].x = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].x;
+                        vcu_slot.pt[jcnt].y = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].y;
+                    }
+                    vcu_slot.slotLabel = psd2vcu.FusionSlotInfo[icnt].slotLabel;
+                    vcu_slot.slotStatusType = psd2vcu.FusionSlotInfo[icnt].slotStatusType;
+                    vcu_slot.slotType = psd2vcu.FusionSlotInfo[icnt].slotType;
 
-        std::vector<Fsm::FusionSlotInfo> cloest_slots;
-        std::vector<Fsm::FusionSlotInfo> vcu_slots;
-        for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
-            if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
-                Fsm::FusionSlotInfo vcu_slot;
-                for (int jcnt = 0; jcnt < 4; ++jcnt){
-                    vcu_slot.pt[jcnt].x = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].x;
-                    vcu_slot.pt[jcnt].y = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].y;
+                    vcu_slots.push_back(vcu_slot);
                 }
-                vcu_slot.slotLabel = psd2vcu.FusionSlotInfo[icnt].slotLabel;
-                vcu_slot.slotStatusType = psd2vcu.FusionSlotInfo[icnt].slotStatusType;
-                vcu_slot.slotType = psd2vcu.FusionSlotInfo[icnt].slotType;
-
-                vcu_slots.push_back(vcu_slot);
             }
-        }
-        LOGD("vcu_slots size: %d",vcu_slots.size());
-        cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_slots ,10);
-        LOGD("cloest_slots size: %d",cloest_slots.size());
-        // ***************************************************************
+            LOGD("vcu_slots size: %d",vcu_slots.size());
+            cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_slots ,10);
+            LOGD("cloest_slots size: %d",cloest_slots.size());
 
-        // *****************************Need test**********************************
-        //@TODO VC7 RELEASE
-        int count = std::min(10, static_cast<int>(cloest_slots.size()));
-        bool recommend_exist = false;
-        if (final_select_ID == 0) { //当没有点选ID时，推荐
-            int near_ID = 1;
 
-            for (int i = 0; i < count; ++i) {
-                for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) { //在PSD2VCU里找到最近
-                    if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[i].slotLabel) {  //找到
-                        if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 4){ //跳过占用车位
-                            continue;
-                        }
+            // 根据推荐/点选状态，改变VCU车位列表status
+            int count = std::min(10, static_cast<int>(cloest_slots.size()));
+            bool recommend_exist = false;
 
-                        if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3 && !recommend_exist) { //非占用 且不存在推荐车位
-                            psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7;
-                            RECOMMEND_ID = psd2vcu.FusionSlotInfo[icnt].slotLabel;
-                            recommend_exist = true;
+            if (final_select_ID == 0 && !is_InMotion) { //当没有点选ID时，推荐
+                int near_ID = 1;
+
+                for (int i = 0; i < count; ++i) {
+                    for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) { //在PSD2VCU里找到最近
+                        if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[i].slotLabel) {  //找到
+                            if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 4){ //跳过占用车位
+                                continue;
+                            }
+
+                            if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3 && !recommend_exist) { //非占用 且不存在推荐车位
+                                psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7;
+                                RECOMMEND_ID = psd2vcu.FusionSlotInfo[icnt].slotLabel;
+                                recommend_exist = true;
+                            }
+                            else if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3 && recommend_exist && near_ID <= 4){ //非占用 且已存在推荐车位
+                                psd2vcu.FusionSlotInfo[icnt].displayLabel = near_ID;
+                                near_ID++;
+                            }
                         }
-                        else if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3 && recommend_exist && near_ID <= 4){ //非占用 且已存在推荐车位
-                            psd2vcu.FusionSlotInfo[icnt].displayLabel = near_ID;
-                            near_ID++;
-                        }
+                    }
+                }
+
+                // 推荐车位作为final_ID
+                final_ID = RecommendSelectID(final_select_ID,RECOMMEND_ID);
+            }
+            else{ //当有点选时
+
+                //点选车位作为final_ID
+                final_ID = RecommendSelectID(final_select_ID,RECOMMEND_ID);
+
+                for (int i = 0; i < slotlist_size; i++) {
+                    psd2vcu.FusionSlotInfo[i].displayLabel = 0;
+                    //找到目标车位ID 且 非占用
+                    if (psd2vcu.FusionSlotInfo[i].slotLabel == final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 5; // 设置为SELECTED状态
+                    } 
+                    //剩下的非选中车位，占用的保持占用
+                    else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
+                    }
+                    //剩下的非选中车位，不占用的回到available
+                    else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                     }
                 }
             }
         }
-        else{ //
-
-        }
-        
-        // ***************************************************************
 
         // For Test VCU slot lists
-        for (int icnt = 0; icnt < tempsize; icnt++){
-            LOGD("[PSD2VCUSLOTLIST] apa_status: %d, target slot: TYPE: %d, OCCUPIED:%d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+        for (int icnt = 0; icnt < slotlist_size; icnt++){
+            LOGD("[PSD2VCUSLOTLIST] apa_status: %d, target slot: TYPE: %d, STATUS:%d, ID: %d, displayID: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
             apa_status,
             psd2vcu.FusionSlotInfo[icnt].slotType,
             psd2vcu.FusionSlotInfo[icnt].slotStatusType,
+            psd2vcu.FusionSlotInfo[icnt].slotLabel,
+            psd2vcu.FusionSlotInfo[icnt].displayLabel,
             psd2vcu.FusionSlotInfo[icnt].pt[0].x,
             psd2vcu.FusionSlotInfo[icnt].pt[0].y,
             psd2vcu.FusionSlotInfo[icnt].pt[1].x,
@@ -754,12 +790,13 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
             psd2vcu.FusionSlotInfo[icnt].pt[3].y);
         }
         if (apa_status != 1){
+            LOGD("[PSD2VCUSELECTID] HMI %d, VCU %d, final select %d, recommend: %d, final_ID %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID,RECOMMEND_ID,final_ID);
             EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
         }
     }
     // 泊入过程中只显示目标车位
     else{
-        LOGD("[SELECTID]The apa staus is 5!");
+        LOGD("[SELECT_SLOT]The apa staus is 5!");
 
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
         psd2vcu.FusionSlotInfo[0].slotLabel = final_ID; //ID
@@ -829,57 +866,33 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
         for (int icnt = 0; icnt < 4; icnt++){
             LOGD("[TEST slot pt](%f,%f)",psd2vcu.FusionSlotInfo[0].pt[icnt].x, psd2vcu.FusionSlotInfo[0].pt[icnt].y);
         }
-         LOGD("[SELECTID] selected slot:(%f,%f),(%f,%f),(%f,%f),(%f,%f)", psd2vcu.FusionSlotInfo[0].pt[0].x,psd2vcu.FusionSlotInfo[0].pt[0].y,
+         LOGD("[SELECT_SLOT] selected slot:(%f,%f),(%f,%f),(%f,%f),(%f,%f)", psd2vcu.FusionSlotInfo[0].pt[0].x,psd2vcu.FusionSlotInfo[0].pt[0].y,
                                                                          psd2vcu.FusionSlotInfo[0].pt[1].x,psd2vcu.FusionSlotInfo[0].pt[1].y,
                                                                          psd2vcu.FusionSlotInfo[0].pt[2].x,psd2vcu.FusionSlotInfo[0].pt[2].y,
                                                                          psd2vcu.FusionSlotInfo[0].pt[3].x,psd2vcu.FusionSlotInfo[0].pt[3].y);
                                                                     
-        LOGD("[SELECTID] SEND VCU TARGET SLOT!!!!");
+        LOGD("[SELECT_SLOT] SEND VCU TARGET SLOT!!!!");
         if (apa_status != 1){
+
+            LOGD("[PSD2VCUSELECTID] HMI %d, VCU %d, final select %d, recommend: %d, final_ID %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID,RECOMMEND_ID,final_ID);
             EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
         }
     }
-
-    //***********************************VCU点选推荐
-
-    // *****************************Need test**********************************
-
-    // APAStatus == standby/finish/error时，清零目标车位
-    if (apa_status == 1 || apa_status == 6 || apa_status == 7){
-        HMI_temp_ID = 0;
-        HMI_select_ID = 0;
-        VCU_select_ID_GET = 0;
-        VCU_select_ID_ON = 0;
-        final_select_ID = 0;
-        RECOMMEND_ID = 0;
-        final_ID = 0;
-    }
-
-    //VCU,HMI 双终端接收点选的目标车位，STATEMACHINE根据点选车位交互
-    final_select_ID = HMIVCUSelect(HMI_temp_ID,HMI_select_ID,VCU_select_ID_ON);
-    //推荐与选择
-    final_ID = RecommendSelectID(final_select_ID,RECOMMEND_ID);
-
-    LOGD("[PSD2VCUSELECTID] HMI %d, VCU %d, final select %d, recommend: %d, final_ID %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID,RECOMMEND_ID,final_ID);
-
-    // ***************************************************************
-
-
 
 
 
 
 
     //***********************************APAHANDLE 发送车位列表
-    tempsize = outputSlot_FUSED.slots_in_cur_frame.size();
-    LOGD("slot list size:%d",tempsize);
-    psd2location.slotNum = tempsize;
+
+
+    psd2location.slotNum = slotlist_size;
     if (psd2location.slotNum > 0){
         int j = 0;
 
         for (auto& psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-            if (j >= tempsize || j >= 50){
-                std::cout<<"die in APAhandle and size is:"<<tempsize<<std::endl;
+            if (j >= slotlist_size || j >= 50){
+                std::cout<<"die in APAhandle and size is:"<<slotlist_size<<std::endl;
                 break;
             }
             psd2location.fusionSlotInfo[j].slotLabel = psd_m_output.rectInfo.label; //ID
@@ -927,8 +940,8 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
     LOGD("slot list size:%d",planning_slotnum);
     int k = 0;
     for (auto& psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-        if (k >= tempsize || k >= 50){
-            std::cout<<"die in planning and size is:"<< tempsize << std::endl;
+        if (k >= slotlist_size || k >= 50){
+            std::cout<<"die in planning and size is:"<< slotlist_size << std::endl;
             break;
         }
         psd2planning.SfusionSrchSlots[k].slotID = psd_m_output.rectInfo.label;
@@ -1052,7 +1065,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
 
     //***********************************STATEMACHINE 交互
-    psd2statemachine.aps_apaParkPlaceNum = tempsize;
+    psd2statemachine.aps_apaParkPlaceNum = slotlist_size;
 
     if (apa_status == 1 || apa_status == 6 || apa_status == 7){
         psd2statemachine.aps_apaParkType = 0;
@@ -1070,7 +1083,7 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
             psd2statemachine.aps_apaParkFusionType = 0;
         }
         psd2statemachine.aps_apaNarrowSlot = 0; //@TODO 窄车位
-        if (tempsize > 0){
+        if (slotlist_size > 0){
             psd2statemachine.aps_apaAvailableSlot = 1;
             psd2statemachine.aps_apaHighlightSlot = 1;
         }
@@ -1232,7 +1245,7 @@ tResult cpsd_fusion_process::OnHMI_InputInfo(const HMI_InputInfo& userData)
 tResult cpsd_fusion_process::OnSelectSlot(const Sfus::SelectSlot& userData)
 {
     VCU_select_ID_ON = userData.SelectSlotID;
-    LOGD("[SELECTID] GET VCU ID!!!!")
+    LOGD("[SELECTID] OnSelectSlot VCU ID: %d !!!!",VCU_select_ID_ON);
     if (DEBUG == true){
         filetojson.SaveSelectSlotToJson(userData, "SelectSlot.json");
     }
