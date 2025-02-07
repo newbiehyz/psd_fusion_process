@@ -70,7 +70,6 @@ namespace math{
             point_d.y = spot.pt[3].y;
             
             // Calculate the center of the parking spot again for printing
-            POINT_I slot_center;
             slot_center.x = (point_a.x + point_b.x + point_c.x + point_d.x) / 4;
             slot_center.y = (point_a.y + point_b.y + point_c.y + point_d.y) / 4;
             LOGD("Parking Spot Center: (%d, %d), Distance to car:  %d mm",slot_center.x, slot_center.y,dist);
