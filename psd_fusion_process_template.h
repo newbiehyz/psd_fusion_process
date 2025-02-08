@@ -6,7 +6,6 @@
 #include "save_to_json.h"
 #include "PSD_FusionModuleIF.h"
 
-
 void mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION); 
 int slottype_uss2rd(UssIf_enmSlotType_t uss_type);
 int slottype_rd2vcu(int rd_type);
@@ -17,51 +16,54 @@ class cpsd_fusion_process: public cpsd_fusion_process_base
 {
 public:
     cpsd_fusion_process();
-    ~cpsd_fusion_process();
+    ~cpsd_fusion_process() override;
 
 public:
-    tResult Init();
-    tResult Term();
-    tResult Start();
-    tResult Stop();
-
+    tResult Init() override;
+    tResult Term() override;
+    tResult Start() override;
+    tResult Stop() override;
 public:	
-    tResult ThreadTrigger_thread();
-    tResult TimeTrigger_Timer50();
-    tResult TimeTrigger_Timer100();
-    tResult OnVehicleCanData(const VehicleCanData& userData);
-    tResult OnStatusDecOutput(const StatusDecOutput& userData);
-    tResult OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo_t& userData);
-    tResult OnAPAControlPlanOutput(const APAControlPlanOutput& userData);
-    tResult OnStatusDecFusionOutput(const StatusDecFusionOutput& userData);
-    tResult OnAPAControlDebugOutput(const APAControlDebugOutput& userData);
-    tResult OnStatusDec2FusionDebug(const StatusDec2FusionDebug& userData);
-    tResult OnEmapWorkMode(const Fus::EmapWorkMode& userData);
-    tResult OnFusionTimeStamp(const Fus::FusionTimeStamp& userData);
-    tResult OnVagueEmapGrid(const Fus::VagueEmapGrid& userData);
-    tResult OnPreciseEmapGrid(const Fus::PreciseEmapGrid& userData);
-    tResult OnPkEmapObs(const Fus::PkEmapObs& userData);
-    tResult OnEmapSlotVector(const Fus::EmapSlotVector& userData);
-    tResult OnStableEmapObs(const Fus::StableEmapObs& userData);
-    tResult OnFusionSlotInfo(const Fus::FusionSlotInfo& userData);
-    tResult OnApp2emap_DR(const Loc::App2emap_DR& userData);
-    tResult OnMapInfo(const Loc::MapInfo& userData);
-    tResult OnObstacles(const od::Obstacles& userData);
-    tResult OnSApaPSInfo(const rd::SApaPSInfo& userData);
-    tResult OnQuadParkingSlots(const rd::QuadParkingSlots& userData);
-    tResult OnImage(const rd::Image& userData);
-    tResult OnDecPlan2Emap(const Pla::DecPlan2Emap& userData);
-    tResult OnHMI_InputInfo(const HMI_InputInfo& userData);
-    tResult OnSelectSlot(const Sfus::SelectSlot& userData);
-    tResult OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch& userData);
-    tResult OnSelectSlot2(const Sfus::SelectSlot& userData);
-     private:
+    tResult TimeTrigger_thread_50ms_1() override;
+    tResult TimeTrigger_thread_50ms_2() override;
+    tResult OnVehicleCanData(const VehicleCanData& userData) override;
+    tResult OnStatusDecOutput(const StatusDecOutput& userData) override;
+    tResult OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo_t& userData) override;
+    tResult OnAPAControlPlanOutput(const APAControlPlanOutput& userData) override;
+    tResult OnStatusDecFusionOutput(const StatusDecFusionOutput& userData) override;
+    tResult OnAPAControlDebugOutput(const APAControlDebugOutput& userData) override;
+    tResult OnStatusDec2FusionDebug(const StatusDec2FusionDebug& userData) override;
+    tResult OnApp2emap_DR(const Loc::App2emap_DR& userData) override;
+    tResult OnMapInfo(const Loc::MapInfo& userData) override;
+    tResult OnObstacles(const od::Obstacles& userData) override;
+    tResult OnSApaPSInfo(const rd::SApaPSInfo& userData) override;
+    tResult OnQuadParkingSlots(const rd::QuadParkingSlots& userData) override;
+    tResult OnImage(const rd::Image& userData) override;
+    tResult OnDecPlan2Emap(const Pla::DecPlan2Emap& userData) override;
+    tResult OnHMI_InputInfo(const HMI_InputInfo& userData) override;
+    tResult OnSelectSlot(const Sfus::SelectSlot& userData) override;
+    tResult OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch& userData) override;
+    tResult OnSelectSlot2(const Sfus::SelectSlot& userData) override;
+    tResult OnEmapWorkMode(const Fus::EmapWorkMode& userData) override;
+    tResult OnFusionTimeStamp(const Fus::FusionTimeStamp& userData) override;
+    tResult OnVagueEmapGrid(const Fus::VagueEmapGrid& userData) override;
+    tResult OnPreciseEmapGrid(const Fus::PreciseEmapGrid& userData) override;
+    tResult OnPkEmapObs(const Fus::PkEmapObs& userData) override;
+    tResult OnEmapSlotVector(const Fus::EmapSlotVector& userData) override;
+    tResult OnStableEmapObs(const Fus::StableEmapObs& userData) override;
+    tResult OnFusionSlotInfo(const Fus::FusionSlotInfo& userData) override;
+    tResult OnParkInHeadInSwitch2(const Sfus::ParkInHeadInSwitch& userData) override;
+    tResult OnSelectSlot3(const Sfus::SelectSlot& userData) override;
+    tResult OnHMI_InputInfo2(const HMI_InputInfo& userData) override;
+
+private:
     bool LoadFromFile(const std::string& filename);
     void Slot2Global(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw);
     void Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw);
-    int  HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select);
+    int HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select);
     int RecommendSelectID(const int &final_select, const int &recommend);
- public:
+
+public:
     apaSlotListInfo outputSlot_FUSED;
     apaSlotListInfo outputSlot_VIS;   
     apaSlotListInfo outputSlot_USS;
@@ -72,6 +74,7 @@ public:
     int dr_cul_x = 0;
     int dr_cul_y = 0;
     float dr_cul_theta = 0.0;
+     
 };
 
 #endif

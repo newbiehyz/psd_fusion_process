@@ -108,11 +108,6 @@ tResult cpsd_fusion_process::Stop()
     RETURN_NOERROR;
 }
 
-tResult cpsd_fusion_process::ThreadTrigger_thread()
-{
-    RETURN_NOERROR;
-}
-
 bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
     std::ifstream inFile(filename);
     if(!inFile.is_open()){
@@ -134,15 +129,6 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
     }
     inFile.close();
     return true;
-}
-
-tResult cpsd_fusion_process::TimeTrigger_Timer50()
-{
-    // auto start50 = std::chrono::steady_clock::now();
-    // auto end50 = std::chrono::steady_clock::now();
-    // auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end50 - start50);
-    // std::cout<<"[TIMECOST]Timetrigger50 time is:"<< elapsed.count() <<std::endl;
-    RETURN_NOERROR;
 }
 
 void cpsd_fusion_process::Slot2Global(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw)
@@ -250,8 +236,20 @@ int cpsd_fusion_process::RecommendSelectID(const int &final_select, const int &r
     }
 }
 
-tResult cpsd_fusion_process::TimeTrigger_Timer100()
+
+tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
 {
+    // auto start50 = std::chrono::steady_clock::now();
+    // auto end50 = std::chrono::steady_clock::now();
+    // auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end50 - start50);
+    // std::cout<<"[TIMECOST]Timetrigger50_1 time is:"<< elapsed.count() <<std::endl;
+
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
+{
+
     auto start = std::chrono::steady_clock::now();
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
@@ -955,8 +953,9 @@ tResult cpsd_fusion_process::TimeTrigger_Timer100()
 
     auto end = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout<<"[TIMECOST]Timetrigger100 time is:"<< elapsed.count() <<std::endl;
-    
+    std::cout<<"[TIMECOST]Timetrigger50_2 time is:"<< elapsed.count() <<std::endl;
+
+
     RETURN_NOERROR;
 }
 
@@ -965,19 +964,14 @@ tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
     RETURN_NOERROR;
 }
 
-
 tResult cpsd_fusion_process::OnStatusDecOutput(const StatusDecOutput& userData)
 {
-    // apa_status = userData.aps_apaStatusReq;
-    // // // @TODO VC7 RELEASE
-    // // search_interrupt = userData.aps_apaSrchInterupt;
-
-
-    // LOGD("[APA_Status]:Received APA_status is:%d", apa_status);
-
     // if (DEBUG == true){
     //     filetojson.SaveApastatusToJson(userData, "APAStatus.json");
     // }
+
+    // apa_status = userData.aps_apaStatusReq;
+    // search_interrupt = userData.aps_apaSrchInterupt;
 
     RETURN_NOERROR;
 }
@@ -987,6 +981,7 @@ tResult cpsd_fusion_process::OnUssIf_stPLVOutputInfo(const UssIf_stPLVOutputInfo
     // if (DEBUG == true){
     //     filetojson.SaveUssInfoToJson(userData,"USSapaSlotListInfo.json");
     // }
+
     // fusionslot.fillVisonstruct(userData, outputSlot_USS);
     // LOGD("USS SLOT SIZE IS:%d",outputSlot_USS.slots_in_cur_frame.size());
     // auto uss_info = userData;
@@ -1011,46 +1006,6 @@ tResult cpsd_fusion_process::OnAPAControlDebugOutput(const APAControlDebugOutput
 }
 
 tResult cpsd_fusion_process::OnStatusDec2FusionDebug(const StatusDec2FusionDebug& userData)
-{
-    RETURN_NOERROR;
-}
-
-tResult cpsd_fusion_process::OnEmapWorkMode(const Fus::EmapWorkMode& userData)
-{
-    RETURN_NOERROR;
-}
-
-tResult cpsd_fusion_process::OnFusionTimeStamp(const Fus::FusionTimeStamp& userData)
-{
-    RETURN_NOERROR;
-}
-
-tResult cpsd_fusion_process::OnVagueEmapGrid(const Fus::VagueEmapGrid& userData)
-{
-    RETURN_NOERROR;
-}
-
-tResult cpsd_fusion_process::OnPreciseEmapGrid(const Fus::PreciseEmapGrid& userData)
-{
-    RETURN_NOERROR;
-}
-
-tResult cpsd_fusion_process::OnPkEmapObs(const Fus::PkEmapObs& userData)
-{
-    RETURN_NOERROR;
-}
-
-tResult cpsd_fusion_process::OnEmapSlotVector(const Fus::EmapSlotVector& userData)
-{
-    RETURN_NOERROR;
-}
-
-tResult cpsd_fusion_process::OnStableEmapObs(const Fus::StableEmapObs& userData)
-{
-    RETURN_NOERROR;
-}
-
-tResult cpsd_fusion_process::OnFusionSlotInfo(const Fus::FusionSlotInfo& userData)
 {
     RETURN_NOERROR;
 }
@@ -1097,11 +1052,13 @@ tResult cpsd_fusion_process::OnHMI_InputInfo(const HMI_InputInfo& userData)
 
 tResult cpsd_fusion_process::OnSelectSlot(const Sfus::SelectSlot& userData)
 {
-    VCU_select_ID_ON = userData.SelectSlotID;
-    LOGD("[SELECTID] OnSelectSlot VCU ID: %d !!!!",VCU_select_ID_ON);
     if (DEBUG == true){
         filetojson.SaveSelectSlotToJson(userData, "SelectSlot.json");
     }
+    
+    VCU_select_ID_ON = userData.SelectSlotID;
+    LOGD("[SELECTID] OnSelectSlot VCU ID: %d !!!!",VCU_select_ID_ON);
+
     RETURN_NOERROR;
 }
 
@@ -1112,9 +1069,68 @@ tResult cpsd_fusion_process::OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch
 
 tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
 {
-    HMI_select_ID = userData.SelectSlotID;
     if (DEBUG == true){
         filetojson.SaveSelectSlot2ToJson(userData, "SelectSlot2.json");
     }
+
+    HMI_select_ID = userData.SelectSlotID;
+
     RETURN_NOERROR;
 }
+
+tResult cpsd_fusion_process::OnEmapWorkMode(const Fus::EmapWorkMode& userData)
+{
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::OnFusionTimeStamp(const Fus::FusionTimeStamp& userData)
+{
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::OnVagueEmapGrid(const Fus::VagueEmapGrid& userData)
+{
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::OnPreciseEmapGrid(const Fus::PreciseEmapGrid& userData)
+{
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::OnPkEmapObs(const Fus::PkEmapObs& userData)
+{
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::OnEmapSlotVector(const Fus::EmapSlotVector& userData)
+{
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::OnStableEmapObs(const Fus::StableEmapObs& userData)
+{
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::OnFusionSlotInfo(const Fus::FusionSlotInfo& userData)
+{
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::OnParkInHeadInSwitch2(const Sfus::ParkInHeadInSwitch& userData)
+{
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::OnSelectSlot3(const Sfus::SelectSlot& userData)
+{
+    RETURN_NOERROR;
+}
+
+tResult cpsd_fusion_process::OnHMI_InputInfo2(const HMI_InputInfo& userData)
+{
+    RETURN_NOERROR;
+}
+
+
