@@ -15,11 +15,14 @@ public:
     void GetRDInfo(rd::QuadParkingSlots& rd_info, unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots);
     void GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2emap_DR& previous_dr_pose, padVehiclePose& pose_globaldata, bool& is_Still, int& still_count);
     void GetPerception(Fus::PkEmapObs& obs_info_get);
-    void GetStateMachine(StatusDecOutput& statemachine_info, int& apa_status);
+    void GetAPAStatus(StatusDecOutput& apastatus_info, int& apa_status);
+    void GetSearchParkStatus(StatusDecFusionOutput& searchpark_info, int& park_request, int& search_interrupt);
     void ClearExistedInput(unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots, padVehiclePose& pose_globaldata, int& apa_status);
 
-
     void GetAllInput();
+
+
+
 
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -30,10 +33,16 @@ public:
     bool is_Still;
     int still_count;
     Fus::PkEmapObs obs_info_get;
-    StatusDecOutput statemachine_info;
+    StatusDecOutput apastatus_info;
     int apa_status;
+    StatusDecFusionOutput searchpark_info;
+    int park_request;
+    int search_interrupt;
+
 
 private:
+
+
 };
 
 #endif // PARKINGSYSTEM_HPP

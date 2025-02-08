@@ -123,18 +123,22 @@ void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {
     }
 }
 
-void GetInput::GetStateMachine(StatusDecOutput& statemachine_info, int& apa_status) {
-    S2S_MCore_Bridge_GetSigStatusDecOutput(&statemachine_info);
-    apa_status = statemachine_info.aps_apaStatusReq;
+void GetInput::GetAPAStatus(StatusDecOutput& apastatus_info, int& apa_status) {
+    S2S_MCore_Bridge_GetSigStatusDecOutput(&apastatus_info);
     if (DEBUG) {
-        filetojson.SaveApastatusToJson(statemachine_info, "APAStatus.json");
+        filetojson.SaveApastatusToJson(apastatus_info, "APAStatus.json");
     }
 
-    LOGD("[INPUT apastatus]: %d",statemachine_info.aps_apaStatusReq);
-    apa_status = statemachine_info.aps_apaStatusReq;
+    LOGD("[INPUT apastatus]: %d",apastatus_info.aps_apaStatusReq);
+    apa_status = apastatus_info.aps_apaStatusReq;
+}
 
-    // search_interrupt = statemachine_info.aps_apaSrchInterupt; // @TODO VC7 RELEASE
-    // LOGD("[INPUT search_interrupt]: %d",statemachine_info.aps_apaStatusReq); // @TODO VC7 RELEASE
+void GetInput::GetSearchParkStatus(StatusDecFusionOutput& searchpark_info, int& park_request , int& search_interrupt) {
+    S2S_MCore_Bridge_GetSigStatusDecFusionOutput(&searchpark_info);
+
+    LOGD("[INPUT searchpark_status] parking_request: %d. search_interrupt: %d",searchpark_info.aps_apaStartParkingReq,searchpark_info.aps_apaSrchInterupt);
+    park_request = searchpark_info.aps_apaStartParkingReq;
+    search_interrupt = searchpark_info.aps_apaSrchInterupt;
 }
 
 
@@ -154,6 +158,7 @@ void GetInput::GetAllInput() {
     GetRDInfo(rd_info, singleframeslotsID, singleframeslots);
     GetDRInfo(apa_status, dr_pose, previous_dr_pose, pose_globaldata, is_Still, still_count);
     GetPerception(obs_info_get);
-    GetStateMachine(statemachine_info, apa_status);
+    GetAPAStatus(apastatus_info, apa_status);
+    GetSearchParkStatus(searchpark_info, park_request, search_interrupt);
     ClearExistedInput(singleframeslotsID, singleframeslots, pose_globaldata, apa_status);
 }

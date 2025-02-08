@@ -21,6 +21,7 @@ float b = -200;
 
 // 全局变量
 int apa_status = 0;
+int park_request = 0;
 int search_interrupt = 0; //@TODO VC7 RELEASE
 int still_count = 0;
 bool is_Still = true;
@@ -260,12 +261,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     std::vector<padVisionSlotCoord> singleframeslots;
     Loc::App2emap_DR dr_pose;
     padVehiclePose pose_globaldata;
-    Loc::App2emap_DR previous_dr_pose;
-    bool is_Still = false;
-    int still_count = 0;
     Fus::PkEmapObs obs_info_get;
     StatusDecOutput statemachine_info;
-    int apa_status = 0;
 
     getInput.GetAllInput();
 
@@ -277,19 +274,15 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
     float stop_dis = 0.0;
     int obs_location = 0;
-    PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stop_dis, obs_location);
-    LOGD("Stopper distance: %f",stop_dis);
-    LOGD("Obs location: %f",obs_location);
-
     //每个车位，属性增加SodLocation
     for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
         PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stop_dis, obs_location);
+        LOGD("Stopper distance: %f",stop_dis);
+        LOGD("Obs location: %f",obs_location);
         psd_m_output.rectInfo.iStopperDistance = stop_dis;
         psd_m_output.rectInfo.iSodLocation = obs_location; // @TODO VC7 新增障碍物在车位内的位置
         // @TODO 给UI CONTROL和VCU发障碍物在车位内的位置
     }
-
-
 
         
     if (DEBUG == true){
@@ -1055,7 +1048,7 @@ tResult cpsd_fusion_process::OnSelectSlot(const Sfus::SelectSlot& userData)
     if (DEBUG == true){
         filetojson.SaveSelectSlotToJson(userData, "SelectSlot.json");
     }
-    
+
     VCU_select_ID_ON = userData.SelectSlotID;
     LOGD("[SELECTID] OnSelectSlot VCU ID: %d !!!!",VCU_select_ID_ON);
 
