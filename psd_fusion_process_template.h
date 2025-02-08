@@ -65,7 +65,6 @@ public:
     apaSlotListInfo outputSlot_FUSED;
     apaSlotListInfo outputSlot_VIS;   
     apaSlotListInfo outputSlot_USS;
-    SaveFileToJson filetojson;
     bool DEBUG = false;
     PSD_FusionModuleIF PSD_FusionModuleIFrunable;
     int slotlist_size;
