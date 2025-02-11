@@ -155,10 +155,10 @@ void GetInput::ClearExistedInput(unsigned long long& singleframeslotsID, std::ve
 //@TODO GET USS
 
 void GetInput::GetAllInput() {
+    GetAPAStatus(apastatus_info, apa_status);
     GetRDInfo(rd_info, singleframeslotsID, singleframeslots);
     GetDRInfo(apa_status, dr_pose, previous_dr_pose, pose_globaldata, is_Still, still_count);
     GetPerception(obs_info_get);
-    GetAPAStatus(apastatus_info, apa_status);
     GetSearchParkStatus(searchpark_info, park_request, search_interrupt);
-    ClearExistedInput(singleframeslotsID, singleframeslots, pose_globaldata, apa_status);
+    // ClearExistedInput(singleframeslotsID, singleframeslots, pose_globaldata, apa_status);
 }

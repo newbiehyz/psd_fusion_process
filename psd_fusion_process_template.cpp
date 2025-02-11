@@ -22,7 +22,7 @@ float b = -200;
 // 全局变量
 int apa_status = 0;
 int park_request = 0;
-int search_interrupt = 0; //@TODO VC7 RELEASE
+const int search_interrupt = 0; //@TODO VC7 RELEASE
 int still_count = 0;
 bool is_Still = true;
 Loc::App2emap_DR previous_dr_pose = {0};
@@ -254,8 +254,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     auto start = std::chrono::steady_clock::now();
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
-    GetInput getInput;
-
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
     std::vector<padVisionSlotCoord> singleframeslots;
@@ -264,24 +262,47 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     Fus::PkEmapObs obs_info_get;
     StatusDecOutput statemachine_info;
 
+    GetInput getInput;
     getInput.GetAllInput();
+
+    rd_info = getInput.rd_info;
+    singleframeslotsID = getInput.singleframeslotsID;
+    singleframeslots = getInput.singleframeslots;
+    dr_pose = getInput.dr_pose;
+    pose_globaldata = getInput.pose_globaldata;
+    obs_info_get = getInput.obs_info_get;
+    apa_status = getInput.apa_status;
+    // search_interrupt = getInput.search_interrupt; //@TODO VC7 RELEASE
 
 
     // part3 算法
+    LOGD("getall: RDframe: %llu, apastatus: %d, interrupt: %d",singleframeslotsID,apa_status,search_interrupt);
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
+    LOGD("getall VISSLOTS size: %d",outputSlot_VIS.slots_in_cur_frame.size());
 
-    float stop_dis = 0.0;
-    int obs_location = 0;
+
     //每个车位，属性增加SodLocation
     for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
-        PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stop_dis, obs_location);
-        LOGD("Stopper distance: %f",stop_dis);
-        LOGD("Obs location: %f",obs_location);
-        psd_m_output.rectInfo.iStopperDistance = stop_dis;
-        psd_m_output.rectInfo.iSodLocation = obs_location; // @TODO VC7 新增障碍物在车位内的位置
-        // @TODO 给UI CONTROL和VCU发障碍物在车位内的位置
+        float stopper_dis = 0.0;
+        int stopper_in_slot = 0;
+        int lock_location = 0;
+        int lock_in_slot = 0;
+
+        PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stopper_dis, lock_location);
+        LOGD("Stopper distance: %f",stopper_dis);
+        LOGD("Lock location: %f",lock_location);
+        if (stopper_dis != 0 ){
+            stopper_in_slot = 1;
+        }
+        if (lock_location != 0){
+            lock_in_slot = 1;
+        }
+        psd_m_output.rectInfo.StopperDistance = stopper_dis;
+        psd_m_output.rectInfo.StopperInSlot = stopper_in_slot;
+        psd_m_output.rectInfo.LockLocation = lock_location;
+        psd_m_output.rectInfo.LockInSlot = lock_in_slot;
     }
 
         
@@ -305,13 +326,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     LOGD("USS SLOT SIZE IS:%d",outputSlot_USS.slots_in_cur_frame.size());
     auto uss_info_restruct = uss_info;
     fusionslot.postprocessUSSslots(uss_info_restruct);
-    fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS , outputSlot_FUSED);
+    LOGD("getall vis size: %d",outputSlot_VIS.slots_in_cur_frame.size());
+    fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
+    LOGD("getall fus size: %d",outputSlot_FUSED.slots_in_cur_frame.size());
     slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
     LOGD("slotlist_size:%d",slotlist_size);
     
-    // TODO
     // *****************************
-    
     apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
     for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
         // LOGD("single_frame update! fused size:%d", outputSlot_FUSED.slots_in_cur_frame.size());
@@ -350,11 +371,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     // 输出VIS USS FUSION车位列表
     for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
-        LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, SODloc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, StopDis: %f, LockLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
         outputSlot_VIS.slots_in_cur_frame.size(),
         psd_m_output.rectInfo.label,
         psd_m_output.rectInfo.PStype,
-        psd_m_output.rectInfo.iSodLocation,
+        psd_m_output.rectInfo.StopperDistance,
+        psd_m_output.rectInfo.LockLocation,
         psd_m_output.rectInfo.pt[0].x,
         psd_m_output.rectInfo.pt[0].y,
         psd_m_output.rectInfo.pt[1].x,
@@ -385,11 +407,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     }
 
     for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-        LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, SODloc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, StopDis: %f, LockLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
         outputSlot_FUSED.slots_in_cur_frame.size(),
         psd_m_output.rectInfo.label,
         psd_m_output.rectInfo.PStype,
-        psd_m_output.rectInfo.iSodLocation,
+        psd_m_output.rectInfo.StopperDistance,
+        psd_m_output.rectInfo.LockLocation,
         psd_m_output.rectInfo.pt[0].x,
         psd_m_output.rectInfo.pt[0].y,
         psd_m_output.rectInfo.pt[1].x,
@@ -478,6 +501,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 //psd2vcu.FusionSlotInfo[i].slotType = slottype_rd2vcu(psd_m_output.rectInfo.PStype);
                 psd2vcu.FusionSlotInfo[i].slotLabel = psd_m_output.rectInfo.label; //ID
                 psd2vcu.FusionSlotInfo[i].displayLabel = 0;
+                psd2vcu.FusionSlotInfo[i].stopperInSlot = psd_m_output.rectInfo.StopperInSlot;
+                psd2vcu.FusionSlotInfo[i].lockInSlot = psd_m_output.rectInfo.LockInSlot;
+                psd2vcu.FusionSlotInfo[i].lockLocation = psd_m_output.rectInfo.LockLocation;
 
                 //ABCD顺序调整为VCU专用顺序
                 //左侧
@@ -803,7 +829,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         } else {
             psd2planning.SfusionSrchSlots[k].slotSource = Sfus::SLOTSRC_NULL;
         }
-        psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.x = psd_m_output.rectInfo.iStopperDistance;
+        psd2planning.SfusionSrchSlots[k].stopper_Dis = psd_m_output.rectInfo.StopperDistance;
 
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.x = psd_m_output.rectInfo.pt[0].x;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.y = psd_m_output.rectInfo.pt[0].y;
@@ -814,7 +840,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerD.x = psd_m_output.rectInfo.pt[3].x;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerD.y = psd_m_output.rectInfo.pt[3].y;
 
-        LOGD("[PSD2PLANNING] TOTAL SLOT NUM: %d, Slot#%d, type: %d, source: %d, stopdis: %f (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f)",
+        LOGD("[PSD2PLANNING] TOTAL SLOT NUM: %d, Slot#%d, type: %d, source: %d, StopDis: %f (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f)",
                 planning_slotnum,
                 psd2planning.SfusionSrchSlots[k].slotID,
                 psd2planning.SfusionSrchSlots[k].slotType,
@@ -847,7 +873,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
                 psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
                 psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
-                psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.iStopperDistance;
+                psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
                 if (final_ID >= 1000 && final_ID < 10000){
                     psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
                 }
@@ -946,7 +972,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
     auto end = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout<<"[TIMECOST]Timetrigger50_2 time is:"<< elapsed.count() <<std::endl;
+    LOGD("[TIMECOST]Timetrigger50_2 time is: %d",elapsed.count());
 
 
     RETURN_NOERROR;
@@ -964,7 +990,6 @@ tResult cpsd_fusion_process::OnStatusDecOutput(const StatusDecOutput& userData)
     // }
 
     // apa_status = userData.aps_apaStatusReq;
-    // search_interrupt = userData.aps_apaSrchInterupt;
 
     RETURN_NOERROR;
 }
