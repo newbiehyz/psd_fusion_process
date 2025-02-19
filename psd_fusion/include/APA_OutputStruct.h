@@ -139,6 +139,7 @@ struct SApaPSRect
 	int LockInSlot;			 	 //车位内是否有地锁
 	float StopperDistance; 	 	 //限位器到入口边的距离
 	int StopperInSlot;			 //车位内是否有限位器
+	int iMaterial;				 //车位下的地面材质，0其他，1草砖，2机械
 
 	SApaPSRect()
 	{
@@ -160,6 +161,7 @@ struct SApaPSRect
 		LockInSlot			= 0;
 		StopperDistance		= 0.0;
 		StopperInSlot 		= 0;
+		iMaterial	 		= 0;
 
 		for(int i = 0; i < RECTPointNum; i++)
 		{

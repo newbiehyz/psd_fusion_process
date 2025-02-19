@@ -178,16 +178,20 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
             cv::putText(image, lw_text, center+cv::Point(0, -10), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
 
             std::vector<cv::Point> scaledPoints;
+            std::vector<std::string> labels = {"A", "B", "C", "D"};
             for (int i = 0; i < 4; ++i) {
                 cv::Point scaledPoint(
                     rect.rectInfo.pt[i].x * scale + translate_x,
                     rect.rectInfo.pt[i].y * scale + translate_y
                 );
                 scaledPoints.push_back(scaledPoint);
+                // 在顶点处标注字母
+                cv::putText(image, labels[i], scaledPoint, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1, cv::LINE_AA);
             }
 
             // 绘制四边形
             cv::polylines(image, scaledPoints, true, color, 1);
+            
 
             // 绘制角点坐标
             for (int i = 0; i < 4; ++i) {
@@ -243,6 +247,9 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
 
             // 绘制矩形为红色
             drawRectangles(rectanglesA, cv::Scalar(0, 0, 255));
+
+            // 向右旋转180度
+            cv::rotate(image, image, cv::ROTATE_180);
 
             // 保存图像
             cv::imwrite(filename, image);
@@ -817,7 +824,7 @@ void TimeTrigger_Timer50(){
             oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : 0xFF;  
             
             //@TODO 左右判断优化,按规划ABCD顺序输出车位角点
-            if (parkingSlot.tl.x < 224 && parkingSlot.tr.x < 224)
+            if (parkingSlot.tl.x < 448 && parkingSlot.tr.x < 448)
             {
                 oneslot.slotSide = 0x01; //x小于图像中心，判断为左
                 oneslot.a.x = int(parkingSlot.tr.x);

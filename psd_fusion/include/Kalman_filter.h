@@ -89,6 +89,7 @@ class Kalman_filter{
     SLOT_TYPE GetSlotType() const { return type_; }
     SLOT_SOURCE GetSlotSource() const { return source_; }
     uint32_t GetOccupy() const {return occupy_;}
+    uint32_t GetMaterial() const {return material_;}
     Eigen::Vector3f GetSlotCenter() const {
         Eigen::Vector3f c = Eigen::Vector3f::Ones();
         c.head<2>() = slot_state_.head<2>();
@@ -154,7 +155,7 @@ class Kalman_filter{
     }
 
     bool point_in_slot(const Eigen::Vector3f& point,
-                       float ratio_thr = 0.75) const;
+                       float ratio_thr = 0.5) const;
     bool point_in_rect(const Eigen::Vector3f& point) const;
     void Update(const QuadInfoPtr& quad_info);
 
@@ -178,7 +179,10 @@ class Kalman_filter{
     SLOT_SOURCE source_;
     // 车位跟踪状态
     SLOT_STATUS status_;
+    // 占用类型
     uint32_t    occupy_;
+    // 地面材质
+    uint32_t    material_;
     // 最新观测帧Id
     uint32_t lastest_frame_id_ = 0;
     // 距离上一次观测间隔帧数

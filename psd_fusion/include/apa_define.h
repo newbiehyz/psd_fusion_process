@@ -161,14 +161,15 @@ struct QuadInfo {
 
     float length_world, width_world;
     uint32_t occupy;
+    uint32_t material;
 };
 typedef std::shared_ptr<QuadInfo> QuadInfoPtr;
 
 struct IPMParameters {
     float focal_length = 29.8f;
     // float focal_length = 44.8f;
-    float ipm_width = 448.0f;
-    float ipm_height = 448.0f;
+    float ipm_width = 896.0f;
+    float ipm_height = 896.0f;
 
     float cx_ratio = 0.5f;
     float cy_ratio = 0.5f;
@@ -182,18 +183,19 @@ struct IPMParameters {
     // float max_v = 264.f;
     // float cam_v = 120.f;
 
-    // 15m
-     float min_u = 153.f;  // width dir
-     float max_u = 200.f;
-     float min_v = 118.f;  // height dir
-     float max_v = 235.f;
-     float cam_v = 120.f;
+    // // 15m
+    //  float min_u = 153.f;  // width dir
+    //  float max_u = 200.f;
+    //  float min_v = 118.f;  // height dir
+    //  float max_v = 235.f;
+    //  float cam_v = 120.f;
      
-    // // 20m
-    //  float min_u = 158.f;  // width dir
-    //  float max_u = 193.f;
-    //  float min_v = 132.f;  // height dir
-    //  float max_v = 219.f;
+    // 20m
+    float min_u = 158.f;  // width dir
+    float max_u = 193.f;
+    float min_v = 132.f;  // height dir
+    float max_v = 219.f;
+    float cam_v = 120.f;
 };
 
 struct ParkingSlotManagerParameters {
@@ -321,18 +323,27 @@ struct ParkingSlotRange {
 };
 
 struct ParkingSlotSizeController {
+        // *******10m
         // std::vector<std::pair<float, float>> vp_slot_sizes = {
         //     {70, 175}, {82, 180}, {86, 184}, {90, 188}};
         // std::vector<std::pair<float, float>> v_slot_sizes = {
         //     {70, 175}, {82, 180}, {86, 184}, {90, 188}};
         // std::vector<std::pair<float, float>> p_slot_sizes = {
         //     {82, 210}, {86, 220}, {95, 246}};
+        // *******15m
+        // std::vector<std::pair<float, float>> vp_slot_sizes = {
+        //     {59, 148}, {69, 152}, {72, 156}, {76, 159}};
+        // std::vector<std::pair<float, float>> v_slot_sizes = {
+        //     {59, 148}, {69, 152}, {72, 156}, {76, 159}};
+        // std::vector<std::pair<float, float>> p_slot_sizes = {
+        //     {68, 178}, {73, 186}, {81, 209}};
+        // *******20m
         std::vector<std::pair<float, float>> vp_slot_sizes = {
-            {59, 148}, {69, 152}, {72, 156}, {76, 159}};
+            {88, 223}, {104, 230}, {108, 235}, {113, 240}};
         std::vector<std::pair<float, float>> v_slot_sizes = {
-            {59, 148}, {69, 152}, {72, 156}, {76, 159}};
+            {88, 223}, {104, 230}, {108, 235}, {113, 240}};
         std::vector<std::pair<float, float>> p_slot_sizes = {
-            {68, 178}, {73, 186}, {81, 209}};
+            {103, 268}, {108, 280}, {119, 314}};
         std::vector<std::pair<float, float>> slant_slot_size = {{92, 230},
                                                                 {110, 240}};
         bool Adjust(float &length,
@@ -348,17 +359,30 @@ struct ParkingSlotParam {
         float corner_conf_threshold = 0.5;
         float corner_dis_threshold = 1000;
         float iou_threshold = 0.3;
-        uint32_t input_w = 448, input_h = 448;
+        uint32_t input_w = 896, input_h = 896;
         uint32_t image_w = 600, image_h = 600;
+        // 20m & 896*896 1pixel = 0.02232m
         // 15m & 448*448 1pixel = 0.03348m
         // 10m & 352*352 1pixel = 0.0284m
-        ParkingSlotRange ps_length_range{136, 271};
-        ParkingSlotRange ps_width_range{53, 92};
-        ParkingSlotRange ps_width_slant_range{76, 131};
-        ParkingSlotRange ps_length_complete_range{156, 271};
-        ParkingSlotRange ps_length_slant_complete_range{161, 271};
-        ParkingSlotRange ps_length_2_range{136, 156};
-        ParkingSlotRange ps_length_slant_2_range{136, 187};
+        // *******20m
+        ParkingSlotRange ps_score_range{0.58, 0.9397};
+        ParkingSlotRange ps_length_range{200, 405};
+        ParkingSlotRange ps_width_range{75, 140};
+        ParkingSlotRange ps_width_slant_range{110, 200};
+        ParkingSlotRange ps_length_complete_range{230, 408};
+        ParkingSlotRange ps_length_slant_complete_range{240, 408};
+        ParkingSlotRange ps_length_2_range{200, 240};
+        ParkingSlotRange ps_length_slant_2_range{200, 290};
+        // *******15m
+        // ParkingSlotRange ps_score_range{0.58, 0.9397};
+        // ParkingSlotRange ps_length_range{136, 271};
+        // ParkingSlotRange ps_width_range{53, 92};
+        // ParkingSlotRange ps_width_slant_range{76, 131};
+        // ParkingSlotRange ps_length_complete_range{156, 271};
+        // ParkingSlotRange ps_length_slant_complete_range{161, 271};
+        // ParkingSlotRange ps_length_2_range{136, 156};
+        // ParkingSlotRange ps_length_slant_2_range{136, 187};
+        // *******10m
         // ParkingSlotRange ps_score_range{0.58, 0.8};  
         // ParkingSlotRange ps_length_range{160, 320};                // 4.54m - 9.0m 
         // ParkingSlotRange ps_width_range{63, 108};                  // 1.78m - 3.0m 
@@ -367,7 +391,6 @@ struct ParkingSlotParam {
         // ParkingSlotRange ps_length_slant_complete_range{190, 320}; // 5.40m - 9.08m 
         // ParkingSlotRange ps_length_2_range{160, 184};              // 4.54m - 5.22m 
         // ParkingSlotRange ps_length_slant_2_range{160, 220};        // 4.54m - 6.24m 
-        ParkingSlotRange ps_score_range{0.58, 0.9397};
         float vertical_threshold = 0.15;
         float ps_ratio = 2.4;
         ParkingSlotSizeController ps_size_controller;
@@ -377,14 +400,25 @@ struct ParkingSlotParam {
         float point_border_dist_complete_h2 = 3;
         float direction_score_thr1 = 0.5F;
         float direction_score_thr2 = 0.5F;
-        float vp_MaxW = 102;
-        float vp_MaxH = 195;
-        float v_MaxH = 195;
-        float p_MaxH = 195;
-        float slant_MaxH = 203;
-        float p_MinH = 178;
-        float v_MinH = 148;
-        float slant_MinH = 178;
+        // *******20m
+        float vp_MaxW = 153;
+        float vp_MaxH = 292;
+        float v_MaxH = 292;
+        float p_MaxH = 292;
+        float slant_MaxH = 305;
+        float p_MinH = 268;
+        float v_MinH = 224;
+        float slant_MinH = 268;
+        // // *******15m
+        // float vp_MaxW = 102;
+        // float vp_MaxH = 195;
+        // float v_MaxH = 195;
+        // float p_MaxH = 195;
+        // float slant_MaxH = 203;
+        // float p_MinH = 178;
+        // float v_MinH = 148;
+        // float slant_MinH = 178;
+        // *******10m
         // float vp_MaxW = 120;    // 3.4m
         // float vp_MaxH = 230;    // 6.5m
         // float v_MaxH = 230;     // 6.5m
@@ -398,12 +432,19 @@ struct ParkingSlotParam {
         float slant_cos_low = 0.31;
         float slant_cos_para = 0.174;
         float border_point_dis_thr = 5;
-
-        ParkingSlotRange car_length_range = {88.F, 264.F}; //{2.5m, 7.5m}
-        ParkingSlotRange car_width_range = {140.F, 213.F}; //{4m, 6m}
+        // *******10m
+        // ParkingSlotRange car_length_range = {88.F, 264.F}; //{2.5m, 7.5m}
+        // ParkingSlotRange car_width_range = {140.F, 213.F}; //{4m, 6m}
+        // float point_border_dis_thres_for_score_modify = 2.F;
+        // std::vector<Eigen::Vector2f> car_contour = {
+        //     {140.F, 88.F}, {213.F, 88.F}, {213.F, 264.F}, {140.F, 264.F}};
+        // *******20m
+        ParkingSlotRange car_length_range = {110.F, 338.F}; //{2.5m, 7.5m}
+        ParkingSlotRange car_width_range = {178.F, 270.F}; //{4m, 6m}
         float point_border_dis_thres_for_score_modify = 2.F;
         std::vector<Eigen::Vector2f> car_contour = {
-            {140.F, 88.F}, {213.F, 88.F}, {213.F, 264.F}, {140.F, 264.F}};
+            {178.F, 110.F}, {270.F, 110.F}, {270.F, 338.F}, {178.F, 338.F}};
+
         bool post_output_parking_slot = true;
     };
 
@@ -465,14 +506,14 @@ typedef PSMask<uint8_t> PSMaskU8;
     #define REAR_BIRD_VIEW_HEIGHT 704 
     #define REAR_BIRD_VIEW_WIDTH 704
 #else
-    #define BIRD_VIEW_HEIGHT 448 //448
-    #define BIRD_VIEW_WIDTH 448 //448
-    #define REAR_BIRD_VIEW_HEIGHT 448 //448
-    #define REAR_BIRD_VIEW_WIDTH 448 //448
+    #define BIRD_VIEW_HEIGHT 896 //896
+    #define BIRD_VIEW_WIDTH 896 //896
+    #define REAR_BIRD_VIEW_HEIGHT 896 //896
+    #define REAR_BIRD_VIEW_WIDTH 896 //896
 #endif
 
-#define LR_BIRD_PIXECL_2_WORLD (15000.0 / BIRD_VIEW_HEIGHT)  //15000.0
-#define REAR_BIRD_PIXECL_2_WORLD (15000.0 / REAR_BIRD_VIEW_WIDTH) //15000.0
+#define LR_BIRD_PIXECL_2_WORLD (20000.0 / BIRD_VIEW_HEIGHT)  //20000.0
+#define REAR_BIRD_PIXECL_2_WORLD (20000.0 / REAR_BIRD_VIEW_WIDTH) //20000.0
 
 /* 原始鱼眼输出 */ //输出鱼眼单色图采用m_*[IMG_RAW_HEIGHT * IMG_RAW_WIDTH]，输出鱼眼三色图采用m_*[IMG_RAW_HEIGHT * IMG_RAW_WIDTH * 3]
 typedef struct _ZM_RAW_IMG_4

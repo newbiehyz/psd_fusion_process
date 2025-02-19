@@ -17,7 +17,7 @@ int slottype_uss2rd(UssIf_enmSlotType_t uss_type)
     switch (uss_type) 
     {
         default:
-            return 0; //20241125 switch屏蔽异常输入，默认统一输出垂直车位
+            return 1; //20241125 switch屏蔽异常输入，默认统一输出水平车位（水平车位，但没有探测到路沿
         case USSIF_SLOT_TYPE_PERPENDICULAR_E:
             return 0; 
         case USSIF_SLOT_TYPE_PARALLEL_E:
@@ -25,7 +25,7 @@ int slottype_uss2rd(UssIf_enmSlotType_t uss_type)
         case USSIF_SLOT_TYPE_ANGULAR_E:
             return 2; 
         case USSIF_SLOT_TYPE_UNKNOW_E:
-            return 0; //20241125 switch屏蔽异常输入，默认统一输出垂直车位
+            return 1; //20241125 switch屏蔽异常输入，默认统一输出水平车位（水平车位，但没有探测到路沿
     }
 }
 

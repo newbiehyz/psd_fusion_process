@@ -12,7 +12,7 @@ public:
 
     ~GetInput();
 
-    void GetRDInfo(rd::QuadParkingSlots& rd_info, unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots);
+    void GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots);
     void GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2emap_DR& previous_dr_pose, padVehiclePose& pose_globaldata, bool& is_Still, int& still_count);
     void GetPerception(Fus::PkEmapObs& obs_info_get);
     void GetAPAStatus(StatusDecOutput& apastatus_info, int& apa_status);

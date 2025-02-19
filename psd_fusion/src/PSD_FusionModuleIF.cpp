@@ -539,14 +539,15 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
         if((slot.a.x == slot.b.x && slot.a.y == slot.b.y) || (slot.a.x == slot.d.x && slot.a.y == slot.d.y)) {
             continue;
         }
-        // 中心点不在有效范围
-        if((slot.a.y + slot.b.y) / 2 < EFFECTIVE_SLOT_Y_1 || (slot.a.y + slot.b.y) / 2 > EFFECTIVE_SLOT_Y_2) {
-            continue;
-        }
+        // // 中心点不在有效范围
+        // if((slot.a.y + slot.b.y) / 2 < EFFECTIVE_SLOT_Y_1 || (slot.a.y + slot.b.y) / 2 > EFFECTIVE_SLOT_Y_2) {
+        //     continue;
+        // }
 
         if (KF){
             auto quad = std::make_shared<QuadInfo>();
             quad->occupy = slot.occupy;
+            quad->material = slot.material;
             quad->quads.bottomRows<1>().setOnes();
             // 原始检测角点信息，乱序的
             Eigen::Vector2f tl, tr, bl, br;
@@ -575,9 +576,9 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 
             } else {
                 auto result = std::make_shared<ParkingSlotResult>();
-                mParkingLineMask_ptr=std::make_shared<PSMaskU8>(448, 448, 0);
-                for (uint32_t row = 0; row < 448; row++) {
-                    for (uint32_t col = 0; col < 448; col++) {
+                mParkingLineMask_ptr=std::make_shared<PSMaskU8>(896, 896, 0);
+                for (uint32_t row = 0; row < 896; row++) {
+                    for (uint32_t col = 0; col < 896; col++) {
                         mParkingLineMask_ptr->At(col, row) = 1;
                     }
                 }
@@ -645,9 +646,11 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
             rect_local.rectInfo.label = slot_id;
             rect_local.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
             rect_local.rectInfo.iSodType = slot.second.get()->GetOccupy();
+            rect_local.rectInfo.iMaterial = slot.second.get()->GetMaterial();
             rect_world.rectInfo.label = slot_id;
             rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
             rect_world.rectInfo.iSodType = slot.second.get()->GetOccupy();
+            rect_world.rectInfo.iMaterial = slot.second.get()->GetMaterial();
             for(int i = 0; i < 4; i++){
                 if(corner_world[i].hasNaN()){
                     continue;    
@@ -2044,7 +2047,7 @@ bool PSD_FusionModuleIF::CalibrateSingleSlot(const padVisionSlotCoord &quad,
 
 void PSD_FusionModuleIF::shrink_quad(apaSlotInfo &original_rect){
     if (original_rect.rectInfo.PStype == 0){//垂直车位
-        int shrink_amount = 75;
+        int shrink_amount = 120;
         POINT_F AB_unit = unit_vector(original_rect.rectInfo.pt[0],original_rect.rectInfo.pt[1]);
         POINT_F CD_unit = unit_vector(original_rect.rectInfo.pt[2],original_rect.rectInfo.pt[3]);
         

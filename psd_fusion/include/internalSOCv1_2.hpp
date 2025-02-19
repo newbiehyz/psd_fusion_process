@@ -77,6 +77,7 @@ typedef struct
 	unsigned char slotSide; // 车位的左右方位信息 0x00为右侧车位 0x01为左侧车位
 	unsigned char bayType;	// 车位类型 0x00为垂直泊车位(包含斜向车位) 0x01为水平泊车位 0x02为斜向泊车位
 	int occupy;
+	int material; // 地面材质
 }padVisionSlotCoord;
 
 // 重定位检测结果，车辆与车位的偏差 // 可参考对外接口(SOC External中的重定位接口定义)

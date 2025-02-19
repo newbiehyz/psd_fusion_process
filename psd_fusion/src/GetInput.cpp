@@ -21,7 +21,7 @@ GetInput::~GetInput() {
 
 }
 
-void GetInput::GetRDInfo(rd::QuadParkingSlots& rd_info, unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots) {
+void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots) {
     EMC_TROS_Bridge_Parking_GetFieldQuadParkingSlots(rd_info);
     if (DEBUG) {
         filetojson.SaveQuadParkingSlotsInfoToJson(rd_info, "RDinfo.json");
@@ -35,8 +35,9 @@ void GetInput::GetRDInfo(rd::QuadParkingSlots& rd_info, unsigned long long& sing
     if (!rd_info.quadParkingSlotList.empty()) {
         LOGD("[INPUT rd_info singleframeslots] J5 SEND RD output slots size: %d",rd_info.quadParkingSlotList.size());
         for (const auto& parkingSlot : rd_info.quadParkingSlotList) {
-            LOGD("[INPUT rd_info singleframeslots] J5 SEND slottype(chuizhi0shuiping1xiexiang2): %d, label(0unccupied): %u, tl:(%f,%f), bl:(%f,%f), tr:(%f,%f), br:(%f,%f)",
+            LOGD("[INPUT rd_info singleframeslots] J5 SEND slottype(chuizhi0shuiping1xiexiang2): %d, filtered(0unccupied): %d, label(0qita1caozhuan2jixie): %d, tl:(%f,%f), bl:(%f,%f), tr:(%f,%f), br:(%f,%f)",
             parkingSlot.slotType,
+            parkingSlot.filtered,
             parkingSlot.label,
             parkingSlot.tl.x,parkingSlot.tl.y,parkingSlot.bl.x,parkingSlot.bl.y,
             parkingSlot.tr.x,parkingSlot.tr.y,parkingSlot.br.x,parkingSlot.br.y);
@@ -45,7 +46,7 @@ void GetInput::GetRDInfo(rd::QuadParkingSlots& rd_info, unsigned long long& sing
             oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : (parkingSlot.slotType == 2) ? 0x02 : 0xFF;
             
             //左右判断,按规划/定位ABCD顺序输出车位角点
-            if (parkingSlot.tl.x < 224 && parkingSlot.tr.x < 224) {
+            if (parkingSlot.tl.x < 448 && parkingSlot.tr.x < 448) {
                 oneslot.slotSide = 0x01; //x小于图像中心，判断为左
                 oneslot.a.x = int(parkingSlot.tr.x);
                 oneslot.a.y = int(parkingSlot.tr.y);
@@ -55,7 +56,8 @@ void GetInput::GetRDInfo(rd::QuadParkingSlots& rd_info, unsigned long long& sing
                 oneslot.c.y = int(parkingSlot.bl.y);
                 oneslot.d.x = int(parkingSlot.br.x);
                 oneslot.d.y = int(parkingSlot.br.y);
-                oneslot.occupy = parkingSlot.label;
+                oneslot.occupy = parkingSlot.filtered;
+                oneslot.material = parkingSlot.label;
                 // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE LEFT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.b.x,oneslot.b.y,oneslot.a.x,oneslot.a.y,
             // oneslot.d.x,oneslot.d.y,oneslot.c.x,oneslot.c.y);
             } else {
@@ -68,9 +70,13 @@ void GetInput::GetRDInfo(rd::QuadParkingSlots& rd_info, unsigned long long& sing
                 oneslot.c.y = int(parkingSlot.br.y);
                 oneslot.d.x = int(parkingSlot.bl.x);
                 oneslot.d.y = int(parkingSlot.bl.y);
-                oneslot.occupy = parkingSlot.label;
+                oneslot.occupy = parkingSlot.filtered;
+                oneslot.material = parkingSlot.label;
                 // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE RIGHT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.a.x,oneslot.a.y,oneslot.b.x,oneslot.b.y,
             // oneslot.c.x,oneslot.c.y,oneslot.d.x,oneslot.d.y);
+            }
+            if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7) {
+                memset(&oneslot, 0, sizeof(padVisionSlotCoord));
             }
             singleframeslots.push_back(oneslot);
         }
@@ -149,6 +155,7 @@ void GetInput::ClearExistedInput(unsigned long long& singleframeslotsID, std::ve
         pose_globaldata.coord.x = 0;
         pose_globaldata.coord.y = 0;
         pose_globaldata.yaw = 0;
+        LOGD("CLEAR singleframeslots, size: %d",singleframeslots.size());
     }
 }
 
@@ -156,9 +163,9 @@ void GetInput::ClearExistedInput(unsigned long long& singleframeslotsID, std::ve
 
 void GetInput::GetAllInput() {
     GetAPAStatus(apastatus_info, apa_status);
-    GetRDInfo(rd_info, singleframeslotsID, singleframeslots);
+    GetRDInfo(apa_status, rd_info, singleframeslotsID, singleframeslots);
     GetDRInfo(apa_status, dr_pose, previous_dr_pose, pose_globaldata, is_Still, still_count);
     GetPerception(obs_info_get);
     GetSearchParkStatus(searchpark_info, park_request, search_interrupt);
-    // ClearExistedInput(singleframeslotsID, singleframeslots, pose_globaldata, apa_status);
+    ClearExistedInput(singleframeslotsID, singleframeslots, pose_globaldata, apa_status);
 }

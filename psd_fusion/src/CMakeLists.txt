@@ -47,6 +47,7 @@ include_directories(
      ${PROJECT_ROOT_DIR}/CodeRoot/src/psd_fusion_process/
      ${PROJECT_ROOT_DIR}/CodeRoot/src/psd_fusion_process/psd_fusion/include/
      ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/comintf/Parking_HMI/
+     ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/comintf/UI_Control_process/
 )
 
 # 添加可执行文件
