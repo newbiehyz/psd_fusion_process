@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "C/C++ Runner: Debug Session",
+        "type": "cppdbg",
+        "request": "launch",
+        "args": [],
+        "stopAtEntry": false,
+        "externalConsole": false,
+        "cwd": "/home/hyz/03_s32g/02_slotFusion/20250208_emos7/patac-557e-emos_7.0.3_896/CodeRoot/src/psd_fusion_process/psd_fusion/src/build",
+        "program": "/home/hyz/03_s32g/02_slotFusion/20250208_emos7/patac-557e-emos_7.0.3_896/CodeRoot/src/psd_fusion_process/psd_fusion/src/build/test_executable",
+        "MIMode": "gdb",
+        "miDebuggerPath": "gdb",
+        "setupCommands": [
+          {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+          }
+        ]
+      }
+    ]
+  }
