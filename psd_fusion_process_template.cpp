@@ -202,7 +202,7 @@ void cpsd_fusion_process::Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x
 
 int cpsd_fusion_process::HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select)
 {
-    LOGD("[HMIVCUSELECT IN] HMI temp:%d VCU:%d HMI:%d",hmi_temp,hmi_select,vcu_select);
+    LOGD("[HMIVCUSELECT IN] HMI temp:%d HMI:%d VCU:%d",hmi_temp,hmi_select,vcu_select);
     //HMI 部分
     //中间变量保存HMI发送的 [0 - ID - 0]，一秒内发送五次
     if (hmi_select){

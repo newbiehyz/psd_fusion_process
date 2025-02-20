@@ -112,6 +112,8 @@ public:
     void UpdateVechiclePose(const padVehiclePose& pose_global);
     void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus);
     void CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &stopdis, int &obs_location);
+    void filterSlotOccupy(int& occupy);
+
     apaSlotListInfo GetOutputSlot()
     {
         // std::lock_guard<std::mutex> ld(m_output_slot_mutex);
