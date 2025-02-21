@@ -5,30 +5,40 @@
 #include "math.hpp"
 #include "GetInput.hpp"
 
-// 功能开关
-bool DEBUG = false;
-bool OFFSET_FOR_RIDE = false; // 1227试驾 OV049车专用 offset调优角点性能, y=kx+b
-
-// 配置文件修改的参数(@TODO：从配置文件读取后转成const)
-int STILL_THRESHOLD = 5; //静止阈值，100ms一帧
-float cal_k = 1;
-float b = -200;
-
-// 标定量
+// ***************************标定量
 #define VEHICLE_LENGTH 5259.9 
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7
 #define MM_TO_M 1000.0
 
-// 全局变量
-int apa_status = 0;
-int park_request = 0;
-const int search_interrupt = 0; //@TODO VC7 RELEASE
+// ***************************配置文件修改的参数(@TODO：从配置文件读取后转成const)
+bool DEBUG = false; //功能开关
+int STILL_THRESHOLD = 5; //静止阈值，100ms一帧
+
+
+// ***************************输入的全局变量
+//RD
+rd::QuadParkingSlots rd_info;
+unsigned long long singleframeslotsID;
+std::vector<padVisionSlotCoord> singleframeslots;
+//DR
+Loc::App2emap_DR dr_pose;
+padVehiclePose pose_globaldata;
+Loc::App2emap_DR previous_dr_pose = {0};
 int still_count = 0;
 bool is_Still = true;
-Loc::App2emap_DR previous_dr_pose = {0};
+//perception
+Fus::PkEmapObs obs_info_on;
+//statemachine
+StatusDecOutput apastatus_info;
+int apa_status = 0;
+StatusDecFusionOutput searchpark_info;
+int park_request = 0;
+const int search_interrupt = 0; //@TODO OTA1
+
 
 SaveFileToJson filetojson;
 
+// ***************************输出的全局变量
 slotfusion fusionslot;
 StatusDecFusionInput psd2statemachine;
 Sfus::Sfsuion2DecPlan psd2planning; //动态车位列表
@@ -37,7 +47,6 @@ Fsm::FusionSlotInfo2Location psd2location;
 
 int HMI_select_ID = 0; //HMI只发1s。HMI_select是HMI发的ID，
 int HMI_temp_ID = 0;  //HMI_temp_ID是存下来的ID
-int VCU_select_ID_GET = 0; //用GET获取的VCU发送的ID
 int VCU_select_ID_ON = 0; //用ON获取的VCU发送的ID
 int RECOMMEND_ID = 0; //推荐车位的ID（类似于已点击，点泊车立即泊车）
 int final_select_ID = 0; //VCU和HMI最终统一的ID
@@ -57,7 +66,7 @@ cpsd_fusion_process::~cpsd_fusion_process()
 
 tResult cpsd_fusion_process::Init()
 {
-    LOGW("PSD Version: 02181259, only for emos7 896, shrink 120, recommend");
+    LOGW("PSD Version: 02211107, only for emos7 896, GetField ---> On");
     LOGW("PSD Process Start Success!");
     // Load Config
     if (!LoadFromFile("psd_config.json")) {
@@ -202,7 +211,7 @@ void cpsd_fusion_process::Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x
 
 int cpsd_fusion_process::HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select)
 {
-    LOGD("[HMIVCUSELECT IN] HMI temp:%d HMI:%d VCU:%d",hmi_temp,hmi_select,vcu_select);
+    LOGD("[HMIVCUSELECT IN] HMI:%d HMI temp:%d VCU:%d",hmi_select,hmi_temp,vcu_select);
     //HMI 部分
     //中间变量保存HMI发送的 [0 - ID - 0]，一秒内发送五次
     if (hmi_select){
@@ -256,26 +265,19 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     auto start = std::chrono::steady_clock::now();
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
-    rd::QuadParkingSlots rd_info;
-    unsigned long long singleframeslotsID;
-    std::vector<padVisionSlotCoord> singleframeslots;
-    Loc::App2emap_DR dr_pose;
-    padVehiclePose pose_globaldata;
-    Fus::PkEmapObs obs_info_get;
-    StatusDecOutput statemachine_info;
 
-    GetInput getInput;
-    getInput.GetAllInput();
-
-    rd_info = getInput.rd_info;
-    singleframeslotsID = getInput.singleframeslotsID;
-    singleframeslots = getInput.singleframeslots;
-    dr_pose = getInput.dr_pose;
-    pose_globaldata = getInput.pose_globaldata;
-    obs_info_get = getInput.obs_info_get;
-    apa_status = getInput.apa_status;
-    // search_interrupt = getInput.search_interrupt; //@TODO VC9 RELEASE
-
+    // GET方式获取
+    // GetInput getInput;
+    // getInput.GetAllInput();
+    // rd_info = getInput.rd_info;
+    // singleframeslotsID = getInput.singleframeslotsID;
+    // singleframeslots = getInput.singleframeslots;
+    // dr_pose = getInput.dr_pose;
+    // pose_globaldata = getInput.pose_globaldata;
+    // obs_info_get = getInput.obs_info_get;
+    // apa_status = getInput.apa_status;
+    //  //search_interrupt = getInput.search_interrupt; //@TODO VC9 RELEASE
+    // 当前使用ON获取
 
     //***********************************clear
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
@@ -307,7 +309,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         int lock_location = 0;
         int lock_in_slot = 0;
 
-        PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stopper_dis, lock_location);
+        PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_on, stopper_dis, lock_location);
         LOGD("Stopper distance: %f",stopper_dis);
         LOGD("Lock location: %f",lock_location);
         if (stopper_dis != 0 ){
@@ -441,32 +443,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         psd_m_output.rectInfo.pt[3].y);
     }
 
-    // // 1227试驾  OV049车专用 offset调优角点性能。表现为y轴方向融合后y 大于 实测值y 230mm
-    // if (OFFSET_FOR_RIDE){
-    //     for (auto & offset_slot : outputSlot_VIS.slots_in_cur_frame){
-    //         offset_slot.rectInfo.pt[0].y = cal_k * (offset_slot.rectInfo.pt[0].y) + b; 
-    //         offset_slot.rectInfo.pt[1].y = cal_k * (offset_slot.rectInfo.pt[1].y) + b; 
-    //         offset_slot.rectInfo.pt[2].y = cal_k * (offset_slot.rectInfo.pt[2].y) + b; 
-    //         offset_slot.rectInfo.pt[3].y = cal_k * (offset_slot.rectInfo.pt[3].y) + b; 
-    //     }
-    // }
-    // // 输出OFFSET角点
-    // if (OFFSET_FOR_RIDE){
-    //     for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
-    //         LOGD("OFFSET VISSLOTS: TOTAL SLOT NUM: %d, Slot#%d, type: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
-    //         outputSlot_VIS.slots_in_cur_frame.size(),
-    //         psd_m_output.rectInfo.label,
-    //         psd_m_output.rectInfo.PStype,
-    //         psd_m_output.rectInfo.pt[0].x,
-    //         psd_m_output.rectInfo.pt[0].y,
-    //         psd_m_output.rectInfo.pt[1].x,
-    //         psd_m_output.rectInfo.pt[1].y,
-    //         psd_m_output.rectInfo.pt[2].x,
-    //         psd_m_output.rectInfo.pt[2].y,
-    //         psd_m_output.rectInfo.pt[3].x,
-    //         psd_m_output.rectInfo.pt[3].y);
-    //     }
-    // }
 
 
 
@@ -1160,12 +1136,10 @@ tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
 
 tResult cpsd_fusion_process::OnStatusDecOutput(const StatusDecOutput& userData)
 {
-    // if (DEBUG == true){
-    //     filetojson.SaveApastatusToJson(userData, "APAStatus.json");
-    // }
+    apastatus_info = userData;
 
-    // apa_status = userData.aps_apaStatusReq;
-
+    LOGD("[INPUT apastatus]: %d",apastatus_info.aps_apaStatusReq);
+    apa_status = apastatus_info.aps_apaStatusReq;
     RETURN_NOERROR;
 }
 
@@ -1190,6 +1164,12 @@ tResult cpsd_fusion_process::OnAPAControlPlanOutput(const APAControlPlanOutput& 
 
 tResult cpsd_fusion_process::OnStatusDecFusionOutput(const StatusDecFusionOutput& userData)
 {
+    searchpark_info = userData;
+
+    LOGD("[INPUT searchpark_status] parking_request: %d. search_interrupt: %d",searchpark_info.aps_apaStartParkingReq,searchpark_info.aps_apaSrchInterupt);
+    park_request = searchpark_info.aps_apaStartParkingReq;
+    // search_interrupt = searchpark_info.aps_apaSrchInterupt;
+
     RETURN_NOERROR;
 }
 
@@ -1205,6 +1185,27 @@ tResult cpsd_fusion_process::OnStatusDec2FusionDebug(const StatusDec2FusionDebug
 
 tResult cpsd_fusion_process::OnApp2emap_DR(const Loc::App2emap_DR& userData)
 {
+    dr_pose = userData;
+
+     if (apa_status != 1) {
+        LOGD("[INPUT dr_pose] J5 SEND x: %f, y: %f, yaw: %f, timestamp: %llu",dr_pose.x, dr_pose.y, dr_pose.canAng,dr_pose.timeStamp);
+        pose_globaldata.coord.x = int(dr_pose.x);
+        pose_globaldata.coord.y = int(dr_pose.y);
+        pose_globaldata.yaw = dr_pose.canAng;
+
+        if (dr_pose.x != previous_dr_pose.x || dr_pose.y != previous_dr_pose.y || dr_pose.canAng != previous_dr_pose.canAng) {
+            is_Still = false; // 有变化，设置为运动中
+            still_count = 0; // reset
+        } else {
+            still_count++;
+        }
+        if (still_count >= STILL_THRESHOLD) {
+            is_Still = true;
+        }
+        previous_dr_pose = dr_pose;
+        LOGD("is_Still: %d",is_Still);
+    }
+
     RETURN_NOERROR;
 }
 
@@ -1225,6 +1226,65 @@ tResult cpsd_fusion_process::OnSApaPSInfo(const rd::SApaPSInfo& userData)
 
 tResult cpsd_fusion_process::OnQuadParkingSlots(const rd::QuadParkingSlots& userData)
 {
+    rd_info = userData;
+
+    //frameid
+    LOGD("[INPUT rd_info timestampNs] J5 SEND timestampNs: %llu", rd_info.frameTimeStampNs);
+    singleframeslotsID = rd_info.frameTimeStampNs;
+
+    //singleframeslot
+    if (!rd_info.quadParkingSlotList.empty()) {
+        LOGD("[INPUT rd_info singleframeslots] J5 SEND RD output slots size: %d",rd_info.quadParkingSlotList.size());
+        for (const auto& parkingSlot : rd_info.quadParkingSlotList) {
+            LOGD("[INPUT rd_info singleframeslots] J5 SEND slottype(chuizhi0shuiping1xiexiang2): %d, filtered(0unccupied): %d, label(0qita1caozhuan2jixie): %d, tl:(%f,%f), bl:(%f,%f), tr:(%f,%f), br:(%f,%f)",
+            parkingSlot.slotType,
+            parkingSlot.filtered,
+            parkingSlot.label,
+            parkingSlot.tl.x,parkingSlot.tl.y,parkingSlot.bl.x,parkingSlot.bl.y,
+            parkingSlot.tr.x,parkingSlot.tr.y,parkingSlot.br.x,parkingSlot.br.y);
+
+            padVisionSlotCoord oneslot;
+            oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : (parkingSlot.slotType == 2) ? 0x02 : 0xFF;
+            
+            //左右判断,按规划/定位ABCD顺序输出车位角点
+            if (parkingSlot.tl.x < 448 && parkingSlot.tr.x < 448) {
+                oneslot.slotSide = 0x01; //x小于图像中心，判断为左
+                oneslot.a.x = int(parkingSlot.tr.x);
+                oneslot.a.y = int(parkingSlot.tr.y);
+                oneslot.b.x = int(parkingSlot.tl.x);
+                oneslot.b.y = int(parkingSlot.tl.y);
+                oneslot.c.x = int(parkingSlot.bl.x);
+                oneslot.c.y = int(parkingSlot.bl.y);
+                oneslot.d.x = int(parkingSlot.br.x);
+                oneslot.d.y = int(parkingSlot.br.y);
+                oneslot.occupy = parkingSlot.filtered;
+                oneslot.material = parkingSlot.label;
+                // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE LEFT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.b.x,oneslot.b.y,oneslot.a.x,oneslot.a.y,
+            // oneslot.d.x,oneslot.d.y,oneslot.c.x,oneslot.c.y);
+            } else {
+                oneslot.slotSide = 0x00;
+                oneslot.a.x = int(parkingSlot.tl.x);
+                oneslot.a.y = int(parkingSlot.tl.y);
+                oneslot.b.x = int(parkingSlot.tr.x);
+                oneslot.b.y = int(parkingSlot.tr.y);
+                oneslot.c.x = int(parkingSlot.br.x);
+                oneslot.c.y = int(parkingSlot.br.y);
+                oneslot.d.x = int(parkingSlot.bl.x);
+                oneslot.d.y = int(parkingSlot.bl.y);
+                oneslot.occupy = parkingSlot.filtered;
+                oneslot.material = parkingSlot.label;
+                // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE RIGHT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.a.x,oneslot.a.y,oneslot.b.x,oneslot.b.y,
+            // oneslot.c.x,oneslot.c.y,oneslot.d.x,oneslot.d.y);
+            }
+            if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7) {
+                memset(&oneslot, 0, sizeof(padVisionSlotCoord));
+            }
+            singleframeslots.push_back(oneslot);
+        }
+    } else {
+        LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE NO SLOTS! frameTimeStampNs: %llu", rd_info.frameTimeStampNs);
+    }
+
     RETURN_NOERROR;
 }
 
@@ -1245,9 +1305,9 @@ tResult cpsd_fusion_process::OnHMI_InputInfo(const HMI_InputInfo& userData)
 
 tResult cpsd_fusion_process::OnSelectSlot(const Sfus::SelectSlot& userData)
 {
-    if (DEBUG == true){
-        filetojson.SaveSelectSlotToJson(userData, "SelectSlot.json");
-    }
+    // if (DEBUG == true){
+    //     filetojson.SaveSelectSlotToJson(userData, "SelectSlot.json");
+    // }
 
     VCU_select_ID_ON = userData.SelectSlotID;
     LOGD("[SELECTID] OnSelectSlot VCU ID: %d !!!!",VCU_select_ID_ON);
@@ -1262,9 +1322,9 @@ tResult cpsd_fusion_process::OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch
 
 tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
 {
-    if (DEBUG == true){
-        filetojson.SaveSelectSlot2ToJson(userData, "SelectSlot2.json");
-    }
+    // if (DEBUG == true){
+    //     filetojson.SaveSelectSlot2ToJson(userData, "SelectSlot2.json");
+    // }
 
     HMI_select_ID = userData.SelectSlotID;
 
@@ -1293,6 +1353,19 @@ tResult cpsd_fusion_process::OnPreciseEmapGrid(const Fus::PreciseEmapGrid& userD
 
 tResult cpsd_fusion_process::OnPkEmapObs(const Fus::PkEmapObs& userData)
 {
+    obs_info_on = userData;
+
+    for (int i = 0; i < 50; ++i) {
+        LOGD("[INPUT obs_info] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%f,%f,%f), age: %d",
+            obs_info_on.pkEmapObs[i].FrameIndex,
+            obs_info_on.pkEmapObs[i].obsID,
+            obs_info_on.pkEmapObs[i].obsTyp,
+            obs_info_on.pkEmapObs[i].obsCenter.x,
+            obs_info_on.pkEmapObs[i].obsCenter.y,
+            obs_info_on.pkEmapObs[i].obsCenter.z,
+            obs_info_on.pkEmapObs[i].age);
+    }
+
     RETURN_NOERROR;
 }
 
