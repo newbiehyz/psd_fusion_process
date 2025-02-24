@@ -248,9 +248,6 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
             // 绘制矩形为红色
             drawRectangles(rectanglesA, cv::Scalar(0, 0, 255));
 
-            // 向右旋转180度
-            cv::rotate(image, image, cv::ROTATE_180);
-
             // 保存图像
             cv::imwrite(filename, image);
             std::cout << "Image saved to: " << filename << std::endl;

@@ -62,6 +62,7 @@ private:
     void Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw);
     int HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select);
     int RecommendSelectID(const int &final_select, const int &recommend);
+    int IsParkOut(int apastatus);
 
 public:
     apaSlotListInfo outputSlot_FUSED;

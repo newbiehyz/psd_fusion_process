@@ -14,26 +14,35 @@
 bool DEBUG = false; //功能开关
 int STILL_THRESHOLD = 5; //静止阈值，100ms一帧
 
+// // ***************************输入的全局变量，用于ON方式获取
+// //RD
+// rd::QuadParkingSlots rd_info;
+// unsigned long long singleframeslotsID;
+// std::vector<padVisionSlotCoord> singleframeslots;
+// //DR
+// Loc::App2emap_DR dr_pose;
+// padVehiclePose pose_globaldata;
+// Loc::App2emap_DR previous_dr_pose = {0};
+// int still_count = 0;
+// bool is_Still = true;
+// //perception
+// Fus::PkEmapObs obs_info_on; // ON获取
+// Fus::PkEmapObs obs_info_get;
+// //statemachine
+// StatusDecOutput apastatus_info;
+// int apa_status = 0;
+// StatusDecFusionOutput searchpark_info;
+// int park_request = 0;
+// const int search_interrupt = 0; //@TODO OTA1
 
-// ***************************输入的全局变量
-//RD
-rd::QuadParkingSlots rd_info;
-unsigned long long singleframeslotsID;
-std::vector<padVisionSlotCoord> singleframeslots;
-//DR
-Loc::App2emap_DR dr_pose;
-padVehiclePose pose_globaldata;
-Loc::App2emap_DR previous_dr_pose = {0};
+// 输入的全局变量，用于GET方式获取
+int apa_status = 0;
+int park_request = 0;
+const int search_interrupt = 0; //@TODO VC7 RELEASE
 int still_count = 0;
 bool is_Still = true;
-//perception
-Fus::PkEmapObs obs_info_on;
-//statemachine
-StatusDecOutput apastatus_info;
-int apa_status = 0;
-StatusDecFusionOutput searchpark_info;
-int park_request = 0;
-const int search_interrupt = 0; //@TODO OTA1
+Loc::App2emap_DR previous_dr_pose = {0};
+
 
 
 SaveFileToJson filetojson;
@@ -52,6 +61,8 @@ int RECOMMEND_ID = 0; //推荐车位的ID（类似于已点击，点泊车立即
 int final_select_ID = 0; //VCU和HMI最终统一的ID
 int final_ID = 0; //结合选择、推荐后的最终ID
 
+int parkout_flag = 0; //当前是否为泊出
+
 CDT_PSD_FUSION_PROCESS_TEMPLATE(cpsd_fusion_process)
 
 cpsd_fusion_process::cpsd_fusion_process()
@@ -66,7 +77,7 @@ cpsd_fusion_process::~cpsd_fusion_process()
 
 tResult cpsd_fusion_process::Init()
 {
-    LOGW("PSD Version: 02211107, only for emos7 896, GetField ---> On");
+    LOGW("PSD Version: 02231332, only for emos7 896, GetField, fix parkout");
     LOGW("PSD Process Start Success!");
     // Load Config
     if (!LoadFromFile("psd_config.json")) {
@@ -248,6 +259,16 @@ int cpsd_fusion_process::RecommendSelectID(const int &final_select, const int &r
     }
 }
 
+int cpsd_fusion_process::IsParkOut(int apastatus)
+{
+    if (apastatus == 3){
+        return 1;
+    }
+    else{
+        return 0;
+    }
+}
+
 
 tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
 {
@@ -267,17 +288,30 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
     // GET方式获取
-    // GetInput getInput;
-    // getInput.GetAllInput();
-    // rd_info = getInput.rd_info;
-    // singleframeslotsID = getInput.singleframeslotsID;
-    // singleframeslots = getInput.singleframeslots;
-    // dr_pose = getInput.dr_pose;
-    // pose_globaldata = getInput.pose_globaldata;
-    // obs_info_get = getInput.obs_info_get;
-    // apa_status = getInput.apa_status;
-    //  //search_interrupt = getInput.search_interrupt; //@TODO VC9 RELEASE
-    // 当前使用ON获取
+    rd::QuadParkingSlots rd_info;
+    unsigned long long singleframeslotsID;
+    std::vector<padVisionSlotCoord> singleframeslots;
+    Loc::App2emap_DR dr_pose;
+    padVehiclePose pose_globaldata;
+    Fus::PkEmapObs obs_info_get;
+    StatusDecOutput statemachine_info;
+
+    GetInput getInput;
+    getInput.GetAllInput();
+
+    rd_info = getInput.rd_info;
+    singleframeslotsID = getInput.singleframeslotsID;
+    singleframeslots = getInput.singleframeslots;
+    dr_pose = getInput.dr_pose;
+    pose_globaldata = getInput.pose_globaldata;
+    obs_info_get = getInput.obs_info_get;
+    apa_status = getInput.apa_status;
+    // search_interrupt = getInput.search_interrupt; //@TODO VC9 RELEASE
+        
+    parkout_flag = IsParkOut(apa_status);
+
+
+
 
     //***********************************clear
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
@@ -286,7 +320,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         outputSlot_VIS.slots_in_cur_frame.clear();
         outputSlot_USS.slots_in_cur_frame.clear();
         outputSlot_FUSED.slots_in_cur_frame.clear();
-        LOGD("CLEAR singleframeslots, size: %d",singleframeslots.size());
+        parkout_flag = 0;
+        LOGD("CLEAR singleframeslots, size: %d, parkout_flag = %d",singleframeslots.size(),parkout_flag);
     }
     //***********************************check
     LOGD("CHECK singleframeslots size: %d",singleframeslots.size());
@@ -309,7 +344,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         int lock_location = 0;
         int lock_in_slot = 0;
 
-        PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_on, stopper_dis, lock_location);
+        PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stopper_dis, lock_location);
         LOGD("Stopper distance: %f",stopper_dis);
         LOGD("Lock location: %f",lock_location);
         if (stopper_dis != 0 ){
@@ -506,20 +541,20 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 //ABCD顺序调整为VCU专用顺序
                 //左侧
                 if (psd_m_output.rectInfo.pt[0].x <= 0 || psd_m_output.rectInfo.pt[1].x <= 0 || psd_m_output.rectInfo.pt[2].x < 0){
-                    psd2vcu.FusionSlotInfo[i].pt[0].x = (psd_m_output.rectInfo.pt[1].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  ) / MM_TO_M; //mm 转 m , VCU坐标系上x右y
-                    psd2vcu.FusionSlotInfo[i].pt[0].y = psd_m_output.rectInfo.pt[1].x / MM_TO_M; //后轴中心转前保中心
+                    psd2vcu.FusionSlotInfo[i].pt[0].x = (psd_m_output.rectInfo.pt[0].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  ) / MM_TO_M; //mm 转 m , VCU坐标系上x右y
+                    psd2vcu.FusionSlotInfo[i].pt[0].y = psd_m_output.rectInfo.pt[0].x / MM_TO_M; //后轴中心转前保中心
                     psd2vcu.FusionSlotInfo[i].pt[0].z = 0;
 
-                    psd2vcu.FusionSlotInfo[i].pt[1].x = (psd_m_output.rectInfo.pt[0].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  ) / MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[1].y = psd_m_output.rectInfo.pt[0].x/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[1].x = (psd_m_output.rectInfo.pt[1].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  ) / MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[1].y = psd_m_output.rectInfo.pt[1].x/ MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[1].z = 0;
 
-                    psd2vcu.FusionSlotInfo[i].pt[2].x = (psd_m_output.rectInfo.pt[3].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[2].y = psd_m_output.rectInfo.pt[3].x / MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[2].x = (psd_m_output.rectInfo.pt[2].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[2].y = psd_m_output.rectInfo.pt[2].x / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[2].z = 0;
 
-                    psd2vcu.FusionSlotInfo[i].pt[3].x = (psd_m_output.rectInfo.pt[2].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[2].x/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[3].x = (psd_m_output.rectInfo.pt[3].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[3].x/ MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[3].z = 0;
                     LOGD("[VCU occupied] isodtype:%d", psd_m_output.rectInfo.iSodType);
                     if (psd_m_output.rectInfo.iSodType == 1){
@@ -532,20 +567,20 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 }
                 //右侧
                 else{
-                    psd2vcu.FusionSlotInfo[i].pt[0].x = (psd_m_output.rectInfo.pt[1].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M; //mm 转 m
-                    psd2vcu.FusionSlotInfo[i].pt[0].y = psd_m_output.rectInfo.pt[1].x / MM_TO_M; //后轴中心转前保中心
+                    psd2vcu.FusionSlotInfo[i].pt[0].x = (psd_m_output.rectInfo.pt[0].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M; //mm 转 m
+                    psd2vcu.FusionSlotInfo[i].pt[0].y = psd_m_output.rectInfo.pt[0].x / MM_TO_M; //后轴中心转前保中心
                     psd2vcu.FusionSlotInfo[i].pt[0].z = 0;
 
-                    psd2vcu.FusionSlotInfo[i].pt[1].x = (psd_m_output.rectInfo.pt[2].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[1].y = psd_m_output.rectInfo.pt[2].x / MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[1].x = (psd_m_output.rectInfo.pt[1].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[1].y = psd_m_output.rectInfo.pt[1].x / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[1].z = 0;
 
-                    psd2vcu.FusionSlotInfo[i].pt[2].x = (psd_m_output.rectInfo.pt[3].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[2].y = psd_m_output.rectInfo.pt[3].x / MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[2].x = (psd_m_output.rectInfo.pt[2].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[2].y = psd_m_output.rectInfo.pt[2].x / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[2].z = 0;
 
-                    psd2vcu.FusionSlotInfo[i].pt[3].x = (psd_m_output.rectInfo.pt[0].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[0].x / MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[3].x = (psd_m_output.rectInfo.pt[3].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[3].x / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[3].z = 0;
                     LOGD("[VCU occupied] isodtype:%d", psd_m_output.rectInfo.iSodType);
                     if (psd_m_output.rectInfo.iSodType == 1){
@@ -721,17 +756,17 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 //ABCD顺序调整为VCU专用顺序
                 //左侧
                 if (psd_m_output.rectInfo.pt[0].x <= 0 || psd_m_output.rectInfo.pt[1].x <= 0 || psd_m_output.rectInfo.pt[2].x < 0){
-                    psd2vcu.FusionSlotInfo[i].pt[0].x = (psd_m_output.rectInfo.pt[1].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR) ) / MM_TO_M; //mm 转 m , VCU坐标系上x右y
-                    psd2vcu.FusionSlotInfo[i].pt[0].y = psd_m_output.rectInfo.pt[1].x / MM_TO_M; //后轴中心转前保中心
+                    psd2vcu.FusionSlotInfo[i].pt[0].x = (psd_m_output.rectInfo.pt[0].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) ) / MM_TO_M; //mm 转 m , VCU坐标系上x右y
+                    psd2vcu.FusionSlotInfo[i].pt[0].y = psd_m_output.rectInfo.pt[0].x / MM_TO_M; //后轴中心转前保中心
                     psd2vcu.FusionSlotInfo[i].pt[0].z = 0;
-                    psd2vcu.FusionSlotInfo[i].pt[1].x = (psd_m_output.rectInfo.pt[0].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR) ) / MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[1].y = psd_m_output.rectInfo.pt[0].x/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[1].x = (psd_m_output.rectInfo.pt[1].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) ) / MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[1].y = psd_m_output.rectInfo.pt[1].x/ MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[1].z = 0;
-                    psd2vcu.FusionSlotInfo[i].pt[2].x = (psd_m_output.rectInfo.pt[3].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[2].y = psd_m_output.rectInfo.pt[3].x / MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[2].x = (psd_m_output.rectInfo.pt[2].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[2].y = psd_m_output.rectInfo.pt[2].x / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[2].z = 0;
-                    psd2vcu.FusionSlotInfo[i].pt[3].x = (psd_m_output.rectInfo.pt[2].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[2].x/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[3].x = (psd_m_output.rectInfo.pt[3].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[3].x/ MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[3].z = 0;
                     if (psd_m_output.rectInfo.iSodType == 1){
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
@@ -743,17 +778,17 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 }
                 //右侧
                 else{
-                    psd2vcu.FusionSlotInfo[i].pt[0].x = (psd_m_output.rectInfo.pt[1].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M; //mm 转 m
-                    psd2vcu.FusionSlotInfo[i].pt[0].y = psd_m_output.rectInfo.pt[1].x / MM_TO_M; //后轴中心转前保中心
+                    psd2vcu.FusionSlotInfo[i].pt[0].x = (psd_m_output.rectInfo.pt[0].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M; //mm 转 m
+                    psd2vcu.FusionSlotInfo[i].pt[0].y = psd_m_output.rectInfo.pt[0].x / MM_TO_M; //后轴中心转前保中心
                     psd2vcu.FusionSlotInfo[i].pt[0].z = 0;
-                    psd2vcu.FusionSlotInfo[i].pt[1].x = (psd_m_output.rectInfo.pt[2].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[1].y = psd_m_output.rectInfo.pt[2].x / MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[1].x = (psd_m_output.rectInfo.pt[1].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[1].y = psd_m_output.rectInfo.pt[1].x / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[1].z = 0;
-                    psd2vcu.FusionSlotInfo[i].pt[2].x = (psd_m_output.rectInfo.pt[3].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[2].y = psd_m_output.rectInfo.pt[3].x / MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[2].x = (psd_m_output.rectInfo.pt[2].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR) )/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[2].y = psd_m_output.rectInfo.pt[2].x / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[2].z = 0;
-                    psd2vcu.FusionSlotInfo[i].pt[3].x = (psd_m_output.rectInfo.pt[0].y - (VEHICLE_LENGTH / 2 - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
-                    psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[0].x / MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[3].x = (psd_m_output.rectInfo.pt[3].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
+                    psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[3].x / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[3].z = 0;
                     if (psd_m_output.rectInfo.iSodType == 1){
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
@@ -931,7 +966,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
             j++;
 
         }
-        EMC_psd_fusion_process_SetFieldFusionSlotInfo2Location(psd2location);
+        if (parkout_flag != 1){
+            EMC_psd_fusion_process_SetFieldFusionSlotInfo2Location(psd2location);
+        }
+        
     }
 
 
@@ -939,7 +977,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     Fsm::Slotlabel psd2apahandel_targetID;
     if (final_ID){
         psd2apahandel_targetID.targetSlotLabel = final_ID;
-        EMC_psd_fusion_process_SetFieldSlotlabel(psd2apahandel_targetID);
+        if (parkout_flag != 1){
+            EMC_psd_fusion_process_SetFieldSlotlabel(psd2apahandel_targetID);
+        }
         LOGD("[PSD2APAHANDLE] target slot id: %d",final_ID);
     }
 
@@ -1136,10 +1176,11 @@ tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
 
 tResult cpsd_fusion_process::OnStatusDecOutput(const StatusDecOutput& userData)
 {
-    apastatus_info = userData;
+    // apastatus_info = userData;
 
-    LOGD("[INPUT apastatus]: %d",apastatus_info.aps_apaStatusReq);
-    apa_status = apastatus_info.aps_apaStatusReq;
+    // LOGD("[INPUT apastatus]: %d",apastatus_info.aps_apaStatusReq);
+    // apa_status = apastatus_info.aps_apaStatusReq;
+
     RETURN_NOERROR;
 }
 
@@ -1164,11 +1205,11 @@ tResult cpsd_fusion_process::OnAPAControlPlanOutput(const APAControlPlanOutput& 
 
 tResult cpsd_fusion_process::OnStatusDecFusionOutput(const StatusDecFusionOutput& userData)
 {
-    searchpark_info = userData;
+    // searchpark_info = userData;
 
-    LOGD("[INPUT searchpark_status] parking_request: %d. search_interrupt: %d",searchpark_info.aps_apaStartParkingReq,searchpark_info.aps_apaSrchInterupt);
-    park_request = searchpark_info.aps_apaStartParkingReq;
-    // search_interrupt = searchpark_info.aps_apaSrchInterupt;
+    // LOGD("[INPUT searchpark_status] parking_request: %d. search_interrupt: %d",searchpark_info.aps_apaStartParkingReq,searchpark_info.aps_apaSrchInterupt);
+    // park_request = searchpark_info.aps_apaStartParkingReq;
+    // // search_interrupt = searchpark_info.aps_apaSrchInterupt;
 
     RETURN_NOERROR;
 }
@@ -1185,26 +1226,26 @@ tResult cpsd_fusion_process::OnStatusDec2FusionDebug(const StatusDec2FusionDebug
 
 tResult cpsd_fusion_process::OnApp2emap_DR(const Loc::App2emap_DR& userData)
 {
-    dr_pose = userData;
+    // dr_pose = userData;
 
-     if (apa_status != 1) {
-        LOGD("[INPUT dr_pose] J5 SEND x: %f, y: %f, yaw: %f, timestamp: %llu",dr_pose.x, dr_pose.y, dr_pose.canAng,dr_pose.timeStamp);
-        pose_globaldata.coord.x = int(dr_pose.x);
-        pose_globaldata.coord.y = int(dr_pose.y);
-        pose_globaldata.yaw = dr_pose.canAng;
+    //  if (apa_status != 1) {
+    //     LOGD("[INPUT dr_pose] J5 SEND x: %f, y: %f, yaw: %f, timestamp: %llu",dr_pose.x, dr_pose.y, dr_pose.canAng,dr_pose.timeStamp);
+    //     pose_globaldata.coord.x = int(dr_pose.x);
+    //     pose_globaldata.coord.y = int(dr_pose.y);
+    //     pose_globaldata.yaw = dr_pose.canAng;
 
-        if (dr_pose.x != previous_dr_pose.x || dr_pose.y != previous_dr_pose.y || dr_pose.canAng != previous_dr_pose.canAng) {
-            is_Still = false; // 有变化，设置为运动中
-            still_count = 0; // reset
-        } else {
-            still_count++;
-        }
-        if (still_count >= STILL_THRESHOLD) {
-            is_Still = true;
-        }
-        previous_dr_pose = dr_pose;
-        LOGD("is_Still: %d",is_Still);
-    }
+    //     if (dr_pose.x != previous_dr_pose.x || dr_pose.y != previous_dr_pose.y || dr_pose.canAng != previous_dr_pose.canAng) {
+    //         is_Still = false; // 有变化，设置为运动中
+    //         still_count = 0; // reset
+    //     } else {
+    //         still_count++;
+    //     }
+    //     if (still_count >= STILL_THRESHOLD) {
+    //         is_Still = true;
+    //     }
+    //     previous_dr_pose = dr_pose;
+    //     LOGD("is_Still: %d",is_Still);
+    // }
 
     RETURN_NOERROR;
 }
@@ -1226,64 +1267,64 @@ tResult cpsd_fusion_process::OnSApaPSInfo(const rd::SApaPSInfo& userData)
 
 tResult cpsd_fusion_process::OnQuadParkingSlots(const rd::QuadParkingSlots& userData)
 {
-    rd_info = userData;
+    // rd_info = userData;
 
-    //frameid
-    LOGD("[INPUT rd_info timestampNs] J5 SEND timestampNs: %llu", rd_info.frameTimeStampNs);
-    singleframeslotsID = rd_info.frameTimeStampNs;
+    // //frameid
+    // LOGD("[INPUT rd_info timestampNs] J5 SEND timestampNs: %llu", rd_info.frameTimeStampNs);
+    // singleframeslotsID = rd_info.frameTimeStampNs;
 
-    //singleframeslot
-    if (!rd_info.quadParkingSlotList.empty()) {
-        LOGD("[INPUT rd_info singleframeslots] J5 SEND RD output slots size: %d",rd_info.quadParkingSlotList.size());
-        for (const auto& parkingSlot : rd_info.quadParkingSlotList) {
-            LOGD("[INPUT rd_info singleframeslots] J5 SEND slottype(chuizhi0shuiping1xiexiang2): %d, filtered(0unccupied): %d, label(0qita1caozhuan2jixie): %d, tl:(%f,%f), bl:(%f,%f), tr:(%f,%f), br:(%f,%f)",
-            parkingSlot.slotType,
-            parkingSlot.filtered,
-            parkingSlot.label,
-            parkingSlot.tl.x,parkingSlot.tl.y,parkingSlot.bl.x,parkingSlot.bl.y,
-            parkingSlot.tr.x,parkingSlot.tr.y,parkingSlot.br.x,parkingSlot.br.y);
+    // //singleframeslot
+    // if (!rd_info.quadParkingSlotList.empty()) {
+    //     LOGD("[INPUT rd_info singleframeslots] J5 SEND RD output slots size: %d",rd_info.quadParkingSlotList.size());
+    //     for (const auto& parkingSlot : rd_info.quadParkingSlotList) {
+    //         LOGD("[INPUT rd_info singleframeslots] J5 SEND slottype(chuizhi0shuiping1xiexiang2): %d, filtered(0unccupied): %d, label(0qita1caozhuan2jixie): %d, tl:(%f,%f), bl:(%f,%f), tr:(%f,%f), br:(%f,%f)",
+    //         parkingSlot.slotType,
+    //         parkingSlot.filtered,
+    //         parkingSlot.label,
+    //         parkingSlot.tl.x,parkingSlot.tl.y,parkingSlot.bl.x,parkingSlot.bl.y,
+    //         parkingSlot.tr.x,parkingSlot.tr.y,parkingSlot.br.x,parkingSlot.br.y);
 
-            padVisionSlotCoord oneslot;
-            oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : (parkingSlot.slotType == 2) ? 0x02 : 0xFF;
+    //         padVisionSlotCoord oneslot;
+    //         oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : (parkingSlot.slotType == 2) ? 0x02 : 0xFF;
             
-            //左右判断,按规划/定位ABCD顺序输出车位角点
-            if (parkingSlot.tl.x < 448 && parkingSlot.tr.x < 448) {
-                oneslot.slotSide = 0x01; //x小于图像中心，判断为左
-                oneslot.a.x = int(parkingSlot.tr.x);
-                oneslot.a.y = int(parkingSlot.tr.y);
-                oneslot.b.x = int(parkingSlot.tl.x);
-                oneslot.b.y = int(parkingSlot.tl.y);
-                oneslot.c.x = int(parkingSlot.bl.x);
-                oneslot.c.y = int(parkingSlot.bl.y);
-                oneslot.d.x = int(parkingSlot.br.x);
-                oneslot.d.y = int(parkingSlot.br.y);
-                oneslot.occupy = parkingSlot.filtered;
-                oneslot.material = parkingSlot.label;
-                // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE LEFT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.b.x,oneslot.b.y,oneslot.a.x,oneslot.a.y,
-            // oneslot.d.x,oneslot.d.y,oneslot.c.x,oneslot.c.y);
-            } else {
-                oneslot.slotSide = 0x00;
-                oneslot.a.x = int(parkingSlot.tl.x);
-                oneslot.a.y = int(parkingSlot.tl.y);
-                oneslot.b.x = int(parkingSlot.tr.x);
-                oneslot.b.y = int(parkingSlot.tr.y);
-                oneslot.c.x = int(parkingSlot.br.x);
-                oneslot.c.y = int(parkingSlot.br.y);
-                oneslot.d.x = int(parkingSlot.bl.x);
-                oneslot.d.y = int(parkingSlot.bl.y);
-                oneslot.occupy = parkingSlot.filtered;
-                oneslot.material = parkingSlot.label;
-                // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE RIGHT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.a.x,oneslot.a.y,oneslot.b.x,oneslot.b.y,
-            // oneslot.c.x,oneslot.c.y,oneslot.d.x,oneslot.d.y);
-            }
-            if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7) {
-                memset(&oneslot, 0, sizeof(padVisionSlotCoord));
-            }
-            singleframeslots.push_back(oneslot);
-        }
-    } else {
-        LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE NO SLOTS! frameTimeStampNs: %llu", rd_info.frameTimeStampNs);
-    }
+    //         //左右判断,按规划/定位ABCD顺序输出车位角点
+    //         if (parkingSlot.tl.x < 448 && parkingSlot.tr.x < 448) {
+    //             oneslot.slotSide = 0x01; //x小于图像中心，判断为左
+    //             oneslot.a.x = int(parkingSlot.tr.x);
+    //             oneslot.a.y = int(parkingSlot.tr.y);
+    //             oneslot.b.x = int(parkingSlot.tl.x);
+    //             oneslot.b.y = int(parkingSlot.tl.y);
+    //             oneslot.c.x = int(parkingSlot.bl.x);
+    //             oneslot.c.y = int(parkingSlot.bl.y);
+    //             oneslot.d.x = int(parkingSlot.br.x);
+    //             oneslot.d.y = int(parkingSlot.br.y);
+    //             oneslot.occupy = parkingSlot.filtered;
+    //             oneslot.material = parkingSlot.label;
+    //             // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE LEFT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.b.x,oneslot.b.y,oneslot.a.x,oneslot.a.y,
+    //         // oneslot.d.x,oneslot.d.y,oneslot.c.x,oneslot.c.y);
+    //         } else {
+    //             oneslot.slotSide = 0x00;
+    //             oneslot.a.x = int(parkingSlot.tl.x);
+    //             oneslot.a.y = int(parkingSlot.tl.y);
+    //             oneslot.b.x = int(parkingSlot.tr.x);
+    //             oneslot.b.y = int(parkingSlot.tr.y);
+    //             oneslot.c.x = int(parkingSlot.br.x);
+    //             oneslot.c.y = int(parkingSlot.br.y);
+    //             oneslot.d.x = int(parkingSlot.bl.x);
+    //             oneslot.d.y = int(parkingSlot.bl.y);
+    //             oneslot.occupy = parkingSlot.filtered;
+    //             oneslot.material = parkingSlot.label;
+    //             // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE RIGHT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.a.x,oneslot.a.y,oneslot.b.x,oneslot.b.y,
+    //         // oneslot.c.x,oneslot.c.y,oneslot.d.x,oneslot.d.y);
+    //         }
+    //         if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7) {
+    //             memset(&oneslot, 0, sizeof(padVisionSlotCoord));
+    //         }
+    //         singleframeslots.push_back(oneslot);
+    //     }
+    // } else {
+    //     LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE NO SLOTS! frameTimeStampNs: %llu", rd_info.frameTimeStampNs);
+    // }
 
     RETURN_NOERROR;
 }
@@ -1353,18 +1394,18 @@ tResult cpsd_fusion_process::OnPreciseEmapGrid(const Fus::PreciseEmapGrid& userD
 
 tResult cpsd_fusion_process::OnPkEmapObs(const Fus::PkEmapObs& userData)
 {
-    obs_info_on = userData;
+    // obs_info_on = userData;
 
-    for (int i = 0; i < 50; ++i) {
-        LOGD("[INPUT obs_info] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%f,%f,%f), age: %d",
-            obs_info_on.pkEmapObs[i].FrameIndex,
-            obs_info_on.pkEmapObs[i].obsID,
-            obs_info_on.pkEmapObs[i].obsTyp,
-            obs_info_on.pkEmapObs[i].obsCenter.x,
-            obs_info_on.pkEmapObs[i].obsCenter.y,
-            obs_info_on.pkEmapObs[i].obsCenter.z,
-            obs_info_on.pkEmapObs[i].age);
-    }
+    // for (int i = 0; i < 50; ++i) {
+    //     LOGD("[INPUT obs_info] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%f,%f,%f), age: %d",
+    //         obs_info_on.pkEmapObs[i].FrameIndex,
+    //         obs_info_on.pkEmapObs[i].obsID,
+    //         obs_info_on.pkEmapObs[i].obsTyp,
+    //         obs_info_on.pkEmapObs[i].obsCenter.x,
+    //         obs_info_on.pkEmapObs[i].obsCenter.y,
+    //         obs_info_on.pkEmapObs[i].obsCenter.z,
+    //         obs_info_on.pkEmapObs[i].age);
+    // }
 
     RETURN_NOERROR;
 }
