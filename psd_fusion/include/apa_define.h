@@ -176,21 +176,22 @@ struct IPMParameters {
 
     float edge_thr = 10.0f;
 
-    // // 10m
+    //限制车位在图像中心的左右
+    // // 10m 352x352 (4,6) (2.5,7.5)
     // float min_u = 141.f;  // width dir
     // float max_u = 210.f;
     // float min_v = 87.f;  // height dir
     // float max_v = 264.f;
     // float cam_v = 120.f;
 
-    // // 15m
+    // // 15m 352x352 (6.5,8.5) (5,10)
     //  float min_u = 153.f;  // width dir
     //  float max_u = 200.f;
     //  float min_v = 118.f;  // height dir
     //  float max_v = 235.f;
     //  float cam_v = 120.f;
      
-    // 20m
+    // 20m 896x896 (9,11) (7.5,12.5)
     float min_u = 158.f;  // width dir
     float max_u = 193.f;
     float min_v = 132.f;  // height dir

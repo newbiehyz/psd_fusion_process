@@ -283,8 +283,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
 tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 {
 
-    auto start = std::chrono::steady_clock::now();
+    auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
+
+    auto current = std::chrono::system_clock::now(); //用于J5时间同步
+    auto current1970 = current.time_since_epoch();
+    auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count();
     
+
+
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
     // GET方式获取
@@ -299,6 +305,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     GetInput getInput;
     getInput.GetAllInput();
 
+
     rd_info = getInput.rd_info;
     singleframeslotsID = getInput.singleframeslotsID;
     singleframeslots = getInput.singleframeslots;
@@ -309,6 +316,17 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     // search_interrupt = getInput.search_interrupt; //@TODO VC9 RELEASE
         
     parkout_flag = IsParkOut(apa_status);
+
+
+    // 直接判断时间条件是否满足
+    if (current1970_ms - rd_info.frameTimeStampNs < 1500 || 
+        current1970_ms - dr_pose.timeStamp < 1500) {
+        LOGD("[TIMECOST] Time condition not met, skipping execution.");
+        RETURN_NOERROR;  // 直接返回
+    }
+
+    // 继续执行后续操作
+    LOGD("[TIMECOST] Time synchronization achieved!");
 
 
 
@@ -337,26 +355,27 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     LOGD("getall VISSLOTS size: %d",outputSlot_VIS.slots_in_cur_frame.size());
 
 
-    //每个车位，属性增加SodLocation
+    // 根据障碍物位置，判断是否在车位内，并做占用判断
     for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
-        float stopper_dis = 0.0;
-        int stopper_in_slot = 0;
-        int lock_location = 0;
-        int lock_in_slot = 0;
+        float stopper_dis = 0.0; //限位器到入口边位置
+        int stopper_in_slot = 0; //限位器在车位内？
+        int stopper_location = 0; //限位器位置
+        int lock_in_slot = 0; //地锁在车位内？
+        int obs_in_slot = 0; //障碍物在车位内？
 
-        PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stopper_dis, lock_location);
-        LOGD("Stopper distance: %f",stopper_dis);
-        LOGD("Lock location: %f",lock_location);
-        if (stopper_dis != 0 ){
-            stopper_in_slot = 1;
-        }
-        if (lock_location != 0){
-            lock_in_slot = 1;
-        }
+        PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stopper_dis, stopper_location, lock_in_slot, obs_in_slot);
+        LOGD("[STOPPER] distance: %f, location: %d, LOCK in slot: %d, OBS in slot: %d ",stopper_dis, stopper_location, lock_in_slot, obs_in_slot);
         psd_m_output.rectInfo.StopperDistance = stopper_dis;
-        psd_m_output.rectInfo.StopperInSlot = stopper_in_slot;
-        psd_m_output.rectInfo.LockLocation = lock_location;
+        psd_m_output.rectInfo.StopperLocation = stopper_location;
+        if (stopper_location != 0){
+            stopper_in_slot = 1;
+            psd_m_output.rectInfo.StopperInSlot = stopper_in_slot;
+        }
         psd_m_output.rectInfo.LockInSlot = lock_in_slot;
+        psd_m_output.rectInfo.OBSInSlot = obs_in_slot;
+        if (psd_m_output.rectInfo.LockInSlot != 0 || psd_m_output.rectInfo.OBSInSlot != 0){
+            psd_m_output.rectInfo.iSodType = 1;
+        }
     }
 
         
@@ -425,12 +444,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     // 输出VIS USS FUSION车位列表
     for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
-        LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, StopDis: %f, LockLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, StopDis: %f, StopLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
         outputSlot_VIS.slots_in_cur_frame.size(),
         psd_m_output.rectInfo.label,
         psd_m_output.rectInfo.PStype,
         psd_m_output.rectInfo.StopperDistance,
-        psd_m_output.rectInfo.LockLocation,
+        psd_m_output.rectInfo.StopperLocation,
         psd_m_output.rectInfo.pt[0].x,
         psd_m_output.rectInfo.pt[0].y,
         psd_m_output.rectInfo.pt[1].x,
@@ -461,12 +480,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     }
 
     for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-        LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, StopDis: %f, LockLoc: %d, Material: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, StopDis: %f, StopLoc: %d, Material: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
         outputSlot_FUSED.slots_in_cur_frame.size(),
         psd_m_output.rectInfo.label,
         psd_m_output.rectInfo.PStype,
         psd_m_output.rectInfo.StopperDistance,
-        psd_m_output.rectInfo.LockLocation,
+        psd_m_output.rectInfo.StopperLocation,
         psd_m_output.rectInfo.iMaterial,
         psd_m_output.rectInfo.pt[0].x,
         psd_m_output.rectInfo.pt[0].y,

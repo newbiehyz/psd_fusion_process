@@ -312,6 +312,7 @@ bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
 };
 
 void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
+    std::cout<<"Kalman_filter update!"<<std::endl;
     if (!this->pre_update(quad_info)) {
         return;
     }

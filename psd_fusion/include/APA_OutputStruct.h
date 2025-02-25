@@ -135,10 +135,13 @@ struct SApaPSRect
 	int iHasGL;					 //是否有地锁，-1为默认值，1为有地锁，0为没地锁
 	int flag;					 //desay算法内部用，
     int iExtrudeSOD;			 //车位相邻障碍物突出
-	int LockLocation;			 //用于车位内障碍物位置，0为NO，1为AB，2为BC，3为CD，4为DA
-	int LockInSlot;			 	 //车位内是否有地锁
+
 	float StopperDistance; 	 	 //限位器到入口边的距离
+	int StopperLocation;		 //用于车位内障碍物位置，0为NO，1为AB，2为BC，3为CD，4为DA
 	int StopperInSlot;			 //车位内是否有限位器
+	int LockInSlot;			 	 //车位内是否有地锁
+	int OBSInSlot;			 	 //车位内是否有障碍物
+
 	int iMaterial;				 //车位下的地面材质，0其他，1草砖，2机械
 
 	SApaPSRect()
@@ -157,10 +160,12 @@ struct SApaPSRect
 		label 				= 0;
 		iOtherSideSOD 		= 0;
 		isDriveSpaceEnough 	= false;
-		LockLocation		= -1;
-		LockInSlot			= 0;
+
 		StopperDistance		= 0.0;
+		StopperLocation	    = 0;
 		StopperInSlot 		= 0;
+		LockInSlot			= 0;
+		OBSInSlot			= 0;
 		iMaterial	 		= 0;
 
 		for(int i = 0; i < RECTPointNum; i++)

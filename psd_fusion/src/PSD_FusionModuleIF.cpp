@@ -246,7 +246,8 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
     return -1;
 }
 
-void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &stopdis, int &obs_location){
+
+void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &stopdis, int &stoplocation, int &lockinslot, int &obsinslot){
     POINT_I wheelstop_dis, point_a, point_b, point_c, point_d;;
     for (auto &obs : empobs.pkEmapObs){
         if (obs.obsTyp == Fus::OBS_WHEELSTOP){
@@ -283,13 +284,13 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
 
                         //判断离AB近还是离CD近
                         if (temp_dis1 > temp_dis2){
-                            obs_location = SOD_LOCATION_CD;
+                            stoplocation = SOD_LOCATION_CD;
                         }
                         else if(temp_dis1 < temp_dis2){
-                            obs_location = SOD_LOCATION_AB;
+                            stoplocation = SOD_LOCATION_AB;
                         }
                         else{
-                            obs_location = SOD_LOCATION_NO;
+                            stoplocation = SOD_LOCATION_NO;
                         }
                         
                     }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
@@ -310,13 +311,13 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
 
                         //判断离BC近还是离AD近
                         if (temp_dis1 > temp_dis2){
-                            obs_location = SOD_LOCATION_DA;
+                            stoplocation = SOD_LOCATION_DA;
                         }
                         else if(temp_dis1 < temp_dis2){
-                            obs_location = SOD_LOCATION_BC;
+                            stoplocation = SOD_LOCATION_BC;
                         }
                         else{
-                            obs_location = SOD_LOCATION_NO;
+                            stoplocation = SOD_LOCATION_NO;
                         }
                     }
                     else{
@@ -349,13 +350,13 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
 
                     //判断离AB近还是离CD近
                     if (temp_dis1 > temp_dis2){
-                        obs_location = SOD_LOCATION_CD;
+                        stoplocation = SOD_LOCATION_CD;
                     }
                     else if(temp_dis1 < temp_dis2){
-                        obs_location = SOD_LOCATION_AB;
+                        stoplocation = SOD_LOCATION_AB;
                     }
                     else{
-                        obs_location = SOD_LOCATION_NO;
+                        stoplocation = SOD_LOCATION_NO;
                     }
 
                 }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
@@ -376,13 +377,13 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
 
                     //判断离BC近还是离AD近
                     if (temp_dis1 > temp_dis2){
-                        obs_location = SOD_LOCATION_DA;
+                        stoplocation = SOD_LOCATION_DA;
                     }
                     else if(temp_dis1 < temp_dis2){
-                        obs_location = SOD_LOCATION_BC;
+                        stoplocation = SOD_LOCATION_BC;
                     }
                     else{
-                        obs_location = SOD_LOCATION_NO;
+                        stoplocation = SOD_LOCATION_NO;
                     }
                 }else{
                     stopdis = 0.0;
@@ -414,13 +415,13 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
 
                         //判断离AB近还是离CD近
                         if (temp_dis1 > temp_dis2){
-                            obs_location = SOD_LOCATION_CD;
+                            stoplocation = SOD_LOCATION_CD;
                         }
                         else if(temp_dis1 < temp_dis2){
-                            obs_location = SOD_LOCATION_AB;
+                            stoplocation = SOD_LOCATION_AB;
                         }
                         else{
-                            obs_location = SOD_LOCATION_NO;
+                            stoplocation = SOD_LOCATION_NO;
                         }
 
                     }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
@@ -443,13 +444,13 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
 
                         //判断离BC近还是离AD近
                         if (temp_dis1 > temp_dis2){
-                            obs_location = SOD_LOCATION_DA;
+                            stoplocation = SOD_LOCATION_DA;
                         }
                         else if(temp_dis1 < temp_dis2){
-                            obs_location = SOD_LOCATION_BC;
+                            stoplocation = SOD_LOCATION_BC;
                         }
                         else{
-                            obs_location = SOD_LOCATION_NO;
+                            stoplocation = SOD_LOCATION_NO;
                         }
 
                     }else{
@@ -469,10 +470,11 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
             if (slots_map_.size() < 2) {
                 if (slots_map_.begin()->second->point_in_rect(obs_point3f)){
                     // LOGD("LOCK IN SLOT");
-               
+                    lockinslot = 1;
                 }
                 else{
                     // LOGD("LOCK NOT IN SLOT");
+                    lockinslot = 0;
                 }
             };
             //多个车位，找到最近的停车位
@@ -481,9 +483,11 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
             const auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
             if(check_slot->point_in_rect(obs_point3f)){
                 // LOGD("LOCK IN SLOT");
+                lockinslot = 1;
             }
             else{
                 // LOGD("LOCK NOT IN SLOT");
+                lockinslot = 0;
             }
             //在obs_point2f周围的半径2000mm内搜索其他邻近停车位
             auto neighbor_indexes = slots_tree_->neighborhood_indices(obs_point2f, 2000);
@@ -493,14 +497,65 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
                 const auto& check_slot = slots_map_.at(slots_remap_.at(index));
                 if (check_slot->point_in_rect(obs_point3f)){
                     // LOGD("LOCK IN SLOT");
+                    lockinslot = 1;
                 }
                 else{
                     // LOGD("LOCK NOT IN SLOT");
+                    lockinslot = 0;
+                }
+            }
+        }
+
+        else if (obs.obsTyp != Fus::OBS_NULL){
+            Eigen::Vector3f obs_point3f;
+            obs_point3f << obs.obsCenter.x * 1000.0, obs.obsCenter.y * 1000.0, obs.obsCenter.z * 1000.0;
+            //没找到车位
+            if (slots_map_.empty()) {
+                return;
+            }
+            //只有一个车位
+            if (slots_map_.size() < 2) {
+                if (slots_map_.begin()->second->point_in_rect(obs_point3f)){
+                    // LOGD("OBS IN SLOT");
+                    obsinslot = 1;
+                }
+                else{
+                    // LOGD("OBS NOT IN SLOT");
+                    obsinslot = 0;
+                }
+            };
+            //多个车位，找到最近的停车位
+            point_t obs_point2f{obs_point3f.x(), obs_point3f.y()};
+            auto nearest_index = slots_tree_->nearest_index(obs_point2f);
+            const auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
+            if(check_slot->point_in_rect(obs_point3f)){
+                // LOGD("OBS IN SLOT");
+                obsinslot = 1;
+            }
+            else{
+                // LOGD("OBS NOT IN SLOT");
+                obsinslot = 0;
+            }
+            //在obs_point2f周围的半径2000mm内搜索其他邻近停车位
+            auto neighbor_indexes = slots_tree_->neighborhood_indices(obs_point2f, 2000);
+            for (const auto& index : neighbor_indexes) {
+                if (index == nearest_index) continue;
+       
+                const auto& check_slot = slots_map_.at(slots_remap_.at(index));
+                if (check_slot->point_in_rect(obs_point3f)){
+                    // LOGD("LOCK IN SLOT");
+                    obsinslot = 1;
+                }
+                else{
+                    // LOGD("LOCK NOT IN SLOT");
+                    obsinslot = 0;
                 }
             }
         }
     }
 }
+
+
 
 void PSD_FusionModuleIF::filterSlotOccupy(int& occupy)
 {
