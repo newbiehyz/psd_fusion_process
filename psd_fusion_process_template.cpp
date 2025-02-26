@@ -607,9 +607,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
             }
 
             // 从psd2vcu拿到最近的车位列表cloest_slots
-            POINT_I VCU_car_pose;
-            VCU_car_pose.x = 0;
-            VCU_car_pose.y = 0;
+            POINT_F VCU_car_pose;
+            VCU_car_pose.x = 0.0;
+            VCU_car_pose.y = 0.0;
 
             std::vector<Fsm::FusionSlotInfo> cloest_slots;
             std::vector<Fsm::FusionSlotInfo> vcu_slots;

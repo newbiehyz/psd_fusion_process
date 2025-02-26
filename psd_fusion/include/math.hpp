@@ -15,6 +15,12 @@ namespace math{
         return dis;
     }
 
+    float CalcDistanceF(POINT_F a, POINT_F b)
+    {
+        float dis = sqrt((a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y));
+        return dis;
+    }
+
     int CalPointAndLineDistance(const POINT_I& point, const POINT_I& pta, const POINT_I& ptb)
     {
         float threshold = 6000; // in mm
@@ -31,12 +37,13 @@ namespace math{
         return p1.second < p2.second;
     }
 
-    std::vector<Fsm::FusionSlotInfo> findClosesParkingSpots(const POINT_I& car_position, const std::vector<Fsm::FusionSlotInfo>& parking_spots, int num_closest){
+    std::vector<Fsm::FusionSlotInfo> findClosesParkingSpots(const POINT_F& car_position, const std::vector<Fsm::FusionSlotInfo>& parking_spots, int num_closest){
+        
         std::vector<std::pair<Fsm::FusionSlotInfo, float>> distances;
 
         // 计算每个车位和自车的距离
         for(const auto& spot : parking_spots){
-            POINT_I point_a, point_b, point_c, point_d, slot_center;
+            POINT_F point_a, point_b, point_c, point_d, slot_center;
             point_a.x = spot.pt[0].x;
             point_a.y = spot.pt[0].y;
             point_b.x = spot.pt[1].x;
@@ -48,7 +55,7 @@ namespace math{
             slot_center.x = (point_a.x + point_b.x + point_c.x + point_d.x) / 4;
             slot_center.y = (point_a.y + point_b.y + point_c.y + point_d.y) / 4;
             
-            float dist = CalcDistance(car_position, slot_center);
+            float dist = CalcDistanceF(car_position, slot_center);
             distances.push_back({spot, dist});
         }
 
@@ -58,8 +65,9 @@ namespace math{
         // Print the sorted parking spots and their distances to the car
         for (const auto& pair : distances) {
             const Fsm::FusionSlotInfo& spot = pair.first;
-            float dist = pair.second;
+            const float dist = pair.second;
             POINT_I point_a, point_b, point_c, point_d, slot_center;
+
             point_a.x = spot.pt[0].x;
             point_a.y = spot.pt[0].y;
             point_b.x = spot.pt[1].x;
@@ -72,13 +80,26 @@ namespace math{
             // Calculate the center of the parking spot again for printing
             slot_center.x = (point_a.x + point_b.x + point_c.x + point_d.x) / 4;
             slot_center.y = (point_a.y + point_b.y + point_c.y + point_d.y) / 4;
-            LOGD("Parking Spot Center: (%d, %d), Distance to car:  %d mm",slot_center.x, slot_center.y,dist);
+            LOGD("Parking Spot Center: (%f, %f), Distance to car:  %f mm",slot_center.x, slot_center.y, dist);
         }
 
         // 取出前num_closest个最近车位
         std::vector<Fsm::FusionSlotInfo> closest_spots;
         for(int i = 0; i < num_closest && i < distances.size(); ++i){
             closest_spots.push_back(distances[i].first);
+        }
+
+        for (int i = 0; i < closest_spots.size(); ++i){
+            LOGD("closet spot no.%d, (%f,%f), (%f,%f), (%f,%f), (%f,%f)",
+            i+1,
+            closest_spots[i].pt[0].x,
+            closest_spots[i].pt[0].y,
+            closest_spots[i].pt[1].x,
+            closest_spots[i].pt[1].y,
+            closest_spots[i].pt[2].x,
+            closest_spots[i].pt[2].y,
+            closest_spots[i].pt[3].x,
+            closest_spots[i].pt[3].y)
         }
 
         return closest_spots;
