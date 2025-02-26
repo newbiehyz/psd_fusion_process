@@ -44,7 +44,6 @@ bool is_Still = true;
 Loc::App2emap_DR previous_dr_pose = {0};
 
 
-
 SaveFileToJson filetojson;
 
 // ***************************输出的全局变量
@@ -77,7 +76,6 @@ cpsd_fusion_process::~cpsd_fusion_process()
 
 tResult cpsd_fusion_process::Init()
 {
-    LOGW("PSD Version: 02231332, only for emos7 896, GetField, fix parkout");
     LOGW("PSD Process Start Success!");
     // Load Config
     if (!LoadFromFile("psd_config.json")) {
@@ -282,15 +280,15 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
 
 tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 {
-
+    
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
     auto current = std::chrono::system_clock::now(); //用于J5时间同步
     auto current1970 = current.time_since_epoch();
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count();
+
+    LOGW("PSD Version: 02261224, for emos7 896, GetField, Stopper/Lock/OBS, no KF filter");
     
-
-
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
     // GET方式获取
@@ -305,7 +303,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     GetInput getInput;
     getInput.GetAllInput();
 
-
     rd_info = getInput.rd_info;
     singleframeslotsID = getInput.singleframeslotsID;
     singleframeslots = getInput.singleframeslots;
@@ -317,17 +314,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         
     parkout_flag = IsParkOut(apa_status);
 
-
-    // 直接判断时间条件是否满足
-    if (current1970_ms - rd_info.frameTimeStampNs < 1500 || 
-        current1970_ms - dr_pose.timeStamp < 1500) {
-        LOGD("[TIMECOST] Time condition not met, skipping execution.");
+    // 判断时间条件是否满足
+    if (current1970_ms - rd_info.frameTimeStampNs > 1500 || current1970_ms - dr_pose.timeStamp > 1500) {
+        LOGD("[TIMESYNC] current: %llu, RD timestamp: %llu, DR timestamp: %llu, Time condition not met, skipping execution.",current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp);
         RETURN_NOERROR;  // 直接返回
     }
-
     // 继续执行后续操作
-    LOGD("[TIMECOST] Time synchronization achieved!");
-
+    LOGD("[TIMESYNC] current: %llu, RD timestamp: %llu, DR timestamp: %llu, Time synchronization achieved!", current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp);
 
 
 

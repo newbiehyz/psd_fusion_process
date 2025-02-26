@@ -2,6 +2,7 @@
 #include "psd_fusion_process_header.h"
 #include "psd_fusion_process_template.h"
 #include "apa_define.h"
+#include "save_to_json.h"
 
 extern bool DEBUG;
 extern SaveFileToJson filetojson;
@@ -97,7 +98,8 @@ void GetInput::GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2em
         pose_globaldata.coord.y = int(dr_pose.y);
         pose_globaldata.yaw = dr_pose.canAng;
 
-        if (dr_pose.x != previous_dr_pose.x || dr_pose.y != previous_dr_pose.y || dr_pose.canAng != previous_dr_pose.canAng) {
+        const double epsilon = 1e-1;
+        if (fabs(dr_pose.x - previous_dr_pose.x) > epsilon || fabs(dr_pose.y - previous_dr_pose.y) > epsilon ||  fabs(dr_pose.canAng - previous_dr_pose.canAng) > epsilon) {
             is_Still = false; // 有变化，设置为运动中
             still_count = 0; // reset
         } else {
