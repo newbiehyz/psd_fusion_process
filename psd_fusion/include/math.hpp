@@ -33,13 +33,13 @@ namespace math{
         return -1;
     }
 
-    bool CompareDistance(const std::pair<Fsm::FusionSlotInfo, float>& p1, const std::pair<Fsm::FusionSlotInfo, float>& p2){
+    bool CompareDistance(const std::pair<Sfus::FusionSlotInfo, float>& p1, const std::pair<Sfus::FusionSlotInfo, float>& p2){
         return p1.second < p2.second;
     }
 
-    std::vector<Fsm::FusionSlotInfo> findClosesParkingSpots(const POINT_F& car_position, const std::vector<Fsm::FusionSlotInfo>& parking_spots, int num_closest){
+    std::vector<Sfus::FusionSlotInfo> findClosesParkingSpots(const POINT_F& car_position, const std::vector<Sfus::FusionSlotInfo>& parking_spots, int num_closest){
         
-        std::vector<std::pair<Fsm::FusionSlotInfo, float>> distances;
+        std::vector<std::pair<Sfus::FusionSlotInfo, float>> distances;
 
         // 计算每个车位和自车的距离
         for(const auto& spot : parking_spots){
@@ -64,9 +64,9 @@ namespace math{
 
         // Print the sorted parking spots and their distances to the car
         for (const auto& pair : distances) {
-            const Fsm::FusionSlotInfo& spot = pair.first;
+            const Sfus::FusionSlotInfo& spot = pair.first;
             const float dist = pair.second;
-            POINT_I point_a, point_b, point_c, point_d, slot_center;
+            POINT_F point_a, point_b, point_c, point_d, slot_center;
 
             point_a.x = spot.pt[0].x;
             point_a.y = spot.pt[0].y;
@@ -84,7 +84,7 @@ namespace math{
         }
 
         // 取出前num_closest个最近车位
-        std::vector<Fsm::FusionSlotInfo> closest_spots;
+        std::vector<Sfus::FusionSlotInfo> closest_spots;
         for(int i = 0; i < num_closest && i < distances.size(); ++i){
             closest_spots.push_back(distances[i].first);
         }
@@ -167,12 +167,12 @@ namespace math{
         single_slot_a.y = slot_list_b.rectInfo.pt[0].y;
         single_slot_b.x = slot_list_b.rectInfo.pt[1].x;
         single_slot_b.y = slot_list_b.rectInfo.pt[1].y;
-        LOGD("single_frame slot compare: outputSlot_FUSED: (%d, %d), (%d, %d)",slot_a.x,slot_a.y,slot_b.x,slot_b.y);
-        LOGD("single_frame slot compare: singleframe_local: (%d, %d), (%d, %d)",single_slot_a.x,single_slot_a.y,single_slot_b.x,single_slot_b.y);
+        // LOGD("single_frame slot compare: outputSlot_FUSED: (%d, %d), (%d, %d)",slot_a.x,slot_a.y,slot_b.x,slot_b.y);
+        // LOGD("single_frame slot compare: singleframe_local: (%d, %d), (%d, %d)",single_slot_a.x,single_slot_a.y,single_slot_b.x,single_slot_b.y);
 
         int threadhole_a = CalcDistance(slot_a, single_slot_a);
         int threadhole_b = CalcDistance(slot_b, single_slot_b);
-        LOGD("single_frame slot compare: threadhole_a: %d, threadhole_b: %d",threadhole_a, threadhole_b);
+        // LOGD("single_frame slot compare: threadhole_a: %d, threadhole_b: %d",threadhole_a, threadhole_b);
 
         // same slot
         if ((threadhole_a + threadhole_b) / 2 < 800){

@@ -556,13 +556,12 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
 }
 
 
+static int consecutiveOnCount = 0;  // 记录连续为1的次数
+const int requiredConsecutiveOnCount = 5;  // 需要连续为1的次数
+static bool previousSlotOccupy = false;  // 上一轮的slot.occupy状态
 
 void PSD_FusionModuleIF::filterSlotOccupy(int& occupy)
 {
-    static int consecutiveOnCount = 0;  // 记录连续为1的次数
-    const int requiredConsecutiveOnCount = 5;  // 需要连续为1的次数
-    static bool previousSlotOccupy = false;  // 上一轮的slot.occupy状态
-
     // 判断slot.occupy的状态并更新连续计数
     if (occupy == 1) {
         if (previousSlotOccupy == 1) {
@@ -628,7 +627,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
 
         if (KF){
             auto quad = std::make_shared<QuadInfo>();
-            filterSlotOccupy(slot.occupy); // 20250220 RD占用判断跳动，加滤波算法
+            // filterSlotOccupy(slot.occupy); // 20250220 RD占用判断跳动，加滤波算法
             quad->occupy = slot.occupy;
             quad->material = slot.material;
             quad->quads.bottomRows<1>().setOnes();

@@ -12,8 +12,7 @@
 
 // ***************************配置文件修改的参数(@TODO：从配置文件读取后转成const)
 bool DEBUG = false; //功能开关
-int STILL_THRESHOLD = 5; //静止阈值，100ms一帧
-
+ 
 // // ***************************输入的全局变量，用于ON方式获取
 // //RD
 // rd::QuadParkingSlots rd_info;
@@ -23,7 +22,6 @@ int STILL_THRESHOLD = 5; //静止阈值，100ms一帧
 // Loc::App2emap_DR dr_pose;
 // padVehiclePose pose_globaldata;
 // Loc::App2emap_DR previous_dr_pose = {0};
-// int still_count = 0;
 // bool is_Still = true;
 // //perception
 // Fus::PkEmapObs obs_info_on; // ON获取
@@ -39,9 +37,8 @@ int STILL_THRESHOLD = 5; //静止阈值，100ms一帧
 int apa_status = 0;
 int park_request = 0;
 const int search_interrupt = 0; //@TODO VC7 RELEASE
-int still_count = 0;
-bool is_Still = true;
-Loc::App2emap_DR previous_dr_pose = {0};
+int is_Still;
+Loc::App2emap_DR previous_dr_pose;
 
 
 SaveFileToJson filetojson;
@@ -267,6 +264,50 @@ int cpsd_fusion_process::IsParkOut(int apastatus)
     }
 }
 
+int cpsd_fusion_process::IsStill(const Loc::App2emap_DR drpose, Loc::App2emap_DR& previous_drpose)
+{
+    static int no_change_count = 0;
+    float epsilon = 50.0; // 设置阈值，可以根据需要调整
+    bool has_changed = false; // 比较 drpose 和 previous_drpose 是否变化
+    int still_threshold = 5; //静止阈值，连续多少次没有变化算静止
+    LOGD("[STILL] dr: x:%f, y:%f, yaw: %f,previous: x:%f, y:%f, yaw:%f",
+    drpose.x,
+    drpose.y,
+    drpose.canAng,
+    previous_drpose.x,
+    previous_drpose.y,
+    previous_drpose.canAng);
+
+    if (fabs(drpose.x - previous_drpose.x) > epsilon ||
+        fabs(drpose.y - previous_drpose.y) > epsilon ||
+        fabs(drpose.canAng - previous_drpose.canAng) > epsilon)
+    {
+        has_changed = true;
+    }
+    LOGD("[STILL] has_changed:%d",has_changed);
+
+    // 如果没有变化，增加连续无变化计数
+    if (!has_changed)
+    {
+        no_change_count++;
+    }
+    else
+    {
+        no_change_count = 0;  // 有变化时重置计数器
+    }
+    LOGD("[STILL] no_change_count:%d",no_change_count);
+
+    // 如果连续still_threshold次没有变化，则认为是静止状态
+    if (no_change_count >= still_threshold)
+    {
+        previous_drpose = drpose; // 更新 previous_drpose 为当前的 drpose
+        return 1;  // is_Still = 1
+    }
+
+    previous_drpose = drpose; // 更新 previous_drpose 为当前的 drpose
+    return 0;  // is_Still = 0
+}
+
 
 tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
 {
@@ -280,14 +321,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
 
 tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 {
-    
-    auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
     auto current = std::chrono::system_clock::now(); //用于J5时间同步
     auto current1970 = current.time_since_epoch();
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count();
+    
+    auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGW("PSD Version: 02261224, for emos7 896, GetField, Stopper/Lock/OBS, no KF filter");
+    LOGD("PSD Version: 02261224, for emos7 896, GetField, Stopper/Lock/OBS, no KF filter");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -313,10 +354,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     // search_interrupt = getInput.search_interrupt; //@TODO VC9 RELEASE
         
     parkout_flag = IsParkOut(apa_status);
+    is_Still = IsStill(dr_pose,previous_dr_pose);
 
     // 判断时间条件是否满足
-    if (current1970_ms - rd_info.frameTimeStampNs > 1500 || current1970_ms - dr_pose.timeStamp > 1500) {
-        LOGD("[TIMESYNC] current: %llu, RD timestamp: %llu, DR timestamp: %llu, Time condition not met, skipping execution.",current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp);
+    if (std::llabs(current1970_ms - rd_info.frameTimeStampNs) > 1500 || std::llabs(current1970_ms - dr_pose.timeStamp) > 1500) {
+        LOGW("[TIMESYNC] current: %llu, RD timestamp: %llu, DR timestamp: %llu, Time synchronization not met, skipping execution.",current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp);
         RETURN_NOERROR;  // 直接返回
     }
     // 继续执行后续操作
@@ -606,16 +648,40 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 i++;
             }
 
-            // 从psd2vcu拿到最近的车位列表cloest_slots
+            // 认为自车的位置
             POINT_F VCU_car_pose;
-            VCU_car_pose.x = 0.0;
+            VCU_car_pose.x = -5.0;
             VCU_car_pose.y = 0.0;
 
-            std::vector<Fsm::FusionSlotInfo> cloest_slots;
-            std::vector<Fsm::FusionSlotInfo> vcu_slots;
+            //0227 推荐车位可用
+            // 从psd2vcu拿到最近的车位列表cloest_slots
+            // std::vector<Fsm::FusionSlotInfo> cloest_slots;
+            // std::vector<Fsm::FusionSlotInfo> vcu_slots;
+            // for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
+            //     if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
+            //         Fsm::FusionSlotInfo vcu_slot;
+            //         for (int jcnt = 0; jcnt < 4; ++jcnt){
+            //             vcu_slot.pt[jcnt].x = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].x;
+            //             vcu_slot.pt[jcnt].y = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].y;
+            //         }
+            //         vcu_slot.slotLabel = psd2vcu.FusionSlotInfo[icnt].slotLabel;
+            //         vcu_slot.slotStatusType = psd2vcu.FusionSlotInfo[icnt].slotStatusType;
+            //         vcu_slot.slotType = psd2vcu.FusionSlotInfo[icnt].slotType;
+
+            //         vcu_slots.push_back(vcu_slot);
+            //     }
+            // }
+            // LOGD("vcu_slots size: %d",vcu_slots.size());
+            // cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_slots ,10);
+            // LOGD("cloest_slots size: %d",cloest_slots.size());
+
+            // dev版本，更新成一样的结构体
+            // 从psd2vcu拿到最近的车位列表cloest_slots
+            std::vector<Sfus::FusionSlotInfo> cloest_slots;
+            std::vector<Sfus::FusionSlotInfo> vcu_slots;
             for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
                 if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
-                    Fsm::FusionSlotInfo vcu_slot;
+                    Sfus::FusionSlotInfo vcu_slot;
                     for (int jcnt = 0; jcnt < 4; ++jcnt){
                         vcu_slot.pt[jcnt].x = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].x;
                         vcu_slot.pt[jcnt].y = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].y;
@@ -636,6 +702,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
             int count = std::min(10, static_cast<int>(cloest_slots.size()));
             bool recommend_exist = false;
 
+            LOGD("RECOMMEND condition: final_select_ID: %d, is_Still: %d",final_select_ID,is_Still);
             //点选与推荐的四种情况
             if (final_select_ID == 0 && is_Still) { //当没有点选ID且静止，使用推荐ID
                 LOGD("RECOMMEND1: still, Start Recommend!")
@@ -650,7 +717,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
                             if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3 && !recommend_exist) { //非占用 且不存在推荐车位
                                 psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7; 
-                                // psd2vcu.FusionSlotInfo[icnt].slotStatusType = 3;
                                 RECOMMEND_ID = psd2vcu.FusionSlotInfo[icnt].slotLabel;
                                 recommend_exist = true;
                             }
@@ -941,7 +1007,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
             }
             psd2location.fusionSlotInfo[j].slotLabel = psd_m_output.rectInfo.label; //ID
             psd2location.fusionSlotInfo[j].slotType = slottype_rd2vcu(psd_m_output.rectInfo.PStype);
-            LOGD("iMaterial: %d", psd_m_output.rectInfo.iMaterial);
             if (psd_m_output.rectInfo.iMaterial == 1){
                 psd2location.fusionSlotInfo[j].fusionSlotType = 3;
             }

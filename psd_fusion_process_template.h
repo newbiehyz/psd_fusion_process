@@ -63,6 +63,8 @@ private:
     int HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select);
     int RecommendSelectID(const int &final_select, const int &recommend);
     int IsParkOut(int apastatus);
+    int IsStill(const Loc::App2emap_DR dr_pose, Loc::App2emap_DR& previous_dr_pose);
+
 
 public:
     apaSlotListInfo outputSlot_FUSED;

@@ -9,11 +9,7 @@ extern SaveFileToJson filetojson;
 extern int STILL_THRESHOLD;
 
 // 构造函数
-GetInput::GetInput() : 
-    is_Still(true), 
-    still_count(0), 
-    apa_status(0)
-{
+GetInput::GetInput() {
 
 }
 
@@ -98,18 +94,31 @@ void GetInput::GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2em
         pose_globaldata.coord.y = int(dr_pose.y);
         pose_globaldata.yaw = dr_pose.canAng;
 
-        const double epsilon = 1e-1;
-        if (fabs(dr_pose.x - previous_dr_pose.x) > epsilon || fabs(dr_pose.y - previous_dr_pose.y) > epsilon ||  fabs(dr_pose.canAng - previous_dr_pose.canAng) > epsilon) {
-            is_Still = false; // 有变化，设置为运动中
-            still_count = 0; // reset
-        } else {
-            still_count++;
-        }
-        if (still_count >= STILL_THRESHOLD) {
-            is_Still = true;
-        }
-        previous_dr_pose = dr_pose;
-        LOGD("is_Still: %d",is_Still);
+        // LOGD("[STILL] dr: x:%f, y:%f, yaw: %f,previous: x:%f, y:%f, yaw:%f",
+        // dr_pose.x,
+        // dr_pose.y,
+        // dr_pose.canAng,
+        // previous_dr_pose.x,
+        // previous_dr_pose.y,
+        // previous_dr_pose.canAng);
+
+        
+        // const double epsilon = 50;
+        // if (fabs(dr_pose.x - previous_dr_pose.x) > epsilon || fabs(dr_pose.y - previous_dr_pose.y) > epsilon ||  fabs(dr_pose.canAng - previous_dr_pose.canAng) > epsilon) {
+        //     is_Still = false; // 有变化，设置为运动中
+        //     still_count = 0; // reset
+        // } else {
+        //     still_count++;
+        //     LOGD("still_count: %d",still_count);
+        // }
+        
+        // if (still_count >= STILL_THRESHOLD) {
+        //     is_Still = true;
+        // }
+
+        // previous_dr_pose = dr_pose;
+
+        // LOGD("is_Still: %d",is_Still);
     }
 }
 
