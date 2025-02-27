@@ -1008,7 +1008,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
             break;
         }
         psd2planning.SfusionSrchSlots[k].slotID = psd_m_output.rectInfo.label;
-        LOGD("rectinfo_label:%d",psd_m_output.rectInfo.label);
         psd2planning.SfusionSrchSlots[k].slotType = slottype_rd2decplan(psd_m_output.rectInfo.PStype);
 
 
