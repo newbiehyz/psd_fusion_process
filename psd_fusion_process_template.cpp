@@ -269,7 +269,7 @@ int cpsd_fusion_process::IsStill(const Loc::App2emap_DR drpose, Loc::App2emap_DR
     static int no_change_count = 0;
     float epsilon = 50.0; // 设置阈值，可以根据需要调整
     bool has_changed = false; // 比较 drpose 和 previous_drpose 是否变化
-    int still_threshold = 5; //静止阈值，连续多少次没有变化算静止
+    int still_threshold = 10; //静止阈值，连续多少次没有变化算静止
     LOGD("[STILL] dr: x:%f, y:%f, yaw: %f,previous: x:%f, y:%f, yaw:%f",
     drpose.x,
     drpose.y,
@@ -436,6 +436,20 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     fusionslot.postprocessUSSslots(uss_info_restruct);
     LOGD("getall vis size: %d",outputSlot_VIS.slots_in_cur_frame.size());
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
+
+
+    apaSlotListInfo outputSlot_HOLD;
+    if (is_Still != 1){
+        outputSlot_HOLD = outputSlot_FUSED;
+    }
+    else{
+        if (outputSlot_HOLD.slots_in_cur_frame.size() >= 2){
+            outputSlot_FUSED = outputSlot_HOLD;
+        }
+    }
+
+
+
     LOGD("getall fus size: %d",outputSlot_FUSED.slots_in_cur_frame.size());
     slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
     LOGD("slotlist_size:%d",slotlist_size);
