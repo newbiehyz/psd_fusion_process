@@ -555,13 +555,12 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, float &s
     }
 }
 
-
-static int consecutiveOnCount = 0;  // 记录连续为1的次数
-const int requiredConsecutiveOnCount = 5;  // 需要连续为1的次数
-static bool previousSlotOccupy = false;  // 上一轮的slot.occupy状态
-
-void PSD_FusionModuleIF::filterSlotOccupy(int& occupy)
+int PSD_FusionModuleIF::filterSlotOccupy(int& occupy)
 {
+    static int consecutiveOnCount = 0;  // 记录连续为1的次数
+    const int requiredConsecutiveOnCount = 5;  // 需要连续为1的次数
+    static bool previousSlotOccupy = false;  // 上一轮的slot.occupy状态
+
     // 判断slot.occupy的状态并更新连续计数
     if (occupy == 1) {
         if (previousSlotOccupy == 1) {
@@ -572,14 +571,15 @@ void PSD_FusionModuleIF::filterSlotOccupy(int& occupy)
     } else {
         consecutiveOnCount = 0;  // 如果是0，重置连续计数
     }
+    LOGD("[OCC filter]now occupy: %d, consecutiveOnCount: %d, previousSlotOccupy: %d",occupy,consecutiveOnCount, previousSlotOccupy);
 
     previousSlotOccupy = occupy;
 
     // 只有当连续为1达到5次时，才将slot.occupy置为1
     if (consecutiveOnCount >= requiredConsecutiveOnCount) {
-        occupy = 1;
+        return 1;
     } else {
-        occupy = 0;
+        return 0;
     }
 }
 
