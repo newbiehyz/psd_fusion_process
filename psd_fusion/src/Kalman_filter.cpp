@@ -461,28 +461,57 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
        
         
             
-    }else if(type_ == SLOT_TYPE::PARALLELSLOT){
-        // if (this->slot_state_(SLOT_CENTER_X) > 0){
-            corners_world_.at(0) =
-                center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-            corners_world_.at(1) =
-                center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-            corners_world_.at(2) =
-                center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-            corners_world_.at(3) =
-                center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-        // }else{
-        //     corners_world_.at(0) =
-        //         center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-        //     corners_world_.at(1) =
-        //         center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-        //     corners_world_.at(2) =
-        //         center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-        //     corners_world_.at(3) =
-        //         center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-        // }
+    }else if (type_ == SLOT_TYPE::PARALLELSLOT) {
+    // 在平行车位中，长边是车位的宽度方向，宽边是车位的长度方向
+    corners_world_.at(0) =
+        center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    corners_world_.at(1) =
+        center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    corners_world_.at(2) =
+        center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    corners_world_.at(3) =
+        center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    // 20250228之前的水平车位计算公式
+    
+    // else if(type_ == SLOT_TYPE::PARALLELSLOT){
+    //     // if (this->slot_state_(SLOT_CENTER_X) > 0){
+    //         corners_world_.at(0) =
+    //             center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
+    //         corners_world_.at(1) =
+    //             center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
+    //         corners_world_.at(2) =
+    //             center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+    //         corners_world_.at(3) =
+    //             center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+    //     // }else{
+    //     //     corners_world_.at(0) =
+    //     //         center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
+    //     //     corners_world_.at(1) =
+    //     //         center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
+    //     //     corners_world_.at(2) =
+    //     //         center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+    //     //     corners_world_.at(3) =
+    //     //         center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
+    //     // }
         
-    }  
+    // }  
 
     // 更新车位状态信息
     this->age_++;
