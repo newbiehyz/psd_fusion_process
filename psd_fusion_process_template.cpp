@@ -1143,9 +1143,31 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
             break;
         }
         psd2planning.SfusionSrchSlots[k].slotID = psd_m_output.rectInfo.label;
-        psd2planning.SfusionSrchSlots[k].slotType = slottype_rd2decplan(psd_m_output.rectInfo.PStype);
-
-
+        // *******************正逆鱼骨
+        double ABx = psd_m_output.rectInfo.pt[1].x - psd_m_output.rectInfo.pt[0].x;
+        double ABy = psd_m_output.rectInfo.pt[1].y - psd_m_output.rectInfo.pt[0].y;
+        double ADx = psd_m_output.rectInfo.pt[3].x - psd_m_output.rectInfo.pt[0].x;
+        double ADy = psd_m_output.rectInfo.pt[3].y - psd_m_output.rectInfo.pt[0].y;
+        double dotProduct = (ABx * ADx) + (ABy * ADy);
+        double magnitudeAB = sqrt(ABx * ABx + ABy * ABy);
+        double magnitudeAD = sqrt(ADx * ADx + ADy * ADy);
+        // 计算夹角的余弦值
+        double cosTheta = dotProduct / (magnitudeAB * magnitudeAD);
+        // 计算角度（弧度转度）
+        double angleRadians = acos(cosTheta);  // 计算弧度
+        double angleDegrees = angleRadians * (180.0 / M_PI);  // 转换为度
+        if (angleDegrees > 80  || angleDegrees < 100)
+        {
+            psd2planning.SfusionSrchSlots[k].slotType = slottype_rd2decplan(psd_m_output.rectInfo.PStype);
+        }
+        else if (angleDegrees <= 80){
+            psd2planning.SfusionSrchSlots[k].slotType = Sfus::SLOTTYP_RFOBL;
+        }
+        else{
+            psd2planning.SfusionSrchSlots[k].slotType = Sfus::SLOTTYP_OBL;
+        }
+        //*******************
+        
         if (psd2planning.SfusionSrchSlots[k].slotID >= 1000 && psd2planning.SfusionSrchSlots[k].slotID < 10000){
             psd2planning.SfusionSrchSlots[k].slotSource = Sfus::SLOTSRC_VIS;
         } else if (psd2planning.SfusionSrchSlots[k].slotID >= 10000){
@@ -1153,9 +1175,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         } else {
             psd2planning.SfusionSrchSlots[k].slotSource = Sfus::SLOTSRC_NULL;
         }
-
-
-
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.x = psd_m_output.rectInfo.pt[0].x;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.y = psd_m_output.rectInfo.pt[0].y;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerB.x = psd_m_output.rectInfo.pt[1].x;
@@ -1164,6 +1183,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerC.y = psd_m_output.rectInfo.pt[2].y;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerD.x = psd_m_output.rectInfo.pt[3].x;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerD.y = psd_m_output.rectInfo.pt[3].y;
+
+
 
 
         LOGD("[PSD2PLANNING] TOTAL SLOT NUM: %d, Slot#%d, type: %d, source: %d, stopdis: %f (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f)",
