@@ -4,6 +4,7 @@
 #include <typeinfo>
 #include "math.hpp"
 #include "GetInput.hpp"
+#include "utils.h"
 
 // ***************************标定量
 #define VEHICLE_LENGTH 5259.9 
@@ -329,7 +330,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 02281102, Stopper/Lock/OBS, KF filter waiting for verify, release slot after vehicle pose");
+    LOGD("PSD Version: 03031517, REBUILD waiting for verify");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -358,38 +359,45 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     is_Still = IsStill(dr_pose,previous_dr_pose);
     LOGD("[Still] is Still: %d", is_Still);
 
-    // 判断时间条件是否满足
-    if (std::llabs(current1970_ms - rd_info.frameTimeStampNs) > 1500 || std::llabs(current1970_ms - dr_pose.timeStamp) > 1500) {
-        LOGW("[TIMESYNC] current: %llu, RD timestamp: %llu, DR timestamp: %llu, Time synchronization not met, skipping execution.",current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp);
+    //***********************************TimeSync, new
+    if (!CheckTimeSync(current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp)) {
         RETURN_NOERROR;  // 直接返回
     }
-    // 继续执行后续操作
-    LOGD("[TIMESYNC] current: %llu, RD timestamp: %llu, DR timestamp: %llu, Time synchronization achieved!", current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp);
+    // ***********************************TimeSync, old
+    // // 判断时间条件是否满足
+    // if (std::llabs(current1970_ms - rd_info.frameTimeStampNs) > 1500 || std::llabs(current1970_ms - dr_pose.timeStamp) > 1500) {
+    //     LOGW("[TIMESYNC] current: %llu, RD timestamp: %llu, DR timestamp: %llu, Time synchronization not met, skipping execution.",current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp);
+    //     RETURN_NOERROR;  // 直接返回
+    // }
+    // // 继续执行后续操作
+    // LOGD("[TIMESYNC] current: %llu, RD timestamp: %llu, DR timestamp: %llu, Time synchronization achieved!", current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp);
 
 
 
-    //***********************************clear
+    //***********************************clear, new
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-        singleframeslots.clear();
-        singleframeslotsID = 0;
-        outputSlot_VIS.slots_in_cur_frame.clear();
-        outputSlot_USS.slots_in_cur_frame.clear();
-        outputSlot_FUSED.slots_in_cur_frame.clear();
-        parkout_flag = 0;
-        LOGD("CLEAR singleframeslots, size: %d, parkout_flag = %d",singleframeslots.size(),parkout_flag);
+        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
     }
+    //***********************************clear, old
+    // if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
+    //     singleframeslots.clear();
+    //     singleframeslotsID = 0;
+    //     outputSlot_VIS.slots_in_cur_frame.clear();
+    //     outputSlot_USS.slots_in_cur_frame.clear();
+    //     outputSlot_FUSED.slots_in_cur_frame.clear();
+    //     parkout_flag = 0;
+    //     LOGD("CLEAR singleframeslots, size: %d, parkout_flag = %d",singleframeslots.size(),parkout_flag);
+    // }
     //***********************************check
-    LOGD("CHECK singleframeslots size: %d",singleframeslots.size());
+    LOGD("[CHECK SIZE] CHECK singleframeslots size: %d",singleframeslots.size());
     LOGD("[CHECK SIZE] before update, vis: %d, uss: %d, fused: %d",outputSlot_VIS.slots_in_cur_frame.size()
                                                 ,outputSlot_USS.slots_in_cur_frame.size()
                                                 ,outputSlot_FUSED.slots_in_cur_frame.size());
 
     // part3 算法
-    LOGD("getall: RDframe: %llu, apastatus: %d, interrupt: %d",singleframeslotsID,apa_status,search_interrupt);
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
-    LOGD("getall VISSLOTS size: %d",outputSlot_VIS.slots_in_cur_frame.size());
 
 
     // 根据障碍物位置，判断是否在车位内，并做占用判断
@@ -419,12 +427,18 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     if (DEBUG == true){
         filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"VISapaSlotListInfo.json");
     }
-    // 清空车位3：Update输出
+
+    //***********************************clear, new
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-        outputSlot_VIS.slots_in_cur_frame.clear();
-        outputSlot_USS.slots_in_cur_frame.clear();
-        outputSlot_FUSED.slots_in_cur_frame.clear();
+        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
     }
+    // //***********************************clear, old
+    // // 清空车位3：Update输出
+    // if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
+    //     outputSlot_VIS.slots_in_cur_frame.clear();
+    //     outputSlot_USS.slots_in_cur_frame.clear();
+    //     outputSlot_FUSED.slots_in_cur_frame.clear();
+    // }
 
     //***********************************get USS
     UssIf_stPLVOutputInfo_t uss_info;
@@ -439,16 +453,16 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     LOGD("getall vis size: %d",outputSlot_VIS.slots_in_cur_frame.size());
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
 
-    //稳定的车位列表
-    apaSlotListInfo outputSlot_HOLD;
-    if (is_Still != 1){
-        outputSlot_HOLD = outputSlot_FUSED;
-    }
-    else{
-        if (outputSlot_HOLD.slots_in_cur_frame.size() >= 2){
-            outputSlot_FUSED = outputSlot_HOLD;
-        }
-    }
+    // //稳定的车位列表
+    // apaSlotListInfo outputSlot_HOLD;
+    // if (is_Still != 1){
+    //     outputSlot_HOLD = outputSlot_FUSED;
+    // }
+    // else{
+    //     if (outputSlot_HOLD.slots_in_cur_frame.size() >= 2){
+    //         outputSlot_FUSED = outputSlot_HOLD;
+    //     }
+    // }
 
 
 
@@ -482,73 +496,85 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     }
     //******************************
 
-    // 清空车位
+
+    //***********************************clear, new
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-        slotlist_size = 0;
-        singleframeslots.clear();
-        outputSlot_FUSED.slots_in_cur_frame.clear();
-        outputSlot_VIS.slots_in_cur_frame.clear();
-        outputSlot_USS.slots_in_cur_frame.clear();
+        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
         dr_first = true;
-        LOGD("dr_first:%d",dr_first);
+        slotlist_size = 0;
     }
+    // //***********************************clear, old
+    // if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
+    //     slotlist_size = 0;
+    //     singleframeslots.clear();
+    //     outputSlot_FUSED.slots_in_cur_frame.clear();
+    //     outputSlot_VIS.slots_in_cur_frame.clear();
+    //     outputSlot_USS.slots_in_cur_frame.clear();
+    //     dr_first = true;
+    //     LOGD("dr_first:%d",dr_first);
+    // }
     
     // 输出VIS USS FUSION车位列表
-    for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
-        LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
-        outputSlot_VIS.slots_in_cur_frame.size(),
-        psd_m_output.rectInfo.label,
-        psd_m_output.rectInfo.PStype,
-        psd_m_output.rectInfo.iSodType,
-        psd_m_output.rectInfo.StopperDistance,
-        psd_m_output.rectInfo.StopperLocation,
-        psd_m_output.rectInfo.pt[0].x,
-        psd_m_output.rectInfo.pt[0].y,
-        psd_m_output.rectInfo.pt[1].x,
-        psd_m_output.rectInfo.pt[1].y,
-        psd_m_output.rectInfo.pt[2].x,
-        psd_m_output.rectInfo.pt[2].y,
-        psd_m_output.rectInfo.pt[3].x,
-        psd_m_output.rectInfo.pt[3].y);
-    }
+    // LOG, new
+    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+    LogSlotInfo(outputSlot_USS, "ORIGIN USSSLOTS");
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    // // LOG, old
+    // for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
+    //     LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+    //     outputSlot_VIS.slots_in_cur_frame.size(),
+    //     psd_m_output.rectInfo.label,
+    //     psd_m_output.rectInfo.PStype,
+    //     psd_m_output.rectInfo.iSodType,
+    //     psd_m_output.rectInfo.StopperDistance,
+    //     psd_m_output.rectInfo.StopperLocation,
+    //     psd_m_output.rectInfo.pt[0].x,
+    //     psd_m_output.rectInfo.pt[0].y,
+    //     psd_m_output.rectInfo.pt[1].x,
+    //     psd_m_output.rectInfo.pt[1].y,
+    //     psd_m_output.rectInfo.pt[2].x,
+    //     psd_m_output.rectInfo.pt[2].y,
+    //     psd_m_output.rectInfo.pt[3].x,
+    //     psd_m_output.rectInfo.pt[3].y);
+    // }
 
-    for (auto & psd_m_output : outputSlot_USS.slots_in_cur_frame){
-        LOGD("[ORIGIN USSSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, SOD: %d, DownSlotSOD: %d, iMinOtherSideDist: %d, iRoadEdgeDist: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
-        outputSlot_USS.slots_in_cur_frame.size(),
-        psd_m_output.rectInfo.label,
-        psd_m_output.rectInfo.PStype,
-        psd_m_output.rectInfo.iSodType,
-        psd_m_output.rectInfo.iDownSlotSOD,
-        psd_m_output.rectInfo.iMinOtherSideDist,
-        psd_m_output.rectInfo.iRoadEdgeDist,
-        psd_m_output.rectInfo.pt[0].x,
-        psd_m_output.rectInfo.pt[0].y,
-        psd_m_output.rectInfo.pt[1].x,
-        psd_m_output.rectInfo.pt[1].y,
-        psd_m_output.rectInfo.pt[2].x,
-        psd_m_output.rectInfo.pt[2].y,
-        psd_m_output.rectInfo.pt[3].x,
-        psd_m_output.rectInfo.pt[3].y);
-    }
+    // for (auto & psd_m_output : outputSlot_USS.slots_in_cur_frame){
+    //     LOGD("[ORIGIN USSSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, SOD: %d, DownSlotSOD: %d, iMinOtherSideDist: %d, iRoadEdgeDist: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+    //     outputSlot_USS.slots_in_cur_frame.size(),
+    //     psd_m_output.rectInfo.label,
+    //     psd_m_output.rectInfo.PStype,
+    //     psd_m_output.rectInfo.iSodType,
+    //     psd_m_output.rectInfo.iDownSlotSOD,
+    //     psd_m_output.rectInfo.iMinOtherSideDist,
+    //     psd_m_output.rectInfo.iRoadEdgeDist,
+    //     psd_m_output.rectInfo.pt[0].x,
+    //     psd_m_output.rectInfo.pt[0].y,
+    //     psd_m_output.rectInfo.pt[1].x,
+    //     psd_m_output.rectInfo.pt[1].y,
+    //     psd_m_output.rectInfo.pt[2].x,
+    //     psd_m_output.rectInfo.pt[2].y,
+    //     psd_m_output.rectInfo.pt[3].x,
+    //     psd_m_output.rectInfo.pt[3].y);
+    // }
 
-    for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-        LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, Material: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
-        outputSlot_FUSED.slots_in_cur_frame.size(),
-        psd_m_output.rectInfo.label,
-        psd_m_output.rectInfo.PStype,
-        psd_m_output.rectInfo.iSodType,
-        psd_m_output.rectInfo.StopperDistance,
-        psd_m_output.rectInfo.StopperLocation,
-        psd_m_output.rectInfo.iMaterial,
-        psd_m_output.rectInfo.pt[0].x,
-        psd_m_output.rectInfo.pt[0].y,
-        psd_m_output.rectInfo.pt[1].x,
-        psd_m_output.rectInfo.pt[1].y,
-        psd_m_output.rectInfo.pt[2].x,
-        psd_m_output.rectInfo.pt[2].y,
-        psd_m_output.rectInfo.pt[3].x,
-        psd_m_output.rectInfo.pt[3].y);
-    }
+    // for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
+    //     LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, Material: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+    //     outputSlot_FUSED.slots_in_cur_frame.size(),
+    //     psd_m_output.rectInfo.label,
+    //     psd_m_output.rectInfo.PStype,
+    //     psd_m_output.rectInfo.iSodType,
+    //     psd_m_output.rectInfo.StopperDistance,
+    //     psd_m_output.rectInfo.StopperLocation,
+    //     psd_m_output.rectInfo.iMaterial,
+    //     psd_m_output.rectInfo.pt[0].x,
+    //     psd_m_output.rectInfo.pt[0].y,
+    //     psd_m_output.rectInfo.pt[1].x,
+    //     psd_m_output.rectInfo.pt[1].y,
+    //     psd_m_output.rectInfo.pt[2].x,
+    //     psd_m_output.rectInfo.pt[2].y,
+    //     psd_m_output.rectInfo.pt[3].x,
+    //     psd_m_output.rectInfo.pt[3].y);
+    // }
 
 
 
@@ -568,15 +594,21 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     // }
 
     // APAStatus == standby/finish/error时，清零车位ID
+    // Clear, new
     if (apa_status == 1 || apa_status == 6 || apa_status == 7){
-        HMI_temp_ID = 0;
-        HMI_select_ID = 0;
-        VCU_select_ID_ON = 0;
-        final_select_ID = 0;
-        RECOMMEND_ID = 0;
-        final_ID = 0;
+        ClearSelectRecommendSlot(HMI_temp_ID, HMI_select_ID, VCU_select_ID_ON, final_select_ID, RECOMMEND_ID, final_ID, apa_status);
     }
     LOGD("[STATUSSELECT] HMI %d, VCU %d, final select %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);
+    // // Clear, old
+    // if (apa_status == 1 || apa_status == 6 || apa_status == 7){
+    //     HMI_temp_ID = 0;
+    //     HMI_select_ID = 0;
+    //     VCU_select_ID_ON = 0;
+    //     final_select_ID = 0;
+    //     RECOMMEND_ID = 0;
+    //     final_ID = 0;
+    // }
+    // LOGD("[STATUSSELECT] HMI %d, VCU %d, final select %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);
 
 
 
