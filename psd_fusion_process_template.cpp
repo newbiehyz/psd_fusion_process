@@ -264,6 +264,51 @@ int cpsd_fusion_process::IsParkOut(int apastatus)
     }
 }
 
+int cpsd_fusion_process::IsStill(const Loc::App2emap_DR drpose, Loc::App2emap_DR& previous_drpose)
+{
+    static int no_change_count = 0;
+    float epsilon = 3.0; // 设置阈值，可以根据需要调整
+    bool has_changed = false; // 比较 drpose 和 previous_drpose 是否变化
+    int still_threshold = 10; //静止阈值，连续多少次没有变化算静止
+    LOGD("[STILL] dr: x:%f, y:%f, yaw: %f,previous: x:%f, y:%f, yaw:%f",
+    drpose.x,
+    drpose.y,
+    drpose.canAng,
+    previous_drpose.x,
+    previous_drpose.y,
+    previous_drpose.canAng);
+
+    if (fabs(drpose.x - previous_drpose.x) > epsilon ||
+        fabs(drpose.y - previous_drpose.y) > epsilon ||
+        fabs(drpose.canAng - previous_drpose.canAng) > epsilon)
+    {
+        has_changed = true;
+    }
+    LOGD("[STILL] has_changed:%d",has_changed);
+
+    // 如果没有变化，增加连续无变化计数
+    if (!has_changed)
+    {
+        no_change_count++;
+    }
+    else
+    {
+        no_change_count = 0;  // 有变化时重置计数器
+    }
+    LOGD("[STILL] no_change_count:%d",no_change_count);
+
+    // 如果连续still_threshold次没有变化，则认为是静止状态
+    if (no_change_count >= still_threshold)
+    {
+        previous_drpose = drpose; // 更新 previous_drpose 为当前的 drpose
+        return 1;  // is_Still = 1
+    }
+
+    previous_drpose = drpose; // 更新 previous_drpose 为当前的 drpose
+    return 0;  // is_Still = 0
+}
+
+
 
 tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
 {
@@ -284,7 +329,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 02281102, Stopper/Lock/OBS, no KF filter, release slot after vehicle pose");
+    LOGD("PSD Version: 02281102, Stopper/Lock/OBS, KF filter waiting for verify, release slot after vehicle pose");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -450,10 +495,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     // 输出VIS USS FUSION车位列表
     for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
-        LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, StopDis: %f, StopLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
         outputSlot_VIS.slots_in_cur_frame.size(),
         psd_m_output.rectInfo.label,
         psd_m_output.rectInfo.PStype,
+        psd_m_output.rectInfo.iSodType,
         psd_m_output.rectInfo.StopperDistance,
         psd_m_output.rectInfo.StopperLocation,
         psd_m_output.rectInfo.pt[0].x,
@@ -486,10 +532,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     }
 
     for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-        LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, StopDis: %f, StopLoc: %d, Material: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+        LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, Material: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
         outputSlot_FUSED.slots_in_cur_frame.size(),
         psd_m_output.rectInfo.label,
         psd_m_output.rectInfo.PStype,
+        psd_m_output.rectInfo.iSodType,
         psd_m_output.rectInfo.StopperDistance,
         psd_m_output.rectInfo.StopperLocation,
         psd_m_output.rectInfo.iMaterial,
@@ -569,15 +616,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     psd2vcu.FusionSlotInfo[i].pt[0].x = (psd_m_output.rectInfo.pt[0].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  ) / MM_TO_M; //mm 转 m , VCU坐标系上x右y
                     psd2vcu.FusionSlotInfo[i].pt[0].y = psd_m_output.rectInfo.pt[0].x / MM_TO_M; //后轴中心转前保中心
                     psd2vcu.FusionSlotInfo[i].pt[0].z = 0;
-
                     psd2vcu.FusionSlotInfo[i].pt[1].x = (psd_m_output.rectInfo.pt[1].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  ) / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[1].y = psd_m_output.rectInfo.pt[1].x/ MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[1].z = 0;
-
                     psd2vcu.FusionSlotInfo[i].pt[2].x = (psd_m_output.rectInfo.pt[2].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[2].y = psd_m_output.rectInfo.pt[2].x / MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[2].z = 0;
-
                     psd2vcu.FusionSlotInfo[i].pt[3].x = (psd_m_output.rectInfo.pt[3].y - (VEHICLE_LENGTH - REAR_AXLE_CENTER_VEHICLE_REAR)  )/ MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[3].x/ MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[3].z = 0;
@@ -586,15 +630,17 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 
                     // 0228ride临时占用判断：车头越过车位后才开始算占用非占用
-                    if (psd2vcu.FusionSlotInfo[i].pt[0].x >= -5.0){
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                    if (psd2vcu.FusionSlotInfo[i].pt[0].x >= -4.5){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6;  //Unavailable
                     }
                     else{
                         if (psd_m_output.rectInfo.iSodType == 1){
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
-                        }else {
+                        }
+                        else{
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                         }
+
                     } 
                     LOGD("[VCU occupied] slot.x: %f, RD occupied: %d, VCU occupied: %d",
                         psd2vcu.FusionSlotInfo[i].pt[0].x,
@@ -692,8 +738,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
             // dev版本，更新成一样的结构体
             // 从psd2vcu拿到最近的车位列表cloest_slots
-            std::vector<Sfus::FusionSlotInfo> cloest_slots;
-            std::vector<Sfus::FusionSlotInfo> vcu_slots;
+            std::vector<Sfus::FusionSlotInfo> vcu_slots; //找出available车位
+            std::vector<Sfus::FusionSlotInfo> cloest_slots; // 找出available里的closet车位
             for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
                 if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
                     Sfus::FusionSlotInfo vcu_slot;
@@ -751,6 +797,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 RECOMMEND_ID = 0;
                 final_select_ID = 0;
                 final_ID = 0;
+                recommend_exist = false;
                 for (int i = 0; i < slotlist_size; i++) {
                     psd2vcu.FusionSlotInfo[i].displayLabel = 0;
                     if (psd2vcu.FusionSlotInfo[i].slotStatusType == 4) { //占用的保持占用
@@ -772,6 +819,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     if (psd2vcu.FusionSlotInfo[i].slotLabel == final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 5; // 设置为SELECTED状态
                     } 
+                    //找到目标车位ID 且 占用
+                    if (psd2vcu.FusionSlotInfo[i].slotLabel == final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6; // 设置为UNAVAILABLE状态
+                    } 
                     //剩下的非选中车位，占用的保持占用
                     else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
@@ -783,11 +834,15 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 }
             }
 
-            else{ //当有点选车位且运动，清除所有ID
+            else{ //当有点选车位且运动，清除所有ID。@TODO 前后距离超过一定值
                 LOGD("RECOMMEND4: no still, no recommend, no select")
-                RECOMMEND_ID = 0;
+                HMI_temp_ID = 0;
+                HMI_select_ID = 0;
+                VCU_select_ID_ON = 0;
                 final_select_ID = 0;
+                RECOMMEND_ID = 0;
                 final_ID = 0;
+                recommend_exist = false;
                 for (int i = 0; i < slotlist_size; i++) {
                     psd2vcu.FusionSlotInfo[i].displayLabel = 0;
                     if (psd2vcu.FusionSlotInfo[i].slotStatusType == 4) { //占用的保持占用

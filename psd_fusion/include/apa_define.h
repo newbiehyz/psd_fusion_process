@@ -191,11 +191,18 @@ struct IPMParameters {
     //  float max_v = 235.f;
     //  float cam_v = 120.f;
      
+    // // 20m 896x896 (9,11) (7.5,12.5)
+    // float min_u = 158.f;  // width dir
+    // float max_u = 193.f;
+    // float min_v = 132.f;  // height dir
+    // float max_v = 219.f;
+    // float cam_v = 120.f;
+
     // 20m 896x896 (9,11) (7.5,12.5)
-    float min_u = 158.f;  // width dir
-    float max_u = 193.f;
-    float min_v = 132.f;  // height dir
-    float max_v = 219.f;
+    float min_u = 403.f;  // width dir
+    float max_u = 494.f;
+    float min_v = 336.f;  // height dir
+    float max_v = 561.f;
     float cam_v = 120.f;
 };
 
