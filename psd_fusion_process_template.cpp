@@ -1219,7 +1219,30 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
                 psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
                 psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
-                psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
+                // *******************正逆鱼骨
+                double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
+                double ABy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                double ADx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
+                double ADy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                double dotProduct = (ABx * ADx) + (ABy * ADy);
+                double magnitudeAB = sqrt(ABx * ABx + ABy * ABy);
+                double magnitudeAD = sqrt(ADx * ADx + ADy * ADy);
+                // 计算夹角的余弦值
+                double cosTheta = dotProduct / (magnitudeAB * magnitudeAD);
+                // 计算角度（弧度转度）
+                double angleRadians = acos(cosTheta);  // 计算弧度
+                double angleDegrees = angleRadians * (180.0 / M_PI);  // 转换为度
+                if (angleDegrees > 80  || angleDegrees < 100)
+                {
+                    psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
+                }
+                else if (angleDegrees <= 80){
+                    psd2planning.SfusionSrchSlots[k].slotType = Sfus::SLOTTYP_RFOBL;
+                }
+                else{
+                    psd2planning.SfusionSrchSlots[k].slotType = Sfus::SLOTTYP_OBL;
+                }
+                //*******************
                 if (psd2planning.targetSlot.slotCorners.cornerB.y - psd2planning.targetSlot.slotCorners.cornerA.y > 4000){
                     psd2planning.targetSlot.slotType = Sfus::SLOTTYP_PARA; //超声波车位给unknown，做个保护
                 }
