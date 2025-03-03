@@ -409,7 +409,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         int obs_in_slot = 0; //障碍物在车位内？
 
         PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stopper_dis, stopper_location, lock_in_slot, obs_in_slot);
-        LOGD("[STOPPER] distance: %f, location: %d, LOCK in slot: %d, OBS in slot: %d ",stopper_dis, stopper_location, lock_in_slot, obs_in_slot);
+        LOGD("[OBS] distance: %f, location: %d, LOCK in slot: %d, OBS in slot: %d ",stopper_dis, stopper_location, lock_in_slot, obs_in_slot);
         psd_m_output.rectInfo.StopperDistance = stopper_dis;
         psd_m_output.rectInfo.StopperLocation = stopper_location;
         if (stopper_location != 0){
@@ -421,6 +421,20 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         if (psd_m_output.rectInfo.LockInSlot != 0 || psd_m_output.rectInfo.OBSInSlot != 0){
             psd_m_output.rectInfo.iSodType = 1;
         }
+        LOGD("[OBS] Slot %d, (%d,%d) (%d,%d) (%d,%d) (%d,%d), StopInSlot: %f, OBSInSlot: %d, SOD: %d",
+                                psd_m_output.rectInfo.label,
+                                psd_m_output.rectInfo.pt[0].x,
+                                psd_m_output.rectInfo.pt[0].y,
+                                psd_m_output.rectInfo.pt[1].x,
+                                psd_m_output.rectInfo.pt[1].y,
+                                psd_m_output.rectInfo.pt[2].x,
+                                psd_m_output.rectInfo.pt[2].y,
+                                psd_m_output.rectInfo.pt[3].x,
+                                psd_m_output.rectInfo.pt[3].y,
+                                psd_m_output.rectInfo.OBSInSlot,
+                                psd_m_output.rectInfo.StopperInSlot,
+                                psd_m_output.rectInfo.iSodType)
+                                
     }
 
         
@@ -637,7 +651,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     LOGD("die in VCU and size is:",slotlist_size);
                     break;
                 }
-
+                
                 //psd2vcu.FusionSlotInfo[i].slotType = slottype_rd2vcu(psd_m_output.rectInfo.PStype);
                 psd2vcu.FusionSlotInfo[i].slotLabel = psd_m_output.rectInfo.label; //ID
                 psd2vcu.FusionSlotInfo[i].displayLabel = 0;
