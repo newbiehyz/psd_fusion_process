@@ -400,7 +400,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
 
 
-    // 根据障碍物位置，判断是否在车位内，并做占用判断
+    // 根据障碍物位置，判断是否在车位内，判断限位器在车位边，做占用判断
     for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
         float stopper_dis = 0.0; //限位器到入口边位置
         int stopper_in_slot = 0; //限位器在车位内？
@@ -410,6 +410,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
         PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stopper_dis, stopper_location, lock_in_slot, obs_in_slot);
         LOGD("[OBS] distance: %f, location: %d, LOCK in slot: %d, OBS in slot: %d ",stopper_dis, stopper_location, lock_in_slot, obs_in_slot);
+        //更新outputSlot_VIS
         psd_m_output.rectInfo.StopperDistance = stopper_dis;
         psd_m_output.rectInfo.StopperLocation = stopper_location;
         if (stopper_location != 0){
@@ -418,10 +419,19 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         }
         psd_m_output.rectInfo.LockInSlot = lock_in_slot;
         psd_m_output.rectInfo.OBSInSlot = obs_in_slot;
+        //地锁打开/锥筒在车位内，控制占用
         if (psd_m_output.rectInfo.LockInSlot != 0 || psd_m_output.rectInfo.OBSInSlot != 0){
             psd_m_output.rectInfo.iSodType = 1;
         }
-        LOGD("[OBS] Slot %d, (%d,%d) (%d,%d) (%d,%d) (%d,%d), StopInSlot: %f, OBSInSlot: %d, SOD: %d",
+        //限位器在垂直车位AB边，在水平车位BC边，控制占用
+        if (psd_m_output.rectInfo.PStype == 0 && psd_m_output.rectInfo.StopperLocation == 1){
+            psd_m_output.rectInfo.iSodType = 1;
+        }
+        if (psd_m_output.rectInfo.PStype == 1 && psd_m_output.rectInfo.StopperLocation == 2){
+            psd_m_output.rectInfo.iSodType = 1;
+        }
+
+        LOGD("[OBS] Slot %d, (%d,%d) (%d,%d) (%d,%d) (%d,%d), StopperLocation:%d, StopInSlot: %f, OBSInSlot: %d, SOD: %d",
                                 psd_m_output.rectInfo.label,
                                 psd_m_output.rectInfo.pt[0].x,
                                 psd_m_output.rectInfo.pt[0].y,
@@ -431,6 +441,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                                 psd_m_output.rectInfo.pt[2].y,
                                 psd_m_output.rectInfo.pt[3].x,
                                 psd_m_output.rectInfo.pt[3].y,
+                                psd_m_output.rectInfo.StopperLocation,
                                 psd_m_output.rectInfo.OBSInSlot,
                                 psd_m_output.rectInfo.StopperInSlot,
                                 psd_m_output.rectInfo.iSodType)
@@ -687,7 +698,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                         }
 
-                    } 
+                    }
                     LOGD("[VCU occupied] slot.x: %f, RD occupied: %d, VCU occupied: %d",
                         psd2vcu.FusionSlotInfo[i].pt[0].x,
                         psd_m_output.rectInfo.iSodType,
@@ -724,8 +735,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 
                     // 0228ride临时占用判断：车头越过车位后才开始算占用非占用
-                    if (psd2vcu.FusionSlotInfo[i].pt[0].x > -5.0){
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                    if (psd2vcu.FusionSlotInfo[i].pt[0].x > -4.5){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
                     }
                     else{
                         if (psd_m_output.rectInfo.iSodType == 1){

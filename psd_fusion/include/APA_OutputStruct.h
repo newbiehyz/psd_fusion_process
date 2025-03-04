@@ -120,7 +120,7 @@ struct LineEquParam //直线方程系数 ax+by+c=0
 struct SApaPSRect
 {
 	SApaPoint_I pt[RECTPointNum];//坐标点，单位:mm
-	int PStype;					 //车位形状类型，对应枚举PStype
+	int PStype;					 //车位形状类型，对应枚举PStype，0垂直，1水平，2斜列
 	int label;					 //车位标号，唯一值
 	int iSodType;				 //车位内障碍物状态，对应枚举ERECT_SOD_TYPE
 	int iRectType;				 //车位类型，对应枚举E_RECT_TYPE
