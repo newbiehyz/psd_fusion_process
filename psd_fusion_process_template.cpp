@@ -57,6 +57,7 @@ int VCU_select_ID_ON = 0; //用ON获取的VCU发送的ID
 int RECOMMEND_ID = 0; //推荐车位的ID（类似于已点击，点泊车立即泊车）
 int final_select_ID = 0; //VCU和HMI最终统一的ID
 int final_ID = 0; //结合选择、推荐后的最终ID
+bool recommend_exist = false; //推荐车位是否已存在
 
 int parkout_flag = 0; //当前是否为泊出
 
@@ -704,7 +705,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
             // 根据推荐/点选状态，改变VCU车位列表status
             int count = std::min(10, static_cast<int>(cloest_slots.size()));
-            bool recommend_exist = false;
 
             LOGD("RECOMMEND condition: final_select_ID: %d, is_Still: %d",final_select_ID,is_Still);
             //点选与推荐的四种情况
