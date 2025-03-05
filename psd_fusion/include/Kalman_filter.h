@@ -88,7 +88,7 @@ class Kalman_filter{
     uint32_t GetSlotAge() const { return age_; }
     SLOT_TYPE GetSlotType() const { return type_; }
     SLOT_SOURCE GetSlotSource() const { return source_; }
-    uint32_t GetOccupy() const {return occupy_;}
+    uint32_t GetOccupy()  {return occupy_;}
     uint32_t GetMaterial() const {return material_;}
     Eigen::Vector3f GetSlotCenter() const {
         Eigen::Vector3f c = Eigen::Vector3f::Ones();
@@ -211,9 +211,25 @@ class Kalman_filter{
     // 自车距离车位最近距离
     float min_dist2egocar_;
 
+
     size_t rot_idx_{0UL};
     int valid_quad_cnt_{0};
     static size_t max_rot_idx_;  // 4UL
-    
+
+
+
+ public:
+    // 限位块到入口边的距离
+    float stopper_distance_;   
+    // 限位块位置
+    int stopper_location_;
+    // 地锁是否在车位内
+    int lock_in_slot_;
+    // 其他障碍物是否在车位内
+    int obs_in_slot_;
+
+
+
+
 };
 typedef std::shared_ptr<Kalman_filter> Kalman_filterPtr;

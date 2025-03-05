@@ -80,7 +80,7 @@ namespace math{
             // Calculate the center of the parking spot again for printing
             slot_center.x = (point_a.x + point_b.x + point_c.x + point_d.x) / 4;
             slot_center.y = (point_a.y + point_b.y + point_c.y + point_d.y) / 4;
-            LOGD("Parking Spot Center: (%f, %f), Distance to car:  %f mm",slot_center.x, slot_center.y, dist);
+            LOGD("Parking Spot Center: (%f, %f), Distance to car:  %f m",slot_center.x, slot_center.y, dist);
         }
 
         // 取出前num_closest个最近车位

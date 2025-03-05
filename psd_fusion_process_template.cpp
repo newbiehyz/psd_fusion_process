@@ -12,7 +12,7 @@
 #define MM_TO_M 1000.0
 
 // ***************************配置文件修改的参数(@TODO：从配置文件读取后转成const)
-bool DEBUG = false; //功能开关
+bool DEBUG = true; //功能开关
  
 // // ***************************输入的全局变量，用于ON方式获取
 // //RD
@@ -76,8 +76,8 @@ tResult cpsd_fusion_process::Init()
 {
     LOGW("PSD Process Start Success!");
     // Load Config
-    if (!LoadFromFile("psd_config.json")) {
-        std::cerr << "Load config failed!" << std::endl;
+    if (!LoadFromFile("/app/neo/psd_config.json")) {
+        LOGD("Load config failed!");
     }
 
     // part1 初始化
@@ -130,7 +130,7 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
     std::ifstream inFile(filename);
     if(!inFile.is_open()){
         DEBUG = false;
-        std::cerr << "无法打开配置文件: " << filename << ", DEBUG:"<< DEBUG <<std::endl;
+        LOGD("无法打开配置文件: %s, DEBUG: %d", filename.c_str(), DEBUG);
         return false;
     }
 
@@ -142,8 +142,8 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
         j.at("debug").at("save_to_json").get_to(DEBUG);
     }
     catch (json::exception& e) {
-            std::cerr << "配置文件解析错误: " << e.what() << std::endl;
-            return false;
+        LOGD("配置文件解析错误: %s", e.what());
+        return false;
     }
     inFile.close();
     return true;
@@ -330,7 +330,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03031517, REBUILD waiting for verify");
+    LOGD("PSD Version: 03041009,not release stopper location slot");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -359,35 +359,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     is_Still = IsStill(dr_pose,previous_dr_pose);
     LOGD("[Still] is Still: %d", is_Still);
 
-    //***********************************TimeSync, new
     if (!CheckTimeSync(current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp)) {
         RETURN_NOERROR;  // 直接返回
     }
-    // ***********************************TimeSync, old
-    // // 判断时间条件是否满足
-    // if (std::llabs(current1970_ms - rd_info.frameTimeStampNs) > 1500 || std::llabs(current1970_ms - dr_pose.timeStamp) > 1500) {
-    //     LOGW("[TIMESYNC] current: %llu, RD timestamp: %llu, DR timestamp: %llu, Time synchronization not met, skipping execution.",current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp);
-    //     RETURN_NOERROR;  // 直接返回
-    // }
-    // // 继续执行后续操作
-    // LOGD("[TIMESYNC] current: %llu, RD timestamp: %llu, DR timestamp: %llu, Time synchronization achieved!", current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp);
 
-
-
-    //***********************************clear, new
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
     }
-    //***********************************clear, old
-    // if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-    //     singleframeslots.clear();
-    //     singleframeslotsID = 0;
-    //     outputSlot_VIS.slots_in_cur_frame.clear();
-    //     outputSlot_USS.slots_in_cur_frame.clear();
-    //     outputSlot_FUSED.slots_in_cur_frame.clear();
-    //     parkout_flag = 0;
-    //     LOGD("CLEAR singleframeslots, size: %d, parkout_flag = %d",singleframeslots.size(),parkout_flag);
-    // }
+
     //***********************************check
     LOGD("[CHECK SIZE] CHECK singleframeslots size: %d",singleframeslots.size());
     LOGD("[CHECK SIZE] before update, vis: %d, uss: %d, fused: %d",outputSlot_VIS.slots_in_cur_frame.size()
@@ -397,28 +376,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     // part3 算法
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
+    PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
-
-
+    
     // 根据障碍物位置，判断是否在车位内，判断限位器在车位边，做占用判断
     for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
-        float stopper_dis = 0.0; //限位器到入口边位置
-        int stopper_in_slot = 0; //限位器在车位内？
-        int stopper_location = 0; //限位器位置
-        int lock_in_slot = 0; //地锁在车位内？
-        int obs_in_slot = 0; //障碍物在车位内？
-
-        PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get, stopper_dis, stopper_location, lock_in_slot, obs_in_slot);
-        LOGD("[OBS] distance: %f, location: %d, LOCK in slot: %d, OBS in slot: %d ",stopper_dis, stopper_location, lock_in_slot, obs_in_slot);
-        //更新outputSlot_VIS
-        psd_m_output.rectInfo.StopperDistance = stopper_dis;
-        psd_m_output.rectInfo.StopperLocation = stopper_location;
-        if (stopper_location != 0){
-            stopper_in_slot = 1;
-            psd_m_output.rectInfo.StopperInSlot = stopper_in_slot;
-        }
-        psd_m_output.rectInfo.LockInSlot = lock_in_slot;
-        psd_m_output.rectInfo.OBSInSlot = obs_in_slot;
         //地锁打开/锥筒在车位内，控制占用
         if (psd_m_output.rectInfo.LockInSlot != 0 || psd_m_output.rectInfo.OBSInSlot != 0){
             psd_m_output.rectInfo.iSodType = 1;
@@ -430,8 +392,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         if (psd_m_output.rectInfo.PStype == 1 && psd_m_output.rectInfo.StopperLocation == 2){
             psd_m_output.rectInfo.iSodType = 1;
         }
-
-        LOGD("[OBS] Slot %d, (%d,%d) (%d,%d) (%d,%d) (%d,%d), StopperLocation:%d, StopInSlot: %f, OBSInSlot: %d, SOD: %d",
+        LOGD("[OBS] Slot %d, (%d,%d) (%d,%d) (%d,%d) (%d,%d), StopperDistance:%f,StopperLocation:%d,StopInSlot:%d,LockInSlot:%d,OBSInSlot:%d,SOD:%d",
                                 psd_m_output.rectInfo.label,
                                 psd_m_output.rectInfo.pt[0].x,
                                 psd_m_output.rectInfo.pt[0].y,
@@ -441,35 +402,29 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                                 psd_m_output.rectInfo.pt[2].y,
                                 psd_m_output.rectInfo.pt[3].x,
                                 psd_m_output.rectInfo.pt[3].y,
+                                psd_m_output.rectInfo.StopperDistance,
                                 psd_m_output.rectInfo.StopperLocation,
-                                psd_m_output.rectInfo.OBSInSlot,
                                 psd_m_output.rectInfo.StopperInSlot,
+                                psd_m_output.rectInfo.LockInSlot,
+                                psd_m_output.rectInfo.OBSInSlot,
                                 psd_m_output.rectInfo.iSodType)
-                                
     }
 
         
     if (DEBUG == true){
-        filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"VISapaSlotListInfo.json");
+        filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"/userdata/psd/VISapaSlotListInfo.json");
     }
 
-    //***********************************clear, new
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
     }
-    // //***********************************clear, old
-    // // 清空车位3：Update输出
-    // if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-    //     outputSlot_VIS.slots_in_cur_frame.clear();
-    //     outputSlot_USS.slots_in_cur_frame.clear();
-    //     outputSlot_FUSED.slots_in_cur_frame.clear();
-    // }
+
 
     //***********************************get USS
     UssIf_stPLVOutputInfo_t uss_info;
     S2S_MCore_Bridge_GetSigUssIf_stPLVOutputInfo(&uss_info);
     if (DEBUG == true){
-        filetojson.SaveUssInfoToJson(uss_info,"USSapaSlotListInfo.json");
+        filetojson.SaveUssInfoToJson(uss_info,"/userdata/psd/USSapaSlotListInfo.json");
     }
     fusionslot.fillVisonstruct(uss_info, outputSlot_USS);
     LOGD("USS SLOT SIZE IS:%d",outputSlot_USS.slots_in_cur_frame.size());
@@ -489,11 +444,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     //     }
     // }
 
-
-
-    LOGD("getall fus size: %d",outputSlot_FUSED.slots_in_cur_frame.size());
     slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
-    LOGD("slotlist_size:%d",slotlist_size);
     
     // *****************************
     apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
@@ -521,85 +472,17 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     }
     //******************************
 
-
-    //***********************************clear, new
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
         dr_first = true;
         slotlist_size = 0;
     }
-    // //***********************************clear, old
-    // if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-    //     slotlist_size = 0;
-    //     singleframeslots.clear();
-    //     outputSlot_FUSED.slots_in_cur_frame.clear();
-    //     outputSlot_VIS.slots_in_cur_frame.clear();
-    //     outputSlot_USS.slots_in_cur_frame.clear();
-    //     dr_first = true;
-    //     LOGD("dr_first:%d",dr_first);
-    // }
+
     
     // 输出VIS USS FUSION车位列表
-    // LOG, new
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
     LogSlotInfo(outputSlot_USS, "ORIGIN USSSLOTS");
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
-    // // LOG, old
-    // for (auto & psd_m_output : outputSlot_VIS.slots_in_cur_frame){
-    //     LOGD("[ORIGIN VISSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
-    //     outputSlot_VIS.slots_in_cur_frame.size(),
-    //     psd_m_output.rectInfo.label,
-    //     psd_m_output.rectInfo.PStype,
-    //     psd_m_output.rectInfo.iSodType,
-    //     psd_m_output.rectInfo.StopperDistance,
-    //     psd_m_output.rectInfo.StopperLocation,
-    //     psd_m_output.rectInfo.pt[0].x,
-    //     psd_m_output.rectInfo.pt[0].y,
-    //     psd_m_output.rectInfo.pt[1].x,
-    //     psd_m_output.rectInfo.pt[1].y,
-    //     psd_m_output.rectInfo.pt[2].x,
-    //     psd_m_output.rectInfo.pt[2].y,
-    //     psd_m_output.rectInfo.pt[3].x,
-    //     psd_m_output.rectInfo.pt[3].y);
-    // }
-
-    // for (auto & psd_m_output : outputSlot_USS.slots_in_cur_frame){
-    //     LOGD("[ORIGIN USSSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, SOD: %d, DownSlotSOD: %d, iMinOtherSideDist: %d, iRoadEdgeDist: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
-    //     outputSlot_USS.slots_in_cur_frame.size(),
-    //     psd_m_output.rectInfo.label,
-    //     psd_m_output.rectInfo.PStype,
-    //     psd_m_output.rectInfo.iSodType,
-    //     psd_m_output.rectInfo.iDownSlotSOD,
-    //     psd_m_output.rectInfo.iMinOtherSideDist,
-    //     psd_m_output.rectInfo.iRoadEdgeDist,
-    //     psd_m_output.rectInfo.pt[0].x,
-    //     psd_m_output.rectInfo.pt[0].y,
-    //     psd_m_output.rectInfo.pt[1].x,
-    //     psd_m_output.rectInfo.pt[1].y,
-    //     psd_m_output.rectInfo.pt[2].x,
-    //     psd_m_output.rectInfo.pt[2].y,
-    //     psd_m_output.rectInfo.pt[3].x,
-    //     psd_m_output.rectInfo.pt[3].y);
-    // }
-
-    // for (auto & psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
-    //     LOGD("[FUSIONSLOTS] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, Material: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
-    //     outputSlot_FUSED.slots_in_cur_frame.size(),
-    //     psd_m_output.rectInfo.label,
-    //     psd_m_output.rectInfo.PStype,
-    //     psd_m_output.rectInfo.iSodType,
-    //     psd_m_output.rectInfo.StopperDistance,
-    //     psd_m_output.rectInfo.StopperLocation,
-    //     psd_m_output.rectInfo.iMaterial,
-    //     psd_m_output.rectInfo.pt[0].x,
-    //     psd_m_output.rectInfo.pt[0].y,
-    //     psd_m_output.rectInfo.pt[1].x,
-    //     psd_m_output.rectInfo.pt[1].y,
-    //     psd_m_output.rectInfo.pt[2].x,
-    //     psd_m_output.rectInfo.pt[2].y,
-    //     psd_m_output.rectInfo.pt[3].x,
-    //     psd_m_output.rectInfo.pt[3].y);
-    // }
 
 
 
@@ -686,31 +569,34 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     LOGD("[VCU occupied] isodtype:%d", psd_m_output.rectInfo.iSodType);
 
 
-                    // 0228ride临时占用判断：车头越过车位后才开始算占用非占用
-                    if (psd2vcu.FusionSlotInfo[i].pt[0].x >= -4.5){
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6;  //Unavailable
-                    }
-                    else{
-                        if (psd_m_output.rectInfo.iSodType == 1){
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
-                        }
-                        else{
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
-                        }
+                    // // 0228ride临时占用判断：车头越过车位后才开始算占用非占用
+                    // if (psd2vcu.FusionSlotInfo[i].pt[0].x >= -4.5){
+                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 4;  // 被占用
+                    // }
+                    // else{
+                    //     if (psd_m_output.rectInfo.iSodType == 1){
+                    //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                    //     }
+                    //     else{
+                    //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                    //     }
 
-                    }
-                    LOGD("[VCU occupied] slot.x: %f, RD occupied: %d, VCU occupied: %d",
-                        psd2vcu.FusionSlotInfo[i].pt[0].x,
-                        psd_m_output.rectInfo.iSodType,
-                        psd2vcu.FusionSlotInfo[i].slotStatusType);
+                    // }
+                    // LOGD("[VCU occupied] slot.x: %f, RD occupied: %d, VCU occupied: %d",
+                    //     psd2vcu.FusionSlotInfo[i].pt[0].x,
+                    //     psd_m_output.rectInfo.iSodType,
+                    //     psd2vcu.FusionSlotInfo[i].slotStatusType);
 
 
                     // 原本的占用判断
-                    // if (psd_m_output.rectInfo.iSodType == 1){
-                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
-                    // }else {
-                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
-                    // }
+                    if (psd_m_output.rectInfo.iSodType == 1){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                    }else {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                    }
+
+
+
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
                 }
@@ -734,30 +620,30 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     LOGD("[VCU occupied] isodtype:%d", psd_m_output.rectInfo.iSodType);
 
 
-                    // 0228ride临时占用判断：车头越过车位后才开始算占用非占用
-                    if (psd2vcu.FusionSlotInfo[i].pt[0].x > -4.5){
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
-                    }
-                    else{
-                        if (psd_m_output.rectInfo.iSodType == 1){
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
-                        }else {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
-                        }
-                    } 
-                    LOGD("[VCU occupied] slot.x: %f, RD occupied: %d, VCU occupied: %d",
-                        psd2vcu.FusionSlotInfo[i].pt[0].x,
-                        psd_m_output.rectInfo.iSodType,
-                        psd2vcu.FusionSlotInfo[i].slotStatusType);
+                    // // 0228ride临时占用判断：车头越过车位后才开始算占用非占用
+                    // if (psd2vcu.FusionSlotInfo[i].pt[0].x > -4.5){
+                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                    // }
+                    // else{
+                    //     if (psd_m_output.rectInfo.iSodType == 1){
+                    //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                    //     }else {
+                    //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                    //     }
+                    // } 
+                    // LOGD("[VCU occupied] slot.x: %f, RD occupied: %d, VCU occupied: %d",
+                    //     psd2vcu.FusionSlotInfo[i].pt[0].x,
+                    //     psd_m_output.rectInfo.iSodType,
+                    //     psd2vcu.FusionSlotInfo[i].slotStatusType);
 
 
 
                     // 原本的占用判断
-                    // if (psd_m_output.rectInfo.iSodType == 1){
-                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
-                    // }else {
-                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
-                    // }
+                    if (psd_m_output.rectInfo.iSodType == 1){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                    }else {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                    }
 
 
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
@@ -768,7 +654,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
             // 认为自车的位置
             POINT_F VCU_car_pose;
-            VCU_car_pose.x = -5.0;
+            VCU_car_pose.x = -4.0;
             VCU_car_pose.y = 0.0;
 
             //0227 推荐车位可用
@@ -878,7 +764,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     } 
                     //找到目标车位ID 且 占用
                     if (psd2vcu.FusionSlotInfo[i].slotLabel == final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6; // 设置为UNAVAILABLE状态
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
                     } 
                     //剩下的非选中车位，占用的保持占用
                     else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {

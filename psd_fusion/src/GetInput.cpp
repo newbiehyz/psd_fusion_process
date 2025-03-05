@@ -21,7 +21,7 @@ GetInput::~GetInput() {
 void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots) {
     EMC_TROS_Bridge_Parking_GetFieldQuadParkingSlots(rd_info);
     if (DEBUG) {
-        filetojson.SaveQuadParkingSlotsInfoToJson(rd_info, "RDinfo.json");
+        filetojson.SaveQuadParkingSlotsInfoToJson(rd_info, "/userdata/psd/RDinfo.json");
     }
 
     //frameid
@@ -55,8 +55,6 @@ void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigne
                 oneslot.d.y = int(parkingSlot.br.y);
                 oneslot.occupy = parkingSlot.filtered;
                 oneslot.material = parkingSlot.label;
-                // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE LEFT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.b.x,oneslot.b.y,oneslot.a.x,oneslot.a.y,
-            // oneslot.d.x,oneslot.d.y,oneslot.c.x,oneslot.c.y);
             } else {
                 oneslot.slotSide = 0x00;
                 oneslot.a.x = int(parkingSlot.tl.x);
@@ -69,8 +67,6 @@ void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigne
                 oneslot.d.y = int(parkingSlot.bl.y);
                 oneslot.occupy = parkingSlot.filtered;
                 oneslot.material = parkingSlot.label;
-                // LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE RIGHT SLOTS tl:(%d,%d), tr:(%d,%d), br:(%d,%d), bl:(%d,%d)",oneslot.a.x,oneslot.a.y,oneslot.b.x,oneslot.b.y,
-            // oneslot.c.x,oneslot.c.y,oneslot.d.x,oneslot.d.y);
             }
             if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7) {
                 memset(&oneslot, 0, sizeof(padVisionSlotCoord));
@@ -86,46 +82,20 @@ void GetInput::GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2em
     if (apa_status != 1) {
         EMC_TROS_Bridge_Parking_GetFieldApp2emap_DR(dr_pose);
         if (DEBUG) {
-            filetojson.SaveDRInfoToJson(dr_pose, "DR_POSE.json");
+            filetojson.SaveDRInfoToJson(dr_pose, "/userdata/psd/DR_POSE.json");
         }
 
         LOGD("[INPUT dr_pose] J5 SEND x: %f, y: %f, yaw: %f, timestamp: %llu",dr_pose.x, dr_pose.y, dr_pose.canAng,dr_pose.timeStamp);
         pose_globaldata.coord.x = int(dr_pose.x);
         pose_globaldata.coord.y = int(dr_pose.y);
         pose_globaldata.yaw = dr_pose.canAng;
-
-        // LOGD("[STILL] dr: x:%f, y:%f, yaw: %f,previous: x:%f, y:%f, yaw:%f",
-        // dr_pose.x,
-        // dr_pose.y,
-        // dr_pose.canAng,
-        // previous_dr_pose.x,
-        // previous_dr_pose.y,
-        // previous_dr_pose.canAng);
-
-        
-        // const double epsilon = 50;
-        // if (fabs(dr_pose.x - previous_dr_pose.x) > epsilon || fabs(dr_pose.y - previous_dr_pose.y) > epsilon ||  fabs(dr_pose.canAng - previous_dr_pose.canAng) > epsilon) {
-        //     is_Still = false; // 有变化，设置为运动中
-        //     still_count = 0; // reset
-        // } else {
-        //     still_count++;
-        //     LOGD("still_count: %d",still_count);
-        // }
-        
-        // if (still_count >= STILL_THRESHOLD) {
-        //     is_Still = true;
-        // }
-
-        // previous_dr_pose = dr_pose;
-
-        // LOGD("is_Still: %d",is_Still);
     }
 }
 
 void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {
     EMC_perception_fusion_process_GetFieldPkEmapObs(obs_info_get);
     if (DEBUG) {
-        filetojson.SaveObsToJson(obs_info_get, "ObsInfo.json");
+        filetojson.SaveObsToJson(obs_info_get, "/userdata/psd/ObsInfo.json");
     }
 
     for (int i = 0; i < 50; ++i) {
@@ -143,7 +113,7 @@ void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {
 void GetInput::GetAPAStatus(StatusDecOutput& apastatus_info, int& apa_status) {
     S2S_MCore_Bridge_GetSigStatusDecOutput(&apastatus_info);
     if (DEBUG) {
-        filetojson.SaveApastatusToJson(apastatus_info, "APAStatus.json");
+        filetojson.SaveApastatusToJson(apastatus_info, "/userdata/psd/APAStatus.json");
     }
 
     LOGD("[INPUT apastatus]: %d",apastatus_info.aps_apaStatusReq);

@@ -164,6 +164,7 @@ void SaveFileToJson::SaveQuadParkingSlotsInfoToJson(rd::QuadParkingSlots &info,c
         outFile.close();
     } else {
         std::cerr << "无法打开文件进行写入：" << filename << std::endl;
+        LOGD("cannot write %s",filename);
     }
 }
 
