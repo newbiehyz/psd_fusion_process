@@ -439,7 +439,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
     wide_dir_ << std::cos(GetSlotWideAngle()), std::sin(GetSlotWideAngle()),0.0;
 
     if (type_ == SLOT_TYPE::VERTICALSLOT){
-        // if(this->slot_state_(SLOT_CENTER_X) > 0){
+        if(this->slot_state_(SLOT_CENTER_X) > 0){
              corners_world_.at(0) =
                 center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
             corners_world_.at(1) =
@@ -448,29 +448,39 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
                 center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
             corners_world_.at(3) =
                 center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-        // }else{
-        //     corners_world_.at(0) =
-        //         center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-        //     corners_world_.at(1) =
-        //         center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-        //     corners_world_.at(2) =
-        //         center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-        //     corners_world_.at(3) =
-        //         center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-        // }
-       
-        
-            
+        }else{
+            corners_world_.at(0) =
+                center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+            corners_world_.at(1) =
+                center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+            corners_world_.at(2) =
+                center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+            corners_world_.at(3) =
+                center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+        }
     }else if (type_ == SLOT_TYPE::PARALLELSLOT) {
     // 在平行车位中，长边是车位的宽度方向，宽边是车位的长度方向
-    corners_world_.at(0) =
-        center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
-    corners_world_.at(1) =
-        center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
-    corners_world_.at(2) =
-        center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
-    corners_world_.at(3) =
-        center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+        if(this->slot_state_(SLOT_CENTER_X) > 0){
+            corners_world_.at(0) =
+                center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+            corners_world_.at(1) =
+                center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+            corners_world_.at(2) =
+                center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+            corners_world_.at(3) =
+                center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+        }else{
+            corners_world_.at(0) =
+                center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+            corners_world_.at(1) =
+                center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+            corners_world_.at(2) =
+                center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+            corners_world_.at(3) =
+                center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+        }
+        
+    
     }
     
     
