@@ -16,6 +16,7 @@
 #include "Eigen/Core"
 #include "apa_define.h"
 
+
 enum SLOT_STATE_ELEMENT {
     SLOT_CENTER_X = 0,
     SLOT_CENTER_Y = 1,
@@ -157,7 +158,7 @@ class Kalman_filter{
     bool point_in_slot(const Eigen::Vector3f& point,
                        float ratio_thr = 0.5) const;
     bool point_in_rect(const Eigen::Vector3f& point) const;
-    void Update(const QuadInfoPtr& quad_info);
+    void Update(const QuadInfoPtr& quad_info, const padVehiclePose& m_vehicle_pose);
 
  private:
     void creat_initial_covariance(const QuadInfoPtr& quad_info);
@@ -220,13 +221,13 @@ class Kalman_filter{
 
  public:
     // 限位块到入口边的距离
-    float stopper_distance_;   
+    float stopper_distance_ = 0.0;
     // 限位块位置
-    int stopper_location_;
+    int stopper_location_ = 0;
     // 地锁是否在车位内
-    int lock_in_slot_;
+    int lock_in_slot_ = 0;
     // 其他障碍物是否在车位内
-    int obs_in_slot_;
+    int obs_in_slot_ = 0;
 
 
 

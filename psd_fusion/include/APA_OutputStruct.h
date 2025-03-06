@@ -166,6 +166,7 @@ struct SApaPSRect
 		StopperInSlot 		= 0;
 		LockInSlot			= 0;
 		OBSInSlot			= 0;
+
 		iMaterial	 		= 0;
 
 		for(int i = 0; i < RECTPointNum; i++)

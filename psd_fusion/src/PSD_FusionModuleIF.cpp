@@ -469,11 +469,11 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
 //             //只有一个车位
 //             if (slots_map_.size() < 2) {
 //                 if (slots_map_.begin()->second->point_in_rect(obs_point3f)){
-//                     // LOGD("LOCK IN SLOT");
+//                     // printf("LOCK IN SLOT");
 //                     lockinslot = 1;
 //                 }
 //                 else{
-//                     // LOGD("LOCK NOT IN SLOT");
+//                     // printf("LOCK NOT IN SLOT");
 //                     lockinslot = 0;
 //                 }
 //             };
@@ -482,11 +482,11 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
 //             auto nearest_index = slots_tree_->nearest_index(obs_point2f);
 //             const auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
 //             if(check_slot->point_in_rect(obs_point3f)){
-//                 // LOGD("LOCK IN SLOT");
+//                 // printf("LOCK IN SLOT");
 //                 lockinslot = 1;
 //             }
 //             else{
-//                 // LOGD("LOCK NOT IN SLOT");
+//                 // printf("LOCK NOT IN SLOT");
 //                 lockinslot = 0;
 //             }
 //             //在obs_point2f周围的半径2000mm内搜索其他邻近停车位
@@ -496,11 +496,11 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
        
 //                 const auto& check_slot = slots_map_.at(slots_remap_.at(index));
 //                 if (check_slot->point_in_rect(obs_point3f)){
-//                     // LOGD("LOCK IN SLOT");
+//                     // printf("LOCK IN SLOT");
 //                     lockinslot = 1;
 //                 }
 //                 else{
-//                     // LOGD("LOCK NOT IN SLOT");
+//                     // printf("LOCK NOT IN SLOT");
 //                     lockinslot = 0;
 //                 }
 //             }
@@ -521,25 +521,25 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
 //             //只有一个车位
 //             if (slots_map_.size() < 2) {
 //                 if (slots_map_.begin()->second->point_in_rect(obs_point3f)){
-//                     // LOGD("OBS IN SLOT");
+//                     // printf("OBS IN SLOT");
 //                     obsinslot = 1;
 //                 }
 //                 else{
-//                     // LOGD("OBS NOT IN SLOT");
+//                     // printf("OBS NOT IN SLOT");
 //                     obsinslot = 0;
 //                 }
 //             };
 //             //多个车位，找到最近的停车位
 //             point_t obs_point2f{obs_point3f.x(), obs_point3f.y()};
 //             auto nearest_index = slots_tree_->nearest_index(obs_point2f);
-//             LOGD("OBS find in slot, nearest_index: %zu", nearest_index);
+//             printf("OBS find in slot, nearest_index: %zu", nearest_index);
 //             const auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
 //             if(check_slot->point_in_rect(obs_point3f)){
-//                 // LOGD("OBS IN SLOT");
+//                 // printf("OBS IN SLOT");
 //                 obsinslot = 1;
 //             }
 //             else{
-//                 // LOGD("OBS NOT IN SLOT");
+//                 // printf("OBS NOT IN SLOT");
 //                 obsinslot = 0;
 //             }
 //             //在obs_point2f周围的半径2000mm内搜索其他邻近停车位
@@ -549,11 +549,11 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
        
 //                 const auto& check_slot = slots_map_.at(slots_remap_.at(index));
 //                 if (check_slot->point_in_rect(obs_point3f)){
-//                     // LOGD("LOCK IN SLOT");
+//                     // printf("LOCK IN SLOT");
 //                     obsinslot = 1;
 //                 }
 //                 else{
-//                     // LOGD("LOCK NOT IN SLOT");
+//                     // printf("LOCK NOT IN SLOT");
 //                     obsinslot = 0;
 //                 }
 //             }
@@ -605,7 +605,7 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                         else{
                             check_slot->stopper_location_ = SOD_LOCATION_NO;
                         }
-                        LOGD("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
+                        printf("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
                         
                     }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
                         point_a.x = check_slot->GetApoint().x();
@@ -631,11 +631,11 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                         else{
                             check_slot->stopper_location_ = SOD_LOCATION_NO;
                         }
-                        LOGD("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
+                        printf("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
                     }
                     else{
                         check_slot->stopper_distance_  = 0.0;
-                        LOGD("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
+                        printf("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
                     }
                 }   
                 return;
@@ -675,7 +675,7 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                     else{
                         check_slot->stopper_location_ = SOD_LOCATION_NO;
                     }
-                    LOGD("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
+                    printf("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
 
                 }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
                     point_a.x = check_slot->GetApoint().x();
@@ -701,10 +701,10 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                     else{
                         check_slot->stopper_location_ = SOD_LOCATION_NO;
                     }
-                    LOGD("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
+                    printf("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
                 }else{
                     check_slot->stopper_distance_ = 0.0;
-                    LOGD("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
+                    printf("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
                 }
                 
             }
@@ -745,7 +745,7 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                         else{
                             check_slot->stopper_location_ = SOD_LOCATION_NO;
                         }
-                        LOGD("Near stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
+                        printf("Near stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
 
                     }else if(check_slot->GetSlotType() == SLOT_TYPE::PARALLELSLOT){
                         POINT_I point_c, point_d;
@@ -774,11 +774,11 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                         else{
                             check_slot->stopper_location_ = SOD_LOCATION_NO;
                         }
-                        LOGD("Near stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
+                        printf("Near stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
 
                     }else{
                         check_slot->stopper_distance_ = 0.0;
-                        LOGD("Near stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
+                        printf("Near stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
                     }
                 }
             }
@@ -798,7 +798,7 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                 else{
                     slots_map_.begin()->second->lock_in_slot_ = 0;
                 }
-                LOGD("lock_in_slot: %d",slots_map_.begin()->second->lock_in_slot_);
+                printf("lock_in_slot: %d",slots_map_.begin()->second->lock_in_slot_);
             };
             //多个车位，找到最近的停车位
             point_t obs_point2f{obs_point3f.x(), obs_point3f.y()};
@@ -810,7 +810,7 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
             else{
                 check_slot->lock_in_slot_ = 0;
             }
-            LOGD("lock_in_slot: %d",check_slot->lock_in_slot_);
+            printf("lock_in_slot: %d",check_slot->lock_in_slot_);
             //在obs_point2f周围的半径2000mm内搜索其他邻近停车位
             auto neighbor_indexes = slots_tree_->neighborhood_indices(obs_point2f, 2000);
             for (const auto& index : neighbor_indexes) {
@@ -823,7 +823,7 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                 else{
                     check_slot->lock_in_slot_ = 0;
                 }
-                LOGD("Near lock_in_slot: %d",check_slot->lock_in_slot_);
+                printf("Near lock_in_slot: %d",check_slot->lock_in_slot_);
             }
         }
 
@@ -843,12 +843,12 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                 else{
                     slots_map_.begin()->second->obs_in_slot_ = 0;
                 }
-                LOGD("obs_in_slot_: %d",slots_map_.begin()->second->obs_in_slot_);
+                printf("obs_in_slot_: %d",slots_map_.begin()->second->obs_in_slot_);
             };
             //多个车位，找到最近的停车位
             point_t obs_point2f{obs_point3f.x(), obs_point3f.y()};
             auto nearest_index = slots_tree_->nearest_index(obs_point2f);
-            LOGD("OBS find in slot, nearest_index: %zu", nearest_index);
+            printf("OBS find in slot, nearest_index: %zu", nearest_index);
             auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
             if(check_slot->point_in_rect(obs_point3f)){
                 check_slot->obs_in_slot_ = 1;
@@ -856,7 +856,7 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
             else{
                 check_slot->obs_in_slot_ = 0;
             }
-            LOGD("obs_in_slot_: %d",check_slot->obs_in_slot_);
+            printf("obs_in_slot_: %d",check_slot->obs_in_slot_);
             //在obs_point2f周围的半径2000mm内搜索其他邻近停车位
             auto neighbor_indexes = slots_tree_->neighborhood_indices(obs_point2f, 2000);
             for (const auto& index : neighbor_indexes) {
@@ -869,7 +869,7 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                 else{
                     check_slot->obs_in_slot_ = 0;
                 }
-                LOGD("Near obs_in_slot_: %d",check_slot->obs_in_slot_);
+                printf("Near obs_in_slot_: %d",check_slot->obs_in_slot_);
             }
         }
     }
@@ -947,7 +947,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 }
                 // 已经存在与之对应的车位，用角点信息进行更新
                 slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
-                slot_existance->Update(quad);
+                slot_existance->Update(quad,m_vehicle_pose);
                 
             } else {
                 auto result = std::make_shared<ParkingSlotResult>();
@@ -1003,7 +1003,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
     collect_confirmed_slots(m_output_slot);
 
     // 检查状态2：update内部变量
-    // LOGD("CHECK SIZE m_output_slot:%d, slots_map:%d",m_output_slot.slots_in_cur_frame.size(),slots_map_.size());
+    // printf("CHECK SIZE m_output_slot:%d, slots_map:%d",m_output_slot.slots_in_cur_frame.size(),slots_map_.size());
     
     auto end_update = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end_update - start_update);
@@ -1022,7 +1022,7 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
             rect_local.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
             rect_local.rectInfo.iSodType = slot.second.get()->GetOccupy();
             rect_local.rectInfo.iMaterial = slot.second.get()->GetMaterial();
-            rect_local.rectInfo.StopperDistance = slot.second.get()->stopper_distance_;
+            rect_local.rectInfo.StopperDistance = (float)slot.second.get()->stopper_distance_;
             rect_local.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
             rect_local.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
             rect_local.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
@@ -1031,7 +1031,7 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
             rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
             rect_world.rectInfo.iSodType = slot.second.get()->GetOccupy();
             rect_world.rectInfo.iMaterial = slot.second.get()->GetMaterial();
-            rect_world.rectInfo.StopperDistance = slot.second.get()->stopper_distance_;
+            rect_world.rectInfo.StopperDistance = (float)slot.second.get()->stopper_distance_;
             rect_world.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
             rect_world.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
             rect_world.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
@@ -1052,7 +1052,7 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
                     rect_world.rectInfo.pt[i].y = corner_world[i].head<2>().y();
                 }
             }
-            // LOGD("[SHRINK] before shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
+            // printf("[SHRINK] before shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
             //                                                            rect_local.rectInfo.pt[0].y,
             //                                                            rect_local.rectInfo.pt[1].x,
             //                                                            rect_local.rectInfo.pt[1].y,
@@ -1061,7 +1061,7 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
             //                                                            rect_local.rectInfo.pt[3].x,
             //                                                            rect_local.rectInfo.pt[3].y)
             shrink_quad(rect_local); 
-            // LOGD("[SHRINK] after shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
+            // printf("[SHRINK] after shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
             //                                                           rect_local.rectInfo.pt[0].y,
             //                                                           rect_local.rectInfo.pt[1].x,
             //                                                           rect_local.rectInfo.pt[1].y,

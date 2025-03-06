@@ -311,7 +311,9 @@ bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
     return true;
 };
 
-void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
+int prev_slot_side = 0;
+
+void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& vehicle_pose) {
     std::cout<<"Kalman_filter update!"<<std::endl;
     if (!this->pre_update(quad_info)) {
         return;
@@ -438,6 +440,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
     long_dir_ << std::cos(GetSlotLongAngle()), std::sin(GetSlotLongAngle()),0.0;
     wide_dir_ << std::cos(GetSlotWideAngle()), std::sin(GetSlotWideAngle()),0.0;
 
+
     if (type_ == SLOT_TYPE::VERTICALSLOT){
         if(this->slot_state_(SLOT_CENTER_X) > 0){
              corners_world_.at(0) =
@@ -479,23 +482,94 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
             corners_world_.at(3) =
                 center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
         }
-        
-    
     }
+
+
+
+    //***************************************左右判断调整顺序
+    Eigen::Vector2f vehicle_pos = {vehicle_pose.coord.x/1000,vehicle_pose.coord.y/1000};  // 获取车辆当前位置
+    Eigen::Vector2f slot_center = GetSlotCenter().head<2>();  // 获取车位中心 
+    printf("Vehicle Position: (%.2f, %.2f)\n", vehicle_pos.x(), vehicle_pos.y());
+    printf("Slot Center Position: (%.2f, %.2f)\n", slot_center.x(), slot_center.y());
+    // 计算车位相对于车辆的方向
+    Eigen::Vector2f relative_pos = slot_center - vehicle_pos;
+    printf("Relative Position to Vehicle: (%.2f, %.2f)\n", relative_pos.x(), relative_pos.y());
+    // 获取车辆的横向方向向量（车身垂直方向）
+    Eigen::Vector2f vehicle_right;
+    float vehicle_yaw = - vehicle_pose.yaw * M_PI / 180.0;
+    vehicle_right << std::cos(vehicle_yaw + M_PI_2), std::sin(vehicle_yaw + M_PI_2);
+    printf("Vehicle Yaw: %.4f\n", vehicle_yaw);
+    printf("Vehicle Right Direction: (%.4f, %.4f)\n", vehicle_right.x(), vehicle_right.y());
+    // 计算点积，判断车位在车辆的左侧还是右侧
+    float dot_product = relative_pos.dot(vehicle_right);
+    // 判断车位相对于车辆的位置
+    int slot_side = (dot_product < 0) ? -1 : 1;
+    printf("Dot Product: %.4f\n", dot_product);
+    printf("Slot Side: %d (Previous: %d)\n", slot_side, prev_slot_side);
+    // 角点顺序调整
+    if (slot_side != prev_slot_side) {
+        printf("Slot side changed! Swapping corner points...\n");
+        std::swap(corners_world_.at(0), corners_world_.at(1));
+        std::swap(corners_world_.at(2), corners_world_.at(3));
+    }
+    prev_slot_side = slot_side;
+    // 打印调整后的角点
+    for (size_t i = 0; i < corners_world_.size(); ++i) {
+        printf("Corner[%zu]: (%.2f, %.2f)\n", i, corners_world_.at(i).x(), corners_world_.at(i).y());
+    }
+    //***************************************
+
+
+
+    // // 20250306没做左右判断
+    // if (type_ == SLOT_TYPE::VERTICALSLOT){
+    //     if(this->slot_state_(SLOT_CENTER_X) > 0){
+    //          corners_world_.at(0) =
+    //             center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //     }else{
+    //         corners_world_.at(0) =
+    //             center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //     }
+    // }else if (type_ == SLOT_TYPE::PARALLELSLOT) {
+    // // 在平行车位中，长边是车位的宽度方向，宽边是车位的长度方向
+    //     if(this->slot_state_(SLOT_CENTER_X) > 0){
+    //         corners_world_.at(0) =
+    //             center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //     }else{
+    //         corners_world_.at(0) =
+    //             center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //     }
+    // }
     
     
     
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     
     
     // 20250228之前的水平车位计算公式
