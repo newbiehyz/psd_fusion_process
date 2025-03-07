@@ -568,11 +568,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     psd2vcu.FusionSlotInfo[i].pt[3].z = 0;
 
                     // 占用判断 + 忽略推荐车位
-                    if (psd_m_output.rectInfo.label == RECOMMEND_ID){
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 7;
-                    }else if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.label != RECOMMEND_ID){
+                    if (psd_m_output.rectInfo.iSodType == 1){
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
-                    }else if (psd_m_output.rectInfo.iSodType == 0 && psd_m_output.rectInfo.label != RECOMMEND_ID) {
+                    }
+                    else if (psd_m_output.rectInfo.iSodType != 1 && psd_m_output.rectInfo.label == RECOMMEND_ID){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 7;
+                    }
+                    else if (psd_m_output.rectInfo.iSodType != 1 && psd_m_output.rectInfo.label != RECOMMEND_ID){
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                     }
 
@@ -629,11 +631,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 
                     // 占用判断 + 忽略推荐车位
-                    if (psd_m_output.rectInfo.label == RECOMMEND_ID){
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 7;
-                    }else if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.label != RECOMMEND_ID){
+                    if (psd_m_output.rectInfo.iSodType == 1){
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
-                    }else if (psd_m_output.rectInfo.iSodType == 0 && psd_m_output.rectInfo.label != RECOMMEND_ID) {
+                    }
+                    else if (psd_m_output.rectInfo.iSodType != 1 && psd_m_output.rectInfo.label == RECOMMEND_ID){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 7;
+                    }
+                    else if (psd_m_output.rectInfo.iSodType != 1 && psd_m_output.rectInfo.label != RECOMMEND_ID){
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                     }
 
