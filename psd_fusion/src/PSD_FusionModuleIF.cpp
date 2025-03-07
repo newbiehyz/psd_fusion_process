@@ -1017,65 +1017,118 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
     int slot_id = 1000;
     for (const auto &slot : slots_map_){
         auto corner_world = slot.second.get()->GetCornersWorld();
-        
-            rect_local.rectInfo.label = slot_id;
-            rect_local.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
-            rect_local.rectInfo.iSodType = slot.second.get()->GetOccupy();
-            rect_local.rectInfo.iMaterial = slot.second.get()->GetMaterial();
-            rect_local.rectInfo.StopperDistance = (float)slot.second.get()->stopper_distance_;
-            rect_local.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
-            rect_local.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
-            rect_local.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
+    
+        rect_local.rectInfo.label = slot_id;
+        rect_local.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
+        rect_local.rectInfo.iSodType = slot.second.get()->GetOccupy();
+        rect_local.rectInfo.iMaterial = slot.second.get()->GetMaterial();
+        rect_local.rectInfo.StopperDistance = (float)slot.second.get()->stopper_distance_;
+        rect_local.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
+        rect_local.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
+        rect_local.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
 
-            rect_world.rectInfo.label = slot_id;
-            rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
-            rect_world.rectInfo.iSodType = slot.second.get()->GetOccupy();
-            rect_world.rectInfo.iMaterial = slot.second.get()->GetMaterial();
-            rect_world.rectInfo.StopperDistance = (float)slot.second.get()->stopper_distance_;
-            rect_world.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
-            rect_world.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
-            rect_world.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
+        rect_world.rectInfo.label = slot_id;
+        rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
+        rect_world.rectInfo.iSodType = slot.second.get()->GetOccupy();
+        rect_world.rectInfo.iMaterial = slot.second.get()->GetMaterial();
+        rect_world.rectInfo.StopperDistance = (float)slot.second.get()->stopper_distance_;
+        rect_world.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
+        rect_world.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
+        rect_world.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
 
 
-            for(int i = 0; i < 4; i++){
-                if(corner_world[i].hasNaN()){
-                    continue;    
-                }else{
-                    Eigen::Vector3f pt;
-                    pt << corner_world[i].head<2>().x(), corner_world[i].head<2>().y(), 0.0;
-                    world2car(pt);
-                    // local
-                    rect_local.rectInfo.pt[i].x = pt.x();
-                    rect_local.rectInfo.pt[i].y = pt.y();
-                    // world
-                    rect_world.rectInfo.pt[i].x = corner_world[i].head<2>().x();
-                    rect_world.rectInfo.pt[i].y = corner_world[i].head<2>().y();
-                }
+        for(int i = 0; i < 4; i++){
+            if(corner_world[i].hasNaN()){
+                continue;    
+            }else{
+                Eigen::Vector3f pt;
+                pt << corner_world[i].head<2>().x(), corner_world[i].head<2>().y(), 0.0;
+                world2car(pt);
+                // local
+                rect_local.rectInfo.pt[i].x = pt.x();
+                rect_local.rectInfo.pt[i].y = pt.y();
+                // world
+                rect_world.rectInfo.pt[i].x = corner_world[i].head<2>().x();
+                rect_world.rectInfo.pt[i].y = corner_world[i].head<2>().y();
             }
-            // printf("[SHRINK] before shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
-            //                                                            rect_local.rectInfo.pt[0].y,
-            //                                                            rect_local.rectInfo.pt[1].x,
-            //                                                            rect_local.rectInfo.pt[1].y,
-            //                                                            rect_local.rectInfo.pt[2].x,
-            //                                                            rect_local.rectInfo.pt[2].y,
-            //                                                            rect_local.rectInfo.pt[3].x,
-            //                                                            rect_local.rectInfo.pt[3].y)
-            shrink_quad(rect_local); 
-            // printf("[SHRINK] after shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
-            //                                                           rect_local.rectInfo.pt[0].y,
-            //                                                           rect_local.rectInfo.pt[1].x,
-            //                                                           rect_local.rectInfo.pt[1].y,
-            //                                                           rect_local.rectInfo.pt[2].x,
-            //                                                           rect_local.rectInfo.pt[2].y,
-            //                                                           rect_local.rectInfo.pt[3].x,
-            //                                                           rect_local.rectInfo.pt[3].y)
-            // rect_world = shrink_quad(rect_world);
-            
-            slot_res.slots_in_cur_frame.push_back(rect_local);
-            slot_res.WorldoutRect.push_back(rect_world);
-            slot_id++;
+        }
+        // 快乐内缩
+        // printf("[SHRINK] before shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
+        //                                                            rect_local.rectInfo.pt[0].y,
+        //                                                            rect_local.rectInfo.pt[1].x,
+        //                                                            rect_local.rectInfo.pt[1].y,
+        //                                                            rect_local.rectInfo.pt[2].x,
+        //                                                            rect_local.rectInfo.pt[2].y,
+        //                                                            rect_local.rectInfo.pt[3].x,
+        //                                                            rect_local.rectInfo.pt[3].y)
+        shrink_quad(rect_local); 
+        // printf("[SHRINK] after shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
+        //                                                           rect_local.rectInfo.pt[0].y,
+        //                                                           rect_local.rectInfo.pt[1].x,
+        //                                                           rect_local.rectInfo.pt[1].y,
+        //                                                           rect_local.rectInfo.pt[2].x,
+        //                                                           rect_local.rectInfo.pt[2].y,
+        //                                                           rect_local.rectInfo.pt[3].x,
+        //                                                           rect_local.rectInfo.pt[3].y)
+        // rect_world = shrink_quad(rect_world);
+
+        // 快乐排序
+        adjustRectOrder(rect_local);
+        adjustRectOrder(rect_world);
+
+        
+        slot_res.slots_in_cur_frame.push_back(rect_local);
+        slot_res.WorldoutRect.push_back(rect_world);
+        slot_id++;
     } 
 }
+
+
+bool PSD_FusionModuleIF::isLeftOfOrigin(const apaSlotInfo rect)
+{
+    float centerX = 0;
+    centerX = (rect.rectInfo.pt[0].x + rect.rectInfo.pt[1].x + rect.rectInfo.pt[2].x + rect.rectInfo.pt[3].x) / 4.0;
+    return centerX < 0;
+}
+
+void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
+{
+    bool leftSide = isLeftOfOrigin(rect);
+
+    // 复制点到一个 vector 以便排序
+    std::vector<POINT_I> points(rect.rectInfo.pt, rect.rectInfo.pt + 4);
+    // 按 x 轴排序，先排左边的两个点，再排右边的两个点
+    std::sort(points.begin(), points.end(), [](const POINT_I& a, const POINT_I& b) {
+        return a.x < b.x;
+    });
+    // 左侧两个点 (left1, left2)，右侧两个点 (right1, right2)
+    std::vector<POINT_I> left = {points[0], points[1]};
+    std::vector<POINT_I> right = {points[2], points[3]};
+    // 按 y 排序，确保 top 和 bottom
+    std::sort(left.begin(), left.end(), [](const POINT_I& a, const POINT_I& b) {
+        return a.y > b.y; // y 值大的在前
+    });
+    std::sort(right.begin(), right.end(), [](const POINT_I& a, const POINT_I& b) {
+        return a.y > b.y; // y 值大的在前
+    });
+    // 重新设置 A, B, C, D 顺序
+    if (leftSide) {
+        rect.rectInfo.pt[0] = right[1]; // A (右下角)
+        rect.rectInfo.pt[1] = right[0]; // B (右上角)
+        rect.rectInfo.pt[2] = left[0];  // C (左上角)
+        rect.rectInfo.pt[3] = left[1];  // D (左下角)
+    } else {
+        rect.rectInfo.pt[0] = left[1];  // A (左下角)
+        rect.rectInfo.pt[1] = left[0];  // B (左上角)
+        rect.rectInfo.pt[2] = right[0]; // C (右上角)
+        rect.rectInfo.pt[3] = right[1]; // D (右下角)
+    }
+}
+
+
+
+
+
 
 void PSD_FusionModuleIF::world2car(Eigen::Vector3f &pt){
     const auto& yaw = m_output_slot.padRealTimeLocation.yaw;

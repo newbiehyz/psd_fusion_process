@@ -70,7 +70,7 @@ public:
     apaSlotListInfo outputSlot_FUSED;
     apaSlotListInfo outputSlot_VIS;   
     apaSlotListInfo outputSlot_USS;
-    bool DEBUG = false;
+    bool DEBUG;
     PSD_FusionModuleIF PSD_FusionModuleIFrunable;
     int slotlist_size;
     bool dr_first = true;

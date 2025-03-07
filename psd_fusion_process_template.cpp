@@ -567,8 +567,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     psd2vcu.FusionSlotInfo[i].pt[3].y = psd_m_output.rectInfo.pt[3].x/ MM_TO_M;
                     psd2vcu.FusionSlotInfo[i].pt[3].z = 0;
 
-                    LOGD("[VCU occupied] isodtype:%d", psd_m_output.rectInfo.iSodType);
-
+                    // 占用判断 + 忽略推荐车位
+                    if (psd_m_output.rectInfo.label == RECOMMEND_ID){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 7;
+                    }else if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.label != RECOMMEND_ID){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                    }else if (psd_m_output.rectInfo.iSodType == 0 && psd_m_output.rectInfo.label != RECOMMEND_ID) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                    }
 
                     // // 0228ride临时占用判断：车头越过车位后才开始算占用非占用
                     // if (psd2vcu.FusionSlotInfo[i].pt[0].x >= -4.5){
@@ -587,14 +593,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     //     psd2vcu.FusionSlotInfo[i].pt[0].x,
                     //     psd_m_output.rectInfo.iSodType,
                     //     psd2vcu.FusionSlotInfo[i].slotStatusType);
+                    
 
-
-                    // 原本的占用判断
-                    if (psd_m_output.rectInfo.iSodType == 1){
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
-                    }else {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
-                    }
+                    // // 原本的占用判断
+                    // if (psd_m_output.rectInfo.iSodType == 1){
+                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                    // }else {
+                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                    // }
 
 
 
@@ -621,6 +627,18 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     LOGD("[VCU occupied] isodtype:%d", psd_m_output.rectInfo.iSodType);
 
 
+
+                    // 占用判断 + 忽略推荐车位
+                    if (psd_m_output.rectInfo.label == RECOMMEND_ID){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 7;
+                    }else if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.label != RECOMMEND_ID){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                    }else if (psd_m_output.rectInfo.iSodType == 0 && psd_m_output.rectInfo.label != RECOMMEND_ID) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                    }
+
+
+
                     // // 0228ride临时占用判断：车头越过车位后才开始算占用非占用
                     // if (psd2vcu.FusionSlotInfo[i].pt[0].x > -4.5){
                     //     psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
@@ -638,13 +656,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     //     psd2vcu.FusionSlotInfo[i].slotStatusType);
 
 
-
-                    // 原本的占用判断
-                    if (psd_m_output.rectInfo.iSodType == 1){
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
-                    }else {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
-                    }
+                    // // 原本的占用判断
+                    // if (psd_m_output.rectInfo.iSodType == 1){
+                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                    // }else {
+                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                    // }
 
 
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;

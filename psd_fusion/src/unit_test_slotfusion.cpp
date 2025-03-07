@@ -909,7 +909,7 @@ void TimeTrigger_Timer50(){
     std::cout<<"coord.y:"<<pose_globaldata.coord.y<<std::endl;
     std::cout<<"coord.yaw:"<<pose_globaldata.yaw<<std::endl;
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
-    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, 0, 0);
+    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, 2, 0);
     
     apaSlotListInfo outputSlot_CALVIS = PSD_FusionModuleIFrunable.GetOutputSlot();
     std::cout<<"Update vision slot size: "<< outputSlot_CALVIS.WorldoutRect.size()<<std::endl;

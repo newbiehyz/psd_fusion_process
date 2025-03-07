@@ -461,6 +461,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
             corners_world_.at(3) =
                 center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
         }
+            
     }else if (type_ == SLOT_TYPE::PARALLELSLOT) {
     // 在平行车位中，长边是车位的宽度方向，宽边是车位的长度方向
         if(this->slot_state_(SLOT_CENTER_X) > 0){
@@ -484,40 +485,44 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
         }
     }
 
+    bool leftSide = (this->slot_state_(SLOT_CENTER_X) < 0);
+    adjustRectOrder(leftSide, corners_world_);
 
 
-    //***************************************左右判断调整顺序
-    Eigen::Vector2f vehicle_pos = {vehicle_pose.coord.x/1000,vehicle_pose.coord.y/1000};  // 获取车辆当前位置
-    Eigen::Vector2f slot_center = GetSlotCenter().head<2>();  // 获取车位中心 
-    printf("Vehicle Position: (%.2f, %.2f)\n", vehicle_pos.x(), vehicle_pos.y());
-    printf("Slot Center Position: (%.2f, %.2f)\n", slot_center.x(), slot_center.y());
-    // 计算车位相对于车辆的方向
-    Eigen::Vector2f relative_pos = slot_center - vehicle_pos;
-    printf("Relative Position to Vehicle: (%.2f, %.2f)\n", relative_pos.x(), relative_pos.y());
-    // 获取车辆的横向方向向量（车身垂直方向）
-    Eigen::Vector2f vehicle_right;
-    float vehicle_yaw = - vehicle_pose.yaw * M_PI / 180.0;
-    vehicle_right << std::cos(vehicle_yaw + M_PI_2), std::sin(vehicle_yaw + M_PI_2);
-    printf("Vehicle Yaw: %.4f\n", vehicle_yaw);
-    printf("Vehicle Right Direction: (%.4f, %.4f)\n", vehicle_right.x(), vehicle_right.y());
-    // 计算点积，判断车位在车辆的左侧还是右侧
-    float dot_product = relative_pos.dot(vehicle_right);
-    // 判断车位相对于车辆的位置
-    int slot_side = (dot_product < 0) ? -1 : 1;
-    printf("Dot Product: %.4f\n", dot_product);
-    printf("Slot Side: %d (Previous: %d)\n", slot_side, prev_slot_side);
-    // 角点顺序调整
-    if (slot_side != prev_slot_side) {
-        printf("Slot side changed! Swapping corner points...\n");
-        std::swap(corners_world_.at(0), corners_world_.at(1));
-        std::swap(corners_world_.at(2), corners_world_.at(3));
-    }
-    prev_slot_side = slot_side;
-    // 打印调整后的角点
-    for (size_t i = 0; i < corners_world_.size(); ++i) {
-        printf("Corner[%zu]: (%.2f, %.2f)\n", i, corners_world_.at(i).x(), corners_world_.at(i).y());
-    }
-    //***************************************
+
+
+    // //***************************************左右判断调整顺序
+    // Eigen::Vector2f vehicle_pos = {vehicle_pose.coord.x/1000,vehicle_pose.coord.y/1000};  // 获取车辆当前位置
+    // Eigen::Vector2f slot_center = GetSlotCenter().head<2>();  // 获取车位中心 
+    // printf("Vehicle Position: (%.2f, %.2f)\n", vehicle_pos.x(), vehicle_pos.y());
+    // printf("Slot Center Position: (%.2f, %.2f)\n", slot_center.x(), slot_center.y());
+    // // 计算车位相对于车辆的方向
+    // Eigen::Vector2f relative_pos = slot_center - vehicle_pos;
+    // printf("Relative Position to Vehicle: (%.2f, %.2f)\n", relative_pos.x(), relative_pos.y());
+    // // 获取车辆的横向方向向量（车身垂直方向）
+    // Eigen::Vector2f vehicle_right;
+    // float vehicle_yaw = - vehicle_pose.yaw * M_PI / 180.0;
+    // vehicle_right << std::cos(vehicle_yaw + M_PI_2), std::sin(vehicle_yaw + M_PI_2);
+    // printf("Vehicle Yaw: %.4f\n", vehicle_yaw);
+    // printf("Vehicle Right Direction: (%.4f, %.4f)\n", vehicle_right.x(), vehicle_right.y());
+    // // 计算点积，判断车位在车辆的左侧还是右侧
+    // float dot_product = relative_pos.dot(vehicle_right);
+    // // 判断车位相对于车辆的位置
+    // int slot_side = (dot_product < 0) ? -1 : 1;
+    // printf("Dot Product: %.4f\n", dot_product);
+    // printf("Slot Side: %d (Previous: %d)\n", slot_side, prev_slot_side);
+    // // 角点顺序调整
+    // if (slot_side != prev_slot_side) {
+    //     printf("Slot side changed! Swapping corner points...\n");
+    //     std::swap(corners_world_.at(0), corners_world_.at(1));
+    //     std::swap(corners_world_.at(2), corners_world_.at(3));
+    // }
+    // prev_slot_side = slot_side;
+    // // 打印调整后的角点
+    // for (size_t i = 0; i < corners_world_.size(); ++i) {
+    //     printf("Corner[%zu]: (%.2f, %.2f)\n", i, corners_world_.at(i).x(), corners_world_.at(i).y());
+    // }
+    // //***************************************
 
 
 
@@ -608,7 +613,34 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
 
 
 
+void Kalman_filter::adjustRectOrder(bool isleft, std::array<Eigen::Vector3f, 4> cornerswolrd)
+{
+    // 按照 x 轴排序，先排左边的两个点，再排右边的两个点
+    std::sort(cornerswolrd.begin(), cornerswolrd.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+        return a.x() < b.x();
+    });
 
+    // 左侧两个点 (left1, left2)，右侧两个点 (right1, right2)
+    std::array<Eigen::Vector3f, 2> left = {cornerswolrd[0], cornerswolrd[1]};
+    std::array<Eigen::Vector3f, 2> right = {cornerswolrd[2], cornerswolrd[3]};
+
+    // 按 y 轴排序，确保 top 和 bottom
+    std::sort(left.begin(), left.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+        return a.y() > b.y();  // y 值大的在前
+    });
+
+    std::sort(right.begin(), right.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+        return a.y() > b.y();  // y 值大的在前
+    });
+
+    if (isleft) {
+        // 当长方形位于原点左侧
+        cornerswolrd = {right[1], right[0], left[0], left[1]}; // A, B, C, D
+    } else {
+        // 当长方形位于原点右侧
+        cornerswolrd = {left[1], left[0], right[0], right[1]}; // A, B, C, D
+    }
+}
 
 
 

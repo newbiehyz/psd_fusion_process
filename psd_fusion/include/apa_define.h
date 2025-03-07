@@ -216,7 +216,8 @@ struct ParkingSlotManagerParameters {
     float pixel_dist_thr = 100.f;
     float sigma_enlarge_coeff = 50.0f;
     // 保留车位的范围
-    float neighborhood_range = 10000.0f;
+    // float neighborhood_range = 10000.0f;
+    float neighborhood_range = 9000.0f;
     // 检查同一车位的范围
     float check_same_slot_range = 3000.0f;
 };
