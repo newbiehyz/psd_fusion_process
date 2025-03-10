@@ -256,6 +256,8 @@ bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const{
 }
 
 bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
+
+    //统计有效角点（靠近边界）
     valid_quad_cnt_ = 0;
     for (const auto& near : quad_info->near_edge) {
         if (!near) ++valid_quad_cnt_;
@@ -264,15 +266,17 @@ bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
         return false;
     }
 
+
     rot_idx_ = 0UL;
     for (; rot_idx_ < max_rot_idx_; ++rot_idx_) {
         int match_number = 0;
+        // 遍历测量的每个点，看旋转几次车位能匹配最好。只通过距离匹配同一角点
         for (int i = 0; i < int(quad_info->corners_world.cols()); ++i) {
-            // 遍历测量的每个点，看旋转几次车位能匹配最好
             const auto& p = quad_info->corners_world.col(i);
             const auto& corner = this->corners_world_.at((i + rot_idx_) % 4);
             float dist = (corner.head<2>() - p.head<2>()).norm();
             float same_point_thr = isp_.same_point_thr;
+            //时间间隔过长，允许2倍距离误差
             if (delta_frame_cnt_ > isp_.delta_frame_thr) {
                 same_point_thr *= 2;
             }
@@ -295,6 +299,7 @@ bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
     for (size_t i = 0; i < quad_info->near_edge.size(); ++i) {
         size_t j = (i + 1) % max_rot_idx_;
 
+        //如果相邻两个角点都不在边缘不被截断，直接拿corners_world
         if (!quad_info->near_edge.at(i) && !quad_info->near_edge.at(j)) {
             quad_info->corners_extended.col(i) =
                 quad_info->corners_world.col(i);
@@ -315,6 +320,7 @@ int prev_slot_side = 0;
 
 void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& vehicle_pose) {
     std::cout<<"Kalman_filter update!"<<std::endl;
+    //补全角点
     if (!this->pre_update(quad_info)) {
         return;
     }
@@ -342,7 +348,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
 
     // 更新测量噪声矩阵
     R_.setIdentity();
-    const float valid_measure_thr = 200;  // unit: mm
+    const float valid_measure_thr = 200;  // unit: mm. //车位检测抖动大，角点跳动，增大。粘滞，真实车位变化响应慢，减小。
     for (size_t i = 0UL; i < 4UL; ++i) {
         size_t cur = (i + rot_idx_) % max_rot_idx_;
         const auto& q = quad_info->corners_extended.col(cur);
@@ -352,7 +358,8 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
         Eigen::Index idx = 2 * i;
         R_.block<2, 2>(idx, idx) = quad_info->cov_extended.at(cur);
         if (dist > isp_.valid_measure_thr) {
-            R_.block<2, 2>(idx, idx) *= isp_.invalid_measure_enlarge_ratio;
+            //角点跳动明显，滤波不够平滑R增加。角点响应太慢，车位不跟随变化R减小
+            R_.block<2, 2>(idx, idx) *= isp_.invalid_measure_enlarge_ratio; //增大R_减少测量值影响依赖预测；减小R_增加测量值依赖测量
         }
     }
 
@@ -381,7 +388,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     Eigen::Matrix<float, SLOT_STATE_SIZE, SLOT_MEASURE_SIZE> kalman_gain;
     kalman_gain = P_ * H_.transpose() * S.inverse();
     Eigen::Matrix<float, SLOT_MEASURE_SIZE, 1> innovation;
-    innovation = (measure - measure_prediction)/666;
+    innovation = (measure - measure_prediction)/666; //跳变大（误差大），增大。跟踪慢（误差小），减小
 
     if (innovation.norm() > isp_.invalid_innovation_thr &&
         delta_frame_cnt_ < isp_.delta_frame_thr) {

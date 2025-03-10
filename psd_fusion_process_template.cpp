@@ -331,7 +331,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03041009,not release stopper location slot");
+    LOGD("PSD Version: 03101034, not release stopper location slot");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 

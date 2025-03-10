@@ -58,15 +58,15 @@ int CalcDistance(float ax, float ay, float bx,  float by)
     return dis;
 }
 
-// Draw apaSlotListInfo
-void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &rectanglesA, Loc::App2emap_DR pose, Fus::PkEmapObs obs) {
+void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &rectanglesA, Loc::App2emap_DR &pose, 
+                              Fus::PkEmapObs &obs, std::vector<padVisionSlotCoord> &singleframeslots) {
     // 创建空白图像
-    cv::Mat image(800, 800, CV_8UC3, cv::Scalar(255, 255, 255));
+    cv::Mat image(1200, 1200, CV_8UC3, cv::Scalar(255, 255, 255));
 
     std::string timestampText = "(RD)timestamp " + std::to_string(rectanglesA.ullFrameId);
     cv::putText(image, timestampText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 2);
 
-    
+
     // 计算输入的全局坐标范围
     int minX = std::numeric_limits<int>::max();
     int maxX = std::numeric_limits<int>::lowest();
@@ -93,17 +93,18 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
     double center_img_y = image.rows / 2.0;
 
     // 矩形的中心点
-    double center_slots_x = (minX + maxX) / 2.0;
-    double center_slots_y = (minY + maxY) / 2.0;
+    // double center_slots_x = (minX + maxX) / 2.0;
+    // double center_slots_y = (minY + maxY) / 2.0;
 
     // 缩放因子，保持宽高比例并留边距
-    double scale_x = (image.cols * 0.8) / (maxX - minX);  // 留 20% 边距
-    double scale_y = (image.rows * 0.8) / (maxY - minY);
-    double scale = std::min(scale_x, scale_y);
+    // double scale_x = (image.cols * 0.8) / (maxX - minX);  // 留 20% 边距
+    // double scale_y = (image.rows * 0.8) / (maxY - minY);
+    // double scale = std::min(scale_x, scale_y);
+    double scale = 0.05;
 
     // 偏移量（将缩放后的矩形中心移到图像中心）
-    double translate_x = center_img_x - center_slots_x * scale;
-    double translate_y = center_img_y - center_slots_y * scale;
+    double translate_x = center_img_x;
+    double translate_y = center_img_y;
 
     // 画障碍物
     float obs_x, obs_y;
@@ -159,6 +160,24 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
 
     }
 
+    // // 绘制单帧车位
+    // for (const auto &singleframeslot : singleframeslots) {
+    //     cv::Point single_A((singleframeslot.a.x - 448) * scale * 20000 / 896 + translate_x,
+    //                        ((singleframeslot.a.y - 448)  * -1 * 20000 / 896 + 1516.35) * scale + translate_y);
+    //     cv::Point single_B((singleframeslot.b.x - 448) * scale * 20000 / 896 + translate_x,
+    //                        ((singleframeslot.b.y - 448)  * -1 * 20000 / 896 + 1516.35) * scale + translate_y);
+    //     cv::Point single_C((singleframeslot.c.x - 448) * scale * 20000 / 896 + translate_x,
+    //                        ((singleframeslot.c.y - 448)  * -1 * 20000 / 896 + 1516.35) * scale + translate_y);
+    //     cv::Point single_D((singleframeslot.d.x - 448) * scale * 20000 / 896 + translate_x,
+    //                        ((singleframeslot.d.y - 448)  * -1 * 20000 / 896 + 1516.35) * scale + translate_y);
+    //     std::vector<cv::Point> scaledSingleFramePoints{single_A, single_B, single_C, single_D};
+    //     if (singleframeslot.occupy) {
+    //         std::vector<std::vector<cv::Point>> contours_single = {scaledSingleFramePoints};
+    //         cv::fillPoly(image, contours_single, cv::Scalar(230, 216, 173));
+    //     }
+    //     cv::polylines(image, scaledSingleFramePoints, true, cv::Scalar(255, 0, 0), 1);
+    // }
+
     // 应用缩放和平移并绘制矩形
     auto drawRectangles = [&](const apaSlotListInfo &rectangles, const cv::Scalar &color) {
         // for (const auto &rect : rectangles.WorldoutRect) {
@@ -191,7 +210,12 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
 
             // 绘制四边形
             cv::polylines(image, scaledPoints, true, color, 1);
-            
+
+            // 占用显示
+            if (rect.rectInfo.iSodType == 1) {
+                std::vector<std::vector<cv::Point>> contours = {scaledPoints};
+                cv::fillPoly(image, contours, cv::Scalar(193, 182, 255));
+            }
 
             // 绘制角点坐标
             for (int i = 0; i < 4; ++i) {
@@ -208,7 +232,7 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
 
             // 定义圆形的半径
             int radius = 30; // 根据需要调整半径大小，单位像素
-            
+
             pose.x = 0;
             pose.y = 0;
 
@@ -223,7 +247,7 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
 
             // 绘制车辆的圆形表示
             cv::circle(image, vehicle_pose_pt, radius, color, cv::FILLED);
-    
+
             // 可选：绘制圆形边框
             cv::circle(image, vehicle_pose_pt, radius, cv::Scalar(0, 0, 0), 2);
 
@@ -249,9 +273,212 @@ void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &recta
             drawRectangles(rectanglesA, cv::Scalar(0, 0, 255));
 
             // 保存图像
+            cv::imshow("image", image);
+            cv::waitKey(1000);
             cv::imwrite(filename, image);
             std::cout << "Image saved to: " << filename << std::endl;
 }
+
+
+
+
+
+
+
+// // Draw apaSlotListInfo
+// void drawapaSlotlistinfoToJPG(const std::string &filename,apaSlotListInfo &rectanglesA, Loc::App2emap_DR pose, Fus::PkEmapObs obs) {
+//     // 创建空白图像
+//     cv::Mat image(800, 800, CV_8UC3, cv::Scalar(255, 255, 255));
+
+//     std::string timestampText = "(RD)timestamp " + std::to_string(rectanglesA.ullFrameId);
+//     cv::putText(image, timestampText, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 2);
+
+    
+//     // 计算输入的全局坐标范围
+//     int minX = std::numeric_limits<int>::max();
+//     int maxX = std::numeric_limits<int>::lowest();
+//     int minY = std::numeric_limits<int>::max();
+//     int maxY = std::numeric_limits<int>::lowest();
+
+//     auto updateBounds = [&](const apaSlotListInfo &rectangles) {
+//         // for (const auto &rect : rectangles.WorldoutRect) {
+//         for (const auto &rect : rectangles.slots_in_cur_frame) {
+//             for (const auto &pt : rect.rectInfo.pt) {
+//                 minX = std::min(minX, pt.x);
+//                 maxX = std::max(maxX, pt.x);
+//                 minY = std::min(minY, pt.y);
+//                 maxY = std::max(maxY, pt.y);
+//             }
+//         }
+//     };
+
+//     // 更新范围
+//     updateBounds(rectanglesA);
+
+//     // 图像中心点
+//     double center_img_x = image.cols / 2.0;
+//     double center_img_y = image.rows / 2.0;
+
+//     // 矩形的中心点
+//     double center_slots_x = (minX + maxX) / 2.0;
+//     double center_slots_y = (minY + maxY) / 2.0;
+
+//     // 缩放因子，保持宽高比例并留边距
+//     double scale_x = (image.cols * 0.8) / (maxX - minX);  // 留 20% 边距
+//     double scale_y = (image.rows * 0.8) / (maxY - minY);
+//     double scale = std::min(scale_x, scale_y);
+
+//     // 偏移量（将缩放后的矩形中心移到图像中心）
+//     double translate_x = center_img_x - center_slots_x * scale;
+//     double translate_y = center_img_y - center_slots_y * scale;
+
+//     // 画障碍物
+//     float obs_x, obs_y;
+//     for (int i = 0; i < 50; ++i) {
+//         obs_x = (obs.pkEmapObs[i].obsCenter.x * 1000);
+//         obs_y = (obs.pkEmapObs[i].obsCenter.y * 1000);
+
+//         // 如果坐标为 0，跳过绘制
+//         if (obs_x == 0 || obs_y == 0) {
+//             continue;
+//         }
+
+//         // 应用缩放和平移
+//         float scaled_obs_x = obs_x * scale + translate_x;
+//         float scaled_obs_y = obs_y * scale + translate_y;
+
+//         // // 绘制障碍物（圆）
+//         // cv::circle(image, cv::Point(scaled_obs_x, scaled_obs_y), 10, cv::Scalar(0, 0, 0), -1);
+
+//         // // 准备角点文字内容
+//         // std::string text = "(" + std::to_string(static_cast<int>(obs_x)) + ", " +
+//         //                 std::to_string(static_cast<int>(obs_y)) + ")";
+//         // // 确定文本位置（圆的正上方）
+//         // int text_offset_y = 25; // 文本与圆之间的垂直偏移量
+//         // cv::Point textPosition(scaled_obs_x, scaled_obs_y - text_offset_y);
+//         // // 绘制文本
+//         // cv::putText(image, text, textPosition, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
+
+//         // //准备位置文字内容
+//         // std::string text_loc;
+//         // switch (obs_location){
+//         //     case 0:
+//         //         text_loc = "NO OBS";
+//         //         break;
+//         //     case 1:
+//         //         text_loc = "near AB";
+//         //         break;
+//         //     case 2:
+//         //         text_loc = "near BC";
+//         //         break;
+//         //     case 3:
+//         //         text_loc = "near CD";
+//         //         break;
+//         //     case 4:
+//         //         text_loc = "near DA";
+//         //         break;
+//         //     default:
+//         //         break;
+//         // }
+//         // int text_offset_y_loc = 40;
+//         // cv::Point locTextPosition(scaled_obs_x, scaled_obs_y - text_offset_y_loc);
+//         // cv::putText(image, text_loc, locTextPosition, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
+
+//     }
+
+//     // 应用缩放和平移并绘制矩形
+//     auto drawRectangles = [&](const apaSlotListInfo &rectangles, const cv::Scalar &color) {
+//         // for (const auto &rect : rectangles.WorldoutRect) {
+//         for (const auto &rect : rectangles.slots_in_cur_frame) {
+//             cv::Point center;
+//             center.x = ((rect.rectInfo.pt[0].x + rect.rectInfo.pt[2].x) / 2.0)* scale + translate_x;
+//             center.y = ((rect.rectInfo.pt[0].y + rect.rectInfo.pt[2].y) / 2.0)* scale + translate_y;
+//             std::string id_text = "id: " + std::to_string(rect.rectInfo.label);
+//             cv::putText(image, id_text, center, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+
+//             int width, length;
+//             length = CalcDistance(rect.rectInfo.pt[0].x, rect.rectInfo.pt[0].y, rect.rectInfo.pt[1].x, rect.rectInfo.pt[1].y);
+//             float width1 = CalcDistance(rect.rectInfo.pt[2].x, rect.rectInfo.pt[2].y, rect.rectInfo.pt[1].x, rect.rectInfo.pt[1].y);
+//             float width2 = CalcDistance(rect.rectInfo.pt[0].x, rect.rectInfo.pt[0].y, rect.rectInfo.pt[3].x, rect.rectInfo.pt[3].y);
+//             width = (width1+width2)/2.0;
+//             std::string lw_text = "W: " + std::to_string(width) + ",L:" + std::to_string(length);
+//             cv::putText(image, lw_text, center+cv::Point(0, -10), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+
+//             std::vector<cv::Point> scaledPoints;
+//             std::vector<std::string> labels = {"A", "B", "C", "D"};
+//             for (int i = 0; i < 4; ++i) {
+//                 cv::Point scaledPoint(
+//                     rect.rectInfo.pt[i].x * scale + translate_x,
+//                     rect.rectInfo.pt[i].y * scale + translate_y
+//                 );
+//                 scaledPoints.push_back(scaledPoint);
+//                 // 在顶点处标注字母
+//                 cv::putText(image, labels[i], scaledPoint, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1, cv::LINE_AA);
+//             }
+
+//             // 绘制四边形
+//             cv::polylines(image, scaledPoints, true, color, 1);
+            
+
+//             // 绘制角点坐标
+//             for (int i = 0; i < 4; ++i) {
+//                 cv::Point scaledPoint = scaledPoints[i];
+
+//                 // 在图像上绘制小圆点表示角点
+//                 cv::circle(image, scaledPoint, 3, color, -1);
+
+//                 // 在角点旁边绘制坐标文本
+//                 std::string text = "(" + std::to_string(static_cast<int>((scaledPoint.x - translate_x)/scale)) + ", " +
+//                                    std::to_string(static_cast<int>((scaledPoint.y - translate_y)/scale )) + ")";
+//                 cv::putText(image, text, scaledPoint + cv::Point(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.4, color, 1);
+//             }
+
+//             // 定义圆形的半径
+//             int radius = 30; // 根据需要调整半径大小，单位像素
+            
+//             pose.x = 0;
+//             pose.y = 0;
+
+//             // 计算车辆中心点在图像上的位置
+//             cv::Point vehicle_pose_pt(
+//                 static_cast<int>(pose.x * scale + translate_x),
+//                 static_cast<int>(pose.y * scale + translate_y)
+//             );
+
+//             // 将 yaw 角度从度转换为弧度
+//             float yaw_rad = pose.canAng * M_PI / 180.0f - M_PI_2;
+
+//             // 绘制车辆的圆形表示
+//             cv::circle(image, vehicle_pose_pt, radius, color, cv::FILLED);
+    
+//             // 可选：绘制圆形边框
+//             cv::circle(image, vehicle_pose_pt, radius, cv::Scalar(0, 0, 0), 2);
+
+//             // 绘制车辆的 yaw 角作为箭头
+//             float arrow_length = 70.0f; // 箭头长度，单位像素
+
+//             // 根据 yaw 角计算箭头终点
+//             // 注意：在图像坐标系中，Y 轴向下，因此 sin(yaw_rad) 应该取负
+//             cv::Point arrow_end_pt(
+//                 static_cast<int>(vehicle_pose_pt.x + arrow_length * std::cos(yaw_rad)),
+//                 static_cast<int>(vehicle_pose_pt.y - arrow_length * std::sin(yaw_rad))
+//             );
+
+//             // 绘制箭头
+//             cv::arrowedLine(image, vehicle_pose_pt, arrow_end_pt, cv::Scalar(255, 0, 0), 2, cv::LINE_AA, 0, 0.3);
+
+//             // 可选：在箭头终点添加 "Yaw" 标签
+//             cv::putText(image, "Yaw", arrow_end_pt + cv::Point(5, -5), cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 0, 0), 1);
+//                 }
+//             };
+
+//             // 绘制矩形为红色
+//             drawRectangles(rectanglesA, cv::Scalar(0, 0, 255));
+
+//             // 保存图像
+//             cv::imwrite(filename, image);
+//             std::cout << "Image saved to: " << filename << std::endl;
+// }
 
 void drawUSSslotToJPG(const std::string &filename, const UssIf_stPLVOutputInfo_t &data, Loc::App2emap_DR pose, UssIf_stPLVOutputInfo_t post_uss_info){
     // 创建空白图像
@@ -809,6 +1036,7 @@ void TimeTrigger_Timer50(){
         currentIndex++;
         return;
     }
+
     if (std::llabs(rd_info.frameTimeStampNs - dr_pose.timeStamp) > 1500) 
     {
         printf("[TIMESYNC]RD timestamp: %llu, DR timestamp: %llu, Time synchronization not met, skipping execution.",rd_info.frameTimeStampNs, dr_pose.timeStamp);
@@ -1045,7 +1273,7 @@ void TimeTrigger_Timer50(){
     apaSlotListInfo outputSlot_FUSED;
     
     sf.mergeSlotLists(outputSlotUSS, outputSlot_CALVIS, outputSlot_FUSED);
-    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_FUSED, dr_pose, obs_info);
+    drawapaSlotlistinfoToJPG("Cal Vision slot.jpg",outputSlot_FUSED, dr_pose, obs_info,singleframeslots);
     
 
     // test VCU 
