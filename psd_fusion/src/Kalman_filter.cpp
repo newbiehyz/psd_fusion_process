@@ -318,6 +318,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     if (!this->pre_update(quad_info)) {
         return;
     }
+    
     Eigen::Vector2f temp_center;
     temp_center << this->slot_state_(SLOT_CENTER_X), this->slot_state_(SLOT_CENTER_Y);
     // 更新预测矩阵，状态量不变，P需要调整

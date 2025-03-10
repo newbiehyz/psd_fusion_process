@@ -355,7 +355,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     obs_info_get = getInput.obs_info_get;
     apa_status = getInput.apa_status;
     // search_interrupt = getInput.search_interrupt; //@TODO VC9 RELEASE
-        
+
     parkout_flag = IsParkOut(apa_status);
     is_Still = IsStill(dr_pose,previous_dr_pose);
     LOGD("[Still] is Still: %d", is_Still);

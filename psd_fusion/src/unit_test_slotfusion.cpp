@@ -803,6 +803,28 @@ void TimeTrigger_Timer50(){
         std::cout<<"FrameIndex:"<<obs_info.pkEmapObs[obs_index].FrameIndex<<std::endl;
     }
 
+
+
+    if (rd_info.frameTimeStampNs > 1551331160812421000){
+        currentIndex++;
+        return;
+    }
+    if (std::llabs(rd_info.frameTimeStampNs - dr_pose.timeStamp) > 1500) 
+    {
+        printf("[TIMESYNC]RD timestamp: %llu, DR timestamp: %llu, Time synchronization not met, skipping execution.",rd_info.frameTimeStampNs, dr_pose.timeStamp);
+        currentDRIndex++;
+        return;
+    }
+    else if (std::llabs(dr_pose.timeStamp - rd_info.frameTimeStampNs) > 1500)
+    {
+        printf("[TIMESYNC]RD timestamp: %llu, DR timestamp: %llu, Time synchronization not met, skipping execution.",rd_info.frameTimeStampNs, dr_pose.timeStamp);
+        currentIndex++;
+        return;
+    }
+    printf("[TIMESYNC]RD timestamp: %llu, DR timestamp: %llu, Time synchronization achieved!",rd_info.frameTimeStampNs, dr_pose.timeStamp);
+
+    
+
     padVehiclePose  pose_globaldata;
 
     uint64_t singleframeslotsID;
