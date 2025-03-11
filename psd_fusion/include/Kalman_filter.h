@@ -67,9 +67,11 @@ class Kalman_filter{
         float loose_length_coeff = 4e-4f;
 
         float same_point_thr = 500;  // 旋转点时候判断是同一个点的阈值
-        float valid_measure_thr = 200;  // 判定是有效测量的阈值
+        // float valid_measure_thr = 200;  // 判定是有效测量的阈值
+        float valid_measure_thr = 400;  // 判定是有效测量的阈值
         // 判定无效测量点的协方差放大倍率
-        float invalid_measure_enlarge_ratio = 9.0f;
+        // float invalid_measure_enlarge_ratio = 9.0f;
+        float invalid_measure_enlarge_ratio = 12.0f;
         float invalid_innovation_thr = 1.0f;  // 偏差过大阈值
 
         uint32_t confirm_age = 2;  // 确认车位输出所需的帧数

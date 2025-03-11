@@ -99,7 +99,10 @@ void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {
     }
 
     for (int i = 0; i < 50; ++i) {
-        LOGD("[INPUT obs_info] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%f,%f,%f), age: %d",
+        if (obs_info_get.pkEmapObs[i].FrameIndex == 0){
+            continue;
+        }else{
+            LOGD("[INPUT obs_info] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%f,%f,%f), age: %d",
             obs_info_get.pkEmapObs[i].FrameIndex,
             obs_info_get.pkEmapObs[i].obsID,
             obs_info_get.pkEmapObs[i].obsTyp,
@@ -107,6 +110,7 @@ void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {
             obs_info_get.pkEmapObs[i].obsCenter.y,
             obs_info_get.pkEmapObs[i].obsCenter.z,
             obs_info_get.pkEmapObs[i].age);
+        }
     }
 }
 
