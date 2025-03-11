@@ -1,5 +1,6 @@
 #include "Kalman_filter.h"
 #include "Eigen/Dense"
+#include "c_sdk.h"
 
 uint32_t Kalman_filter::id_generator_ = std::atomic<uint32_t>(1000);
 uint64_t Kalman_filter::max_rot_idx_ = 4UL;
@@ -12,7 +13,15 @@ Kalman_filter::Kalman_filter(const ParkingSlotResultPtr& post_slot,
     age_ = 0;
     missing_time_ = 0;
     apa_id_ = id_generator_;
+
     occupy_ = quad_info->occupy;
+
+
+    // occupy_ = 1;
+    // occupies_.push(quad_info->occupy);
+    // occupy_sum_ += occupy_;
+
+
     material_ = quad_info->material;
     ++id_generator_;
     
@@ -388,7 +397,8 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     Eigen::Matrix<float, SLOT_STATE_SIZE, SLOT_MEASURE_SIZE> kalman_gain;
     kalman_gain = P_ * H_.transpose() * S.inverse();
     Eigen::Matrix<float, SLOT_MEASURE_SIZE, 1> innovation;
-    innovation = (measure - measure_prediction) / 1000.0;   //跳变大（误差大），增大。跟踪慢（误差小），减小
+    // innovation = (measure - measure_prediction) / 1000.0;   //跳变大（误差大），增大。跟踪慢（误差小），减小
+    innovation = (measure - measure_prediction) / 500.0;   //跳变大（误差大），增大。跟踪慢（误差小），减小
 
     if (innovation.norm() > isp_.invalid_innovation_thr &&
         delta_frame_cnt_ < isp_.delta_frame_thr) {
@@ -496,6 +506,30 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     bool leftSide = (this->slot_state_(SLOT_CENTER_X) < 0);
     adjustRectOrder(leftSide, corners_world_);
 
+    // // 更新占用状态
+    // bool occupy_filter = true;
+
+    // if (occupy_filter) {
+    //     // 占用均值滤波
+    //     int occupy_window_size = 5;
+    //     this->occupies_.push(quad_info->occupy);
+    //     occupy_sum_ += quad_info->occupy;
+    //     if (occupies_.size() > occupy_window_size) {
+    //         occupy_sum_ -= occupies_.front();
+    //         occupies_.pop();
+    //         if (occupy_sum_ / (occupy_window_size * 1.0) >= 0.8) {
+    //             this->occupy_ = 1;
+    //         } else {
+    //             this->occupy_ = 0;
+    //         }
+    //     } else {
+    //         // LOGD("[PSD_occupy]slot%d occupies size: %d", this->GetSlotApaId(), occupies_.size());
+    //         this->occupy_ = 1;
+    //     }
+    // } else {
+    //     // 直接更新RD占用信息
+    //     this->occupy_ = quad_info->occupy;
+    // }
 
 
 
@@ -611,6 +645,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     // }  
 
     // 更新车位状态信息
+
     this->age_++;
     if (SLOT_STATUS::TENTATIVE == this->status_ &&
         this->age_ > isp_.confirm_age) {

@@ -49,7 +49,6 @@ include_directories(
      ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/comintf/Parking_HMI/
      ${PROJECT_ROOT_DIR}/CodeRoot/em_swc/comintf/UI_Control_process/
 )
-
 # 添加可执行文件
 add_executable(test_executable unit_test_slotfusion.cpp ${SOURCES})
 

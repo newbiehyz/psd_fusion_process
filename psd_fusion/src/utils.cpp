@@ -19,6 +19,23 @@ bool CheckTimeSync(uint64_t current1970_ms, uint64_t rd_timestamp, uint64_t dr_t
     return true;
 }
 
+bool CheckRDFrameTimestamp(uint64_t currentTimestamp) {
+    static uint64_t previousTimestamp = 0;  // 存储上一个周期的时间戳
+
+    if (currentTimestamp - previousTimestamp > 5) {
+        LOGD("[RDDelay] *******PASS! currentTimestamp: %llu, previousTimestamp: %llu",currentTimestamp, previousTimestamp);
+        // 更新上一个时间戳
+        previousTimestamp = currentTimestamp;
+        return true;
+    }
+    else{
+        LOGD("[RDDelay] *******DELAY! currentTimestamp: %llu, previousTimestamp: %llu",currentTimestamp, previousTimestamp);
+        // 更新上一个时间戳
+        previousTimestamp = currentTimestamp;
+        return false;
+    }
+}
+
 void LogSlotInfo(const apaSlotListInfo& slots, const std::string& slotType) {
     for (const auto& psd_m_output : slots.slots_in_cur_frame) {
         if (slotType == "ORIGIN VISSLOTS") {
@@ -87,3 +104,4 @@ void ClearSelectRecommendSlot(int& HMI_temp_ID, int& HMI_select_ID, int& VCU_sel
     final_ID = 0;
     LOGD("[STATUSSELECT] in ClearSelectRecommendSlot HMI %d, VCU %d, final select %d", HMI_temp_ID, VCU_select_ID_ON, final_select_ID);
 }
+

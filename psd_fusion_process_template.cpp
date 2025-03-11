@@ -331,7 +331,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03110933, KF filter tuning and not release obsinslot slot");
+    LOGD("PSD Version: 03111336, KF filter tuning and not release obsinslot slot, filter RD duplicated frame");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -360,9 +360,16 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     is_Still = IsStill(dr_pose,previous_dr_pose);
     LOGD("[Still] is Still: %d", is_Still);
 
+    // 时间同步 1500ms
     if (!CheckTimeSync(current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp)) {
         RETURN_NOERROR;  // 直接返回
     }
+
+    // RD拿到重复帧
+    if (!CheckRDFrameTimestamp(rd_info.frameTimeStampNs)){
+        RETURN_NOERROR;  // 直接返回
+    }
+    
 
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
@@ -383,15 +390,26 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     // 根据障碍物位置，判断是否在车位内，判断限位器在车位边，做占用判断
     for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
         //地锁打开/锥筒在车位内，控制占用
-        if (psd_m_output.rectInfo.LockInSlot != 0 || psd_m_output.rectInfo.OBSInSlot != 0){
+        if (psd_m_output.rectInfo.LockInSlot == 1 || psd_m_output.rectInfo.OBSInSlot == 1){
             psd_m_output.rectInfo.iSodType = 1;
         }
+        else{
+            psd_m_output.rectInfo.iSodType = 0;
+        }
+        
         //限位器在垂直车位AB边，在水平车位BC边，控制占用
         if (psd_m_output.rectInfo.PStype == 0 && psd_m_output.rectInfo.StopperLocation == 1){
             psd_m_output.rectInfo.iSodType = 1;
         }
+        else{
+            psd_m_output.rectInfo.iSodType = 0;
+        }
+
         if (psd_m_output.rectInfo.PStype == 1 && psd_m_output.rectInfo.StopperLocation == 2){
             psd_m_output.rectInfo.iSodType = 1;
+        }
+        else{
+            psd_m_output.rectInfo.iSodType = 0;
         }
         LOGD("[OBS] Slot %d, (%d,%d) (%d,%d) (%d,%d) (%d,%d), StopperDistance:%f,StopperLocation:%d,StopInSlot:%d,LockInSlot:%d,OBSInSlot:%d,SOD:%d",
                                 psd_m_output.rectInfo.label,
@@ -440,9 +458,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     //     outputSlot_HOLD = outputSlot_FUSED;
     // }
     // else{
-    //     if (outputSlot_HOLD.slots_in_cur_frame.size() >= 2){
-    //         outputSlot_FUSED = outputSlot_HOLD;
-    //     }
+    //     outputSlot_FUSED = outputSlot_HOLD;
     // }
 
     slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();

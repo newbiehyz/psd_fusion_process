@@ -563,7 +563,7 @@ int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POIN
 
 
 void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
-    POINT_I wheelstop_dis, point_a, point_b, point_c, point_d;;
+    POINT_I wheelstop_dis, point_a, point_b, point_c, point_d;
     for (auto &obs : empobs.pkEmapObs){
         if (obs.obsTyp == Fus::OBS_WHEELSTOP){
             Eigen::Vector3f obs_point3f;
@@ -590,6 +590,15 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                         point_c.y = check_slot->GetCpoint().y();
                         point_d.x = check_slot->GetDpoint().x();
                         point_d.y = check_slot->GetDpoint().y();
+                        LOGD("OBS_WHEELSTOP, VERTICALSLOT, only one slot, A: (%d, %d), B: (%d, %d), C: (%d, %d), D: (%d, %d)",
+                        point_a.x,
+                        point_a.y,
+                        point_b.x,
+                        point_b.y,
+                        point_c.x,
+                        point_c.y,
+                        point_d.x,
+                        point_d.y)
 
                         //不确定限位块在AB还是在CD
                         float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
@@ -616,6 +625,15 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                         point_c.y = check_slot->GetCpoint().y();
                         point_d.x = check_slot->GetDpoint().x();
                         point_d.y = check_slot->GetDpoint().y();
+                        LOGD("OBS_WHEELSTOP, PARALLELSLOT, only one slot, A: (%d, %d), B: (%d, %d), C: (%d, %d), D: (%d, %d)",
+                        point_a.x,
+                        point_a.y,
+                        point_b.x,
+                        point_b.y,
+                        point_c.x,
+                        point_c.y,
+                        point_d.x,
+                        point_d.y)
 
                         //不确定限位块在BC还是在AD
                         float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
@@ -633,20 +651,21 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                         }
                         LOGD("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
                     }
-                    else{
-                        check_slot->stopper_distance_  = 0.0;
-                        LOGD("stopdis: %f, stoploc: %d",check_slot->stopper_distance_,check_slot->stopper_location_);
-                    }
-                }   
+                }else{
+                    LOGD("Stopper not in Only one slot");
+                }
                 return;
             };
             //多个车位，找到最近的停车位
             point_t obs_point2f{obs_point3f.x(), obs_point3f.y()};
             auto nearest_index = slots_tree_->nearest_index(obs_point2f);
+            LOGD("Stoppper find in nearest slot, index: %zu", nearest_index);
+
             auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
-            
             // 找到最近的停车位
             if(check_slot->point_in_rect(obs_point3f)){
+
+                LOGD("Find Stopper in Slot");
                 
                 wheelstop_dis.x = obs_point3f.x();
                 wheelstop_dis.y = obs_point3f.y();
@@ -660,6 +679,15 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                     point_c.y = check_slot->GetCpoint().y();
                     point_d.x = check_slot->GetDpoint().x();
                     point_d.y = check_slot->GetDpoint().y();
+                    LOGD("OBS_WHEELSTOP, VERTICALSLOT, more slots, A: (%d, %d), B: (%d, %d), C: (%d, %d), D: (%d, %d)",
+                        point_a.x,
+                        point_a.y,
+                        point_b.x,
+                        point_b.y,
+                        point_c.x,
+                        point_c.y,
+                        point_d.x,
+                        point_d.y)
 
                     //不确定限位块在AB还是在CD
                     float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
@@ -686,6 +714,15 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                     point_c.y = check_slot->GetCpoint().y();
                     point_d.x = check_slot->GetDpoint().x();
                     point_d.y = check_slot->GetDpoint().y();
+                    LOGD("OBS_WHEELSTOP, PARALLELSLOT, more slots, A: (%d, %d), B: (%d, %d), C: (%d, %d), D: (%d, %d)",
+                        point_a.x,
+                        point_a.y,
+                        point_b.x,
+                        point_b.y,
+                        point_c.x,
+                        point_c.y,
+                        point_d.x,
+                        point_d.y)
 
                     //不确定限位块在BC还是在AD
                     float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
@@ -729,6 +766,15 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                         point_c.y = check_slot->GetCpoint().y();
                         point_d.x = check_slot->GetDpoint().x();
                         point_d.y = check_slot->GetDpoint().y();
+                        LOGD("OBS_WHEELSTOP, VERTICALSLOT, neibor, A: (%d, %d), B: (%d, %d), C: (%d, %d), D: (%d, %d)",
+                        point_a.x,
+                        point_a.y,
+                        point_b.x,
+                        point_b.y,
+                        point_c.x,
+                        point_c.y,
+                        point_d.x,
+                        point_d.y)
 
                         //不确定限位块在AB还是在CD
                         float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
@@ -758,6 +804,15 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                         point_c.y = check_slot->GetCpoint().y();
                         point_d.x = check_slot->GetDpoint().x();
                         point_d.y = check_slot->GetDpoint().y();
+                        LOGD("OBS_WHEELSTOP, PARALLELSLOT, neibor, A: (%d, %d), B: (%d, %d), C: (%d, %d), D: (%d, %d)",
+                        point_a.x,
+                        point_a.y,
+                        point_b.x,
+                        point_b.y,
+                        point_c.x,
+                        point_c.y,
+                        point_d.x,
+                        point_d.y)
 
                         //不确定限位块在BC还是在AD
                         float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
@@ -935,6 +990,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             quad->quads.col(2).head<2>() = br;
             quad->quads.col(3).head<2>() = bl;
             transform2world(m_vehicle_pose,quad);
+            LOGD("center:(%d,%d)",quad->center_world.x(),quad->center_world.y());
             
             auto slot_existance = check_slot_existance(quad);
             if (slot_existance != nullptr) { //找到存在的车位
