@@ -398,7 +398,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     kalman_gain = P_ * H_.transpose() * S.inverse();
     Eigen::Matrix<float, SLOT_MEASURE_SIZE, 1> innovation;
     // innovation = (measure - measure_prediction) / 1000.0;   //跳变大（误差大），增大。跟踪慢（误差小），减小
-    innovation = (measure - measure_prediction) / 500.0;   //跳变大（误差大），增大。跟踪慢（误差小），减小
+    innovation = (measure - measure_prediction) / 1000.0;   //跳变大（误差大），增大。跟踪慢（误差小），减小
 
     if (innovation.norm() > isp_.invalid_innovation_thr &&
         delta_frame_cnt_ < isp_.delta_frame_thr) {

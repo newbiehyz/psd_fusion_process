@@ -990,7 +990,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             quad->quads.col(2).head<2>() = br;
             quad->quads.col(3).head<2>() = bl;
             transform2world(m_vehicle_pose,quad);
-            LOGD("center:(%d,%d)",quad->center_world.x(),quad->center_world.y());
+            LOGD("center:(%f,%f)",quad->center_world.x(),quad->center_world.y());
             
             auto slot_existance = check_slot_existance(quad);
             if (slot_existance != nullptr) { //找到存在的车位

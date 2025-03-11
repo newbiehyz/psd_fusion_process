@@ -59,20 +59,31 @@ enum class SLOT_STATUS : uint8_t { TENTATIVE = 0, CONFIRMED = 1, DELETE = 2 };
 class Kalman_filter{
  public:
     struct InnerSlotParameters {
+        // // For Q_
+        // float tight_center_coeff = 9e-4f;
+        // float tight_angle_coeff = 1e-6f;
+        // float tight_length_coeff = 1e-4f;
+        // float loose_center_coeff = 9e-4f;
+        // float loose_angle_coeff = 4e-6f;
+        // float loose_length_coeff = 4e-4f;
+
         // For Q_
-        float tight_center_coeff = 9e-4f;
-        float tight_angle_coeff = 1e-6f;
-        float tight_length_coeff = 1e-4f;
+        float tight_center_coeff = 1e-4f;
+        float tight_angle_coeff = 1e-2f;
+        float tight_length_coeff = 1e-2f;
         float loose_center_coeff = 9e-4f;
         float loose_angle_coeff = 4e-6f;
         float loose_length_coeff = 4e-4f;
 
         float same_point_thr = 500;  // 旋转点时候判断是同一个点的阈值
+
         // float valid_measure_thr = 200;  // 判定是有效测量的阈值
         float valid_measure_thr = 200;  // 判定是有效测量的阈值
+
         // 判定无效测量点的协方差放大倍率
         // float invalid_measure_enlarge_ratio = 9.0f;
-        float invalid_measure_enlarge_ratio = 2.0f;
+        float invalid_measure_enlarge_ratio = 9.0f;
+
         // float invalid_innovation_thr = 1.0f;  // 偏差过大阈值
         float invalid_innovation_thr = 1.0f;  // 偏差过大阈值
 
