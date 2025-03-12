@@ -1031,7 +1031,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
         if (KF){
             auto quad = std::make_shared<QuadInfo>();
 
-            quad->slot_type = slot.bayType;
+            // quad->slot_type = slot.bayType;
             quad->occupy = slot.occupy;
             quad->material = slot.material;
             quad->quads.bottomRows<1>().setOnes();

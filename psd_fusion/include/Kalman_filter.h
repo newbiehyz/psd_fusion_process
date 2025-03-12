@@ -68,9 +68,9 @@ class Kalman_filter{
         // float loose_length_coeff = 4e-4f;
 
         // For Q_
-        float tight_center_coeff = 1;
-        float tight_angle_coeff = 1;
-        float tight_length_coeff = 1;
+        float tight_center_coeff = 9e-4f;
+        float tight_angle_coeff = 1e-6f;
+        float tight_length_coeff = 1e-4f;
         float loose_center_coeff = 9e-4f;
         float loose_angle_coeff = 4e-6f;
         float loose_length_coeff = 4e-4f;

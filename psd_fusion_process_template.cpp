@@ -330,7 +330,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03121300");
+    LOGD("PSD Version: 03121624, continously update obs_in_slot and slot_type, stablize outputSlot while is_Still");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -441,24 +441,31 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         filetojson.SaveUssInfoToJson(uss_info,"/userdata/psd/USSapaSlotListInfo.json");
     }
     fusionslot.fillVisonstruct(uss_info, outputSlot_USS);
-    LOGD("USS SLOT SIZE IS:%d",outputSlot_USS.slots_in_cur_frame.size());
     auto uss_info_restruct = uss_info;
     fusionslot.postprocessUSSslots(uss_info_restruct);
-    LOGD("getall vis size: %d",outputSlot_VIS.slots_in_cur_frame.size());
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
+    slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
 
-    // //稳定的车位列表
-    // apaSlotListInfo outputSlot_HOLD;
-    // if (is_Still != 1){
-    //     outputSlot_HOLD = outputSlot_FUSED;
+    // // **************************outputSlot_FUSED优化：静止时固定车位列表
+    // static apaSlotListInfo prev_outputSlot_FUSED;
+
+    // if (is_Still == 1 && prev_outputSlot_FUSED.slots_in_cur_frame.size() > 3) {
+    //     // 如果车辆静止，恢复 outputSlot_FUSED
+    //     outputSlot_FUSED = prev_outputSlot_FUSED;
+    //     LOGD("[STABLE SLOTLIST] Vehicle is still, restoring previous outputSlot_FUSED.");
+    // } else {
+    //     // 如果车辆移动，更新 prev_outputSlot_FUSED
+    //     prev_outputSlot_FUSED = outputSlot_FUSED;
     // }
-    // else{
-    //     outputSlot_FUSED = outputSlot_HOLD;
-    // }
+
+    // **************************outputSlot_FUSED优化：去除内部重叠车位
+
+
+
 
     slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
     
-    // *****************************
+    // *****************************outputSlot_FUSED优化：以单帧结果修复
     apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
     for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
         // LOGD("single_frame update! fused size:%d", outputSlot_FUSED.slots_in_cur_frame.size());
@@ -518,16 +525,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         ClearSelectRecommendSlot(HMI_temp_ID, HMI_select_ID, VCU_select_ID_ON, final_select_ID, RECOMMEND_ID, final_ID, apa_status);
     }
     LOGD("[STATUSSELECT] HMI %d, VCU %d, final select %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);
-    // // Clear, old
-    // if (apa_status == 1 || apa_status == 6 || apa_status == 7){
-    //     HMI_temp_ID = 0;
-    //     HMI_select_ID = 0;
-    //     VCU_select_ID_ON = 0;
-    //     final_select_ID = 0;
-    //     RECOMMEND_ID = 0;
-    //     final_ID = 0;
-    // }
-    // LOGD("[STATUSSELECT] HMI %d, VCU %d, final select %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);
 
 
 

@@ -28,7 +28,7 @@ slotfusion::~slotfusion()
 
 }
 
-
+// 不允许重叠
 vector<apaSlotInfo>::iterator slotfusion::existed_in_psinfo(const apaSlotInfo& rect_new, 
     apaSlotListInfo& vison_slot_list, bool& mis_detect_flag)
 {
@@ -53,7 +53,6 @@ vector<apaSlotInfo>::iterator slotfusion::existed_in_psinfo(const apaSlotInfo& r
     mis_detect_flag = true; // 说明没有重叠
     return vison_slot_list.slots_in_cur_frame.end();
 }
-
 
 void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS, 
                                 apaSlotListInfo &outputSlot_VIS, 

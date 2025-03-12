@@ -71,8 +71,11 @@ Kalman_filter::~Kalman_filter(){};
 
 void Kalman_filter::creat_initial_covariance(const QuadInfoPtr& quad_info) {
     // 设置初始化的协方差矩阵
+
+    // F_ 用于状态预测，它描述当前状态如何根据运动模型更新到下一时刻
     this->F_.setIdentity();
 
+    // Q_用于状态预测的噪声，它描述了状态预测过程中所引入的噪声
     this->Q_.setIdentity();
     this->Q_(SLOT_CENTER_X, SLOT_CENTER_X) *= isp_.loose_center_coeff;
     this->Q_(SLOT_CENTER_Y, SLOT_CENTER_Y) *= isp_.loose_center_coeff;
@@ -238,6 +241,8 @@ bool Kalman_filter::point_in_slot(const Eigen::Vector3f& point,
     return (length_ratio < ratio_thr && width_ratio < ratio_thr);
 };
 
+
+// 0312 原始判断
 bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const{
     // 创建旋转矩阵（将长方向对齐到 x 轴）
     Eigen::Matrix3f rotation;
@@ -263,6 +268,34 @@ bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const{
     return (local_point.x() >= -half_width && local_point.x() <= half_width &&
             local_point.y() >= -half_length  && local_point.y() <= half_length);
 }
+
+
+// // 0312 原始判断
+// bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const{
+//     // 创建旋转矩阵（将长方向对齐到 x 轴）
+//     Eigen::Matrix3f rotation;
+//     rotation.col(0) = long_dir_.normalized();  // 长方向单位向量
+//     rotation.col(1) = wide_dir_.normalized();  // 宽方向单位向量
+    
+//     // 逆旋转矩阵
+//     Eigen::Matrix3f rotation_inv = rotation.transpose(); // 旋转矩阵是正交矩阵，其逆等于转置
+    
+//     Eigen::Vector3f center;
+//     center<<slot_state_[0],slot_state_[1], 0.0;
+//     // 将点转换到矩形的局部坐标系
+//     Eigen::Vector3f local_point = (rotation_inv * (point - center));
+    
+//     // 检查点是否在矩形的范围内
+//     float half_length = slot_state_[SLOT_LENGTH] / 2.0f * 1000;
+//     float half_width = slot_state_[SLOT_WIDTH] / 2.0f * 1000;
+
+//     if (this->type_ == SLOT_TYPE::PARALLELSLOT){
+//         std::swap(half_length, half_width);
+//     }
+
+//     return (local_point.x() >= -half_width && local_point.x() <= half_width &&
+//             local_point.y() >= -half_length  && local_point.y() <= half_length);
+// }
 
 bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
 
@@ -534,20 +567,20 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     // }
 
 
-    // 更新车位类型
-    switch (quad_info->slot_type)
-    {
-    case 0x00:
-        type_ = SLOT_TYPE::VERTICALSLOT;
-        break;
-    case 0x01:
-        type_ = SLOT_TYPE::PARALLELSLOT;
-        break;
-    case 0x02:
-        type_ = SLOT_TYPE::SLANTSLOT;
-    default:
-        break;
-    }
+    // // 更新车位类型
+    // switch (quad_info->slot_type)
+    // {
+    // case 0x00:
+    //     type_ = SLOT_TYPE::VERTICALSLOT;
+    //     break;
+    // case 0x01:
+    //     type_ = SLOT_TYPE::PARALLELSLOT;
+    //     break;
+    // case 0x02:
+    //     type_ = SLOT_TYPE::SLANTSLOT;
+    // default:
+    //     break;
+    // }
 
 
     // //***************************************左右判断调整顺序
