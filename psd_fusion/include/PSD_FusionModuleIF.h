@@ -113,7 +113,6 @@ public:
     void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus);
     // void CalStopDisAndLoc(apaSlotInfo psdmoutput, Fus::PkEmapObs &empobs, float &stopdis, int &stoplocation, int &lockinslot, int &obsinslot);
     void CalStopDisAndLoc(const Fus::PkEmapObs &empobs);
-    int filterSlotOccupy(int& occupy);
     void adjustRectOrder(apaSlotInfo &rect);
     bool isLeftOfOrigin(const apaSlotInfo rect);
 

@@ -324,14 +324,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
 
 tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 {
-
-    auto current = std::chrono::system_clock::now(); //用于J5时间同步
+    auto current = std::chrono::system_clock::now(); 
     auto current1970 = current.time_since_epoch();
-    auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count();
+    auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03111336, KF filter tuning and not release obsinslot slot, filter RD duplicated frame");
+    LOGD("PSD Version: 03121300");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -386,7 +385,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
     PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
-    
+
+    LOGD("Without LOCK/OBS VISSLOTSLIST:")
+    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
     // 根据障碍物位置，判断是否在车位内，判断限位器在车位边，做占用判断
     for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
         //地锁打开/锥筒在车位内，控制占用
@@ -394,27 +395,16 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
             LOGD("LOCKINSLOT / OBSINSLOT, SET ISODTYPE")
             psd_m_output.rectInfo.iSodType = 1;
         }
-        // else{
-        //     psd_m_output.rectInfo.iSodType = 0;
-        // }
         
         //限位器在垂直车位AB边，在水平车位BC边，控制占用
         if (psd_m_output.rectInfo.PStype == 0 && psd_m_output.rectInfo.StopperLocation == 1){
             LOGD("chuizhi type, AB side, SET ISODTYPE")
             psd_m_output.rectInfo.iSodType = 1;
         }
-        // else{
-        //     psd_m_output.rectInfo.iSodType = 0;
-        // }
-
         if (psd_m_output.rectInfo.PStype == 1 && psd_m_output.rectInfo.StopperLocation == 2){
             LOGD("pingxing type, BC side, SET ISODTYPE")
             psd_m_output.rectInfo.iSodType = 1;
         }
-        // else{
-        //     psd_m_output.rectInfo.iSodType = 0;
-        // }
-
         LOGD("[OBS] Slot %d, (%d,%d) (%d,%d) (%d,%d) (%d,%d), StopperDistance:%f,StopperLocation:%d,StopInSlot:%d,LockInSlot:%d,OBSInSlot:%d,SOD:%d",
                                 psd_m_output.rectInfo.label,
                                 psd_m_output.rectInfo.pt[0].x,
@@ -432,7 +422,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                                 psd_m_output.rectInfo.OBSInSlot,
                                 psd_m_output.rectInfo.iSodType)
     }
-
+    LOGD("After LOCK/OBS VISSLOTSLIST:")
+    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
         
     if (DEBUG == true){
         filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"/userdata/psd/VISapaSlotListInfo.json");
@@ -500,8 +491,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     }
 
     
-    // 输出VIS USS FUSION车位列表
-    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+    // 输出USS FUSION车位列表
     LogSlotInfo(outputSlot_USS, "ORIGIN USSSLOTS");
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
