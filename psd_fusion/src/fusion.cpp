@@ -28,92 +28,144 @@ slotfusion::~slotfusion()
 
 }
 
-void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION) 
+
+vector<apaSlotInfo>::iterator slotfusion::existed_in_psinfo(const apaSlotInfo& rect_new, 
+    apaSlotListInfo& vison_slot_list, bool& mis_detect_flag)
 {
-    // LOGD("The Vison slot num is: %d",outputSlot_VIS.slots_in_cur_frame.size());
-    // LOGD("The USS slot num is: %d",outputSlot_USS.slots_in_cur_frame.size());
-    outputSlot_FUSION = outputSlot_VIS;
-    // CTransformation transtoworld;
-    // TPose local_point, global_point;
-    // if (outputSlot_USS.slots_in_cur_frame.size() != 0 &&
-    //     outputSlot_VIS.WorldoutRect.size() != 0){
-    //         global_point.point.x = outputSlot_VIS.WorldoutRect[0].rectInfo.pt[0].x;
-    //         global_point.point.y = outputSlot_VIS.WorldoutRect[0].rectInfo.pt[0].y;
-    //         local_point.point.x = outputSlot_USS.slots_in_cur_frame[0].rectInfo.pt[0].x;
-    //         local_point.point.y = outputSlot_USS.slots_in_cur_frame[0].rectInfo.pt[0].y;
-    //     }
-    
-    // transtoworld.SetPoseToPose(local_point, global_point);
-
-    for (const auto &slot_USS : outputSlot_USS.slots_in_cur_frame) 
-    {
-        // IOU
-        bool mis_detect_flag = true;
-        auto it = existed_in_psinfo(slot_USS, outputSlot_VIS, mis_detect_flag);
-        if(!mis_detect_flag) {
-            break;
-        }else{
-            outputSlot_FUSION.slots_in_cur_frame.push_back(slot_USS);
-            std::cout<<"USS slot not match in vison slot and push bash to Fusion slots!"<<std::endl;
-        }
-        
-        // bool overlapFound = false; 
-        // double overlap = 0.0;
-        // for (const auto &slot_VIS : outputSlot_VIS.slots_in_cur_frame){
-        //     // overlap = calculateOverlap(slot_USS.rectInfo, slot_VIS.rectInfo);
-        //     // std::cout<<"The overlap is:"<<overlap<<std::endl;
-        //     std::cout<<"VIS slot id is:"<<slot_VIS.rectInfo.label<<std::endl;
-        //     std::cout<<"USS slot id is:"<<slot_USS.rectInfo.label<<std::endl;
-        //     // if (overlap > IOU_THRESHOLD){
-        //     //     overlapFound = true;
-        //     //     std::cout<<"Found overlap slots"<<std::endl;
-        //     //     break;
-        //     // }
-
-            
-
-        // }
-
-        // if (!overlapFound){
-        //     //如果视觉车位和超声车不位重叠，则将USS车位列表加入融合列表内
-        //     outputSlot_FUSION.slots_in_cur_frame.push_back(slot_USS);
-        //     std::cout<<"USS slot not match in vison slot and push bash to Fusion slots!"<<std::endl;
-        // }
-    }
-    // LOGD("The fusion slot num is: %d",outputSlot_FUSION.slots_in_cur_frame.size());
-}
-
-vector<apaSlotInfo>::iterator slotfusion::existed_in_psinfo(const apaSlotInfo& rect_new, apaSlotListInfo& vison_slot_list, bool& mis_detect_flag)
-{
-
-    double iou = 0;;
-    if(vison_slot_list.slots_in_cur_frame.size() == 0) {
-        vector<apaSlotInfo>::iterator it = vison_slot_list.slots_in_cur_frame.end();
-        return it;
+    if (vison_slot_list.slots_in_cur_frame.empty()) {
+        return vison_slot_list.slots_in_cur_frame.end();
     }
 
-    //size>0时，反向遍历psinfo。IOU>0.4重复，0.2-0.4misdetect，<0.2认为没有相同车位继续循环
-    vector<apaSlotInfo>::iterator it = vison_slot_list.slots_in_cur_frame.end() - 1;
-    for( ; it >= vison_slot_list.slots_in_cur_frame.begin(); it--) 
+    for (auto it = vison_slot_list.slots_in_cur_frame.begin(); it != vison_slot_list.slots_in_cur_frame.end(); it++) 
     {
-        std::cout<<"VIS slot id is:"<<it->rectInfo.label<<std::endl;
-        std::cout<<"USS slot id is:"<<rect_new.rectInfo.label<<std::endl;
         Vertexes vert_new, vert;
         IOU::changePoint(rect_new, vert_new);
         IOU::changePoint(*it, vert);
-        iou = IOU::iouEx(vert_new, vert);
-        
-        if (iou >= 0.2) {
-            mis_detect_flag = false;
-            break;
+        double iou = IOU::iouEx(vert_new, vert);
+
+        // 如果有重叠（IOU > 0.1），则不允许加入融合列表
+        if (iou > 0.1) {  
+            mis_detect_flag = false; // 说明找到了匹配的，返回迭代器
+            return it;
         }
-        else if (iou >= 0.0 && iou < 0.2) {
-            mis_detect_flag = true;
-        }
-        
     }
-    return it;
+    
+    mis_detect_flag = true; // 说明没有重叠
+    return vison_slot_list.slots_in_cur_frame.end();
 }
+
+
+void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS, 
+                                apaSlotListInfo &outputSlot_VIS, 
+                                apaSlotListInfo &outputSlot_FUSION) 
+{
+    outputSlot_FUSION = outputSlot_VIS; // 先保留视觉车位
+
+    for (const auto &slot_USS : outputSlot_USS.slots_in_cur_frame) 
+    {
+        bool mis_detect_flag = true;
+        auto it = existed_in_psinfo(slot_USS, outputSlot_VIS, mis_detect_flag);
+
+        // 如果找到重叠的视觉车位（即 mis_detect_flag = false），就不加入融合列表
+        if (!mis_detect_flag) {
+            LOGD("USS slot overlaps with a VIS slot, skipping fusion!");
+            continue;
+        }
+
+        // 否则（即超声波车位不和任何视觉车位重叠），加入融合列表
+        outputSlot_FUSION.slots_in_cur_frame.push_back(slot_USS);
+        LOGD("USS slot not overlapping, adding to Fusion slots!");
+    }
+}
+
+
+// // 0311 USS与视觉车位有重叠版本
+// void slotfusion::mergeSlotLists(const apaSlotListInfo &outputSlot_USS,apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION) 
+// {
+//     // LOGD("The Vison slot num is: %d",outputSlot_VIS.slots_in_cur_frame.size());
+//     // LOGD("The USS slot num is: %d",outputSlot_USS.slots_in_cur_frame.size());
+//     outputSlot_FUSION = outputSlot_VIS;
+//     // CTransformation transtoworld;
+//     // TPose local_point, global_point;
+//     // if (outputSlot_USS.slots_in_cur_frame.size() != 0 &&
+//     //     outputSlot_VIS.WorldoutRect.size() != 0){
+//     //         global_point.point.x = outputSlot_VIS.WorldoutRect[0].rectInfo.pt[0].x;
+//     //         global_point.point.y = outputSlot_VIS.WorldoutRect[0].rectInfo.pt[0].y;
+//     //         local_point.point.x = outputSlot_USS.slots_in_cur_frame[0].rectInfo.pt[0].x;
+//     //         local_point.point.y = outputSlot_USS.slots_in_cur_frame[0].rectInfo.pt[0].y;
+//     //     }
+    
+//     // transtoworld.SetPoseToPose(local_point, global_point);
+
+//     for (const auto &slot_USS : outputSlot_USS.slots_in_cur_frame) 
+//     {
+//         // IOU
+//         bool mis_detect_flag = true;
+//         auto it = existed_in_psinfo(slot_USS, outputSlot_VIS, mis_detect_flag);
+//         if(!mis_detect_flag) {
+//             break;
+//         }else{
+//             outputSlot_FUSION.slots_in_cur_frame.push_back(slot_USS);
+//             std::cout<<"USS slot not match in vison slot and push bash to Fusion slots!"<<std::endl;
+//         }
+        
+//         // bool overlapFound = false; 
+//         // double overlap = 0.0;
+//         // for (const auto &slot_VIS : outputSlot_VIS.slots_in_cur_frame){
+//         //     // overlap = calculateOverlap(slot_USS.rectInfo, slot_VIS.rectInfo);
+//         //     // std::cout<<"The overlap is:"<<overlap<<std::endl;
+//         //     std::cout<<"VIS slot id is:"<<slot_VIS.rectInfo.label<<std::endl;
+//         //     std::cout<<"USS slot id is:"<<slot_USS.rectInfo.label<<std::endl;
+//         //     // if (overlap > IOU_THRESHOLD){
+//         //     //     overlapFound = true;
+//         //     //     std::cout<<"Found overlap slots"<<std::endl;
+//         //     //     break;
+//         //     // }
+
+            
+
+//         // }
+
+//         // if (!overlapFound){
+//         //     //如果视觉车位和超声车不位重叠，则将USS车位列表加入融合列表内
+//         //     outputSlot_FUSION.slots_in_cur_frame.push_back(slot_USS);
+//         //     std::cout<<"USS slot not match in vison slot and push bash to Fusion slots!"<<std::endl;
+//         // }
+//     }
+//     // LOGD("The fusion slot num is: %d",outputSlot_FUSION.slots_in_cur_frame.size());
+// }
+
+// vector<apaSlotInfo>::iterator slotfusion::existed_in_psinfo(const apaSlotInfo& rect_new, apaSlotListInfo& vison_slot_list, bool& mis_detect_flag)
+// {
+
+//     double iou = 0;;
+//     if(vison_slot_list.slots_in_cur_frame.size() == 0) {
+//         vector<apaSlotInfo>::iterator it = vison_slot_list.slots_in_cur_frame.end();
+//         return it;
+//     }
+
+//     //size>0时，反向遍历psinfo。IOU>0.4重复，0.2-0.4misdetect，<0.2认为没有相同车位继续循环
+//     vector<apaSlotInfo>::iterator it = vison_slot_list.slots_in_cur_frame.end() - 1;
+//     for( ; it >= vison_slot_list.slots_in_cur_frame.begin(); it--) 
+//     {
+//         std::cout<<"VIS slot id is:"<<it->rectInfo.label<<std::endl;
+//         std::cout<<"USS slot id is:"<<rect_new.rectInfo.label<<std::endl;
+//         Vertexes vert_new, vert;
+//         IOU::changePoint(rect_new, vert_new);
+//         IOU::changePoint(*it, vert);
+//         iou = IOU::iouEx(vert_new, vert);
+        
+//         if (iou >= 0.2) {
+//             mis_detect_flag = false;
+//             break;
+//         }
+//         else if (iou >= 0.0 && iou < 0.2) {
+//             mis_detect_flag = true;
+//         }
+        
+//     }
+//     return it;
+// }
 
 
 static inline float Getslotangle(UssIf_stSlotProperty_t uss_point){

@@ -391,26 +391,30 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
         //地锁打开/锥筒在车位内，控制占用
         if (psd_m_output.rectInfo.LockInSlot == 1 || psd_m_output.rectInfo.OBSInSlot == 1){
+            LOGD("LOCKINSLOT / OBSINSLOT, SET ISODTYPE")
             psd_m_output.rectInfo.iSodType = 1;
         }
-        else{
-            psd_m_output.rectInfo.iSodType = 0;
-        }
+        // else{
+        //     psd_m_output.rectInfo.iSodType = 0;
+        // }
         
         //限位器在垂直车位AB边，在水平车位BC边，控制占用
         if (psd_m_output.rectInfo.PStype == 0 && psd_m_output.rectInfo.StopperLocation == 1){
+            LOGD("chuizhi type, AB side, SET ISODTYPE")
             psd_m_output.rectInfo.iSodType = 1;
         }
-        else{
-            psd_m_output.rectInfo.iSodType = 0;
-        }
+        // else{
+        //     psd_m_output.rectInfo.iSodType = 0;
+        // }
 
         if (psd_m_output.rectInfo.PStype == 1 && psd_m_output.rectInfo.StopperLocation == 2){
+            LOGD("pingxing type, BC side, SET ISODTYPE")
             psd_m_output.rectInfo.iSodType = 1;
         }
-        else{
-            psd_m_output.rectInfo.iSodType = 0;
-        }
+        // else{
+        //     psd_m_output.rectInfo.iSodType = 0;
+        // }
+
         LOGD("[OBS] Slot %d, (%d,%d) (%d,%d) (%d,%d) (%d,%d), StopperDistance:%f,StopperLocation:%d,StopInSlot:%d,LockInSlot:%d,OBSInSlot:%d,SOD:%d",
                                 psd_m_output.rectInfo.label,
                                 psd_m_output.rectInfo.pt[0].x,

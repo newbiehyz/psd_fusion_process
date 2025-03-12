@@ -506,30 +506,32 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     bool leftSide = (this->slot_state_(SLOT_CENTER_X) < 0);
     adjustRectOrder(leftSide, corners_world_);
 
-    // // 更新占用状态
-    // bool occupy_filter = true;
+    // 更新占用状态
+    bool occupy_filter = false;
 
-    // if (occupy_filter) {
-    //     // 占用均值滤波
-    //     int occupy_window_size = 5;
-    //     this->occupies_.push(quad_info->occupy);
-    //     occupy_sum_ += quad_info->occupy;
-    //     if (occupies_.size() > occupy_window_size) {
-    //         occupy_sum_ -= occupies_.front();
-    //         occupies_.pop();
-    //         if (occupy_sum_ / (occupy_window_size * 1.0) >= 0.8) {
-    //             this->occupy_ = 1;
-    //         } else {
-    //             this->occupy_ = 0;
-    //         }
-    //     } else {
-    //         // LOGD("[PSD_occupy]slot%d occupies size: %d", this->GetSlotApaId(), occupies_.size());
-    //         this->occupy_ = 1;
-    //     }
-    // } else {
-    //     // 直接更新RD占用信息
-    //     this->occupy_ = quad_info->occupy;
-    // }
+    if (occupy_filter) {
+        // 占用均值滤波
+        int occupy_window_size = 5;
+        this->occupies_.push(quad_info->occupy);
+        occupy_sum_ += quad_info->occupy;
+        LOGD("[PSD_occupy]slot_id: %d, occupies_size: %d", this->GetSlotApaId(), occupies_.size());
+        if (occupies_.size() > occupy_window_size) {
+            occupy_sum_ -= occupies_.front();
+            LOGD("[PSD_occupy]occupy_sum_: %d", occupy_sum_);
+            occupies_.pop();
+            if (occupy_sum_ / (occupy_window_size * 1.0) >= 0.8) {
+                this->occupy_ = 1;
+            } else {
+                this->occupy_ = 0;
+            }
+        } else {
+            // LOGD("[PSD_occupy]slot%d occupies size: %d", this->GetSlotApaId(), occupies_.size());
+            this->occupy_ = 1;
+        }
+    } else {
+        // 直接更新RD占用信息
+        this->occupy_ = quad_info->occupy;
+    }
 
 
 

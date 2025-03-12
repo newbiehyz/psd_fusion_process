@@ -23,13 +23,13 @@ bool CheckRDFrameTimestamp(uint64_t currentTimestamp) {
     static uint64_t previousTimestamp = 0;  // 存储上一个周期的时间戳
 
     if (currentTimestamp - previousTimestamp > 5) {
-        LOGD("[RDDelay] *******PASS! currentTimestamp: %llu, previousTimestamp: %llu",currentTimestamp, previousTimestamp);
+        LOGW("[RDDelay] **************PASS************** currentTimestamp: %llu, previousTimestamp: %llu",currentTimestamp, previousTimestamp);
         // 更新上一个时间戳
         previousTimestamp = currentTimestamp;
         return true;
     }
     else{
-        LOGD("[RDDelay] *******DELAY! currentTimestamp: %llu, previousTimestamp: %llu",currentTimestamp, previousTimestamp);
+        LOGW("[RDDelay] **************DELAY************** currentTimestamp: %llu, previousTimestamp: %llu",currentTimestamp, previousTimestamp);
         // 更新上一个时间戳
         previousTimestamp = currentTimestamp;
         return false;
