@@ -568,6 +568,7 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
         if (obs.obsTyp == Fus::OBS_WHEELSTOP){
             Eigen::Vector3f obs_point3f;
             obs_point3f << obs.obsCenter.x * 1000.0, obs.obsCenter.y * 1000.0, obs.obsCenter.z * 1000.0;
+            LOGD("Stopper3f point: (%f, %f)",obs_point3f.x(), obs_point3f.y());
 
             //没找到车位
             if (slots_map_.empty()) {
@@ -658,9 +659,9 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
             };
             //多个车位，找到最近的停车位
             point_t obs_point2f{obs_point3f.x(), obs_point3f.y()};
+            LOGD("Stopper2f point: (%f, %f)",obs_point2f[0],obs_point2f[1]);
             auto nearest_index = slots_tree_->nearest_index(obs_point2f);
             LOGD("Stoppper find in nearest slot, index: %zu", nearest_index);
-
             auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
             // 找到最近的停车位
             if(check_slot->point_in_rect(obs_point3f)){
@@ -841,10 +842,12 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
         }else if(obs.obsTyp == Fus::OBS_SLOT_LOCK){
             Eigen::Vector3f obs_point3f;
             obs_point3f << obs.obsCenter.x * 1000.0, obs.obsCenter.y * 1000.0, obs.obsCenter.z * 1000.0;
+            LOGD("Lock3f point: (%f, %f)",obs_point3f.x(), obs_point3f.y());
             //没找到车位
             if (slots_map_.empty()) {
                 return;
             }
+
             //只有一个车位
             if (slots_map_.size() < 2) {
                 if (slots_map_.begin()->second->point_in_rect(obs_point3f)){
@@ -855,10 +858,23 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                 }
                 LOGD("lock_in_slot: %d",slots_map_.begin()->second->lock_in_slot_);
             };
+
             //多个车位，找到最近的停车位
             point_t obs_point2f{obs_point3f.x(), obs_point3f.y()};
+            LOGD("Lock2f point: (%f, %f)",obs_point2f[0],obs_point2f[1]);
             auto nearest_index = slots_tree_->nearest_index(obs_point2f);
             auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
+            LOGD("LOCK Check slot corners: A(%f, %f) B(%f, %f) C(%f, %f) D(%f, %f)", 
+                check_slot->GetApoint().x(), 
+                check_slot->GetApoint().y(), 
+                check_slot->GetBpoint().x(), 
+                check_slot->GetBpoint().y(), 
+                check_slot->GetCpoint().x(), 
+                check_slot->GetCpoint().y(), 
+                check_slot->GetDpoint().x(), 
+                check_slot->GetDpoint().y());
+
+
             if(check_slot->point_in_rect(obs_point3f)){
                 check_slot->lock_in_slot_ = 1;
             }
@@ -885,16 +901,20 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
         else if (obs.obsTyp != Fus::OBS_NULL){
             Eigen::Vector3f obs_point3f;
             obs_point3f << obs.obsCenter.x * 1000.0, obs.obsCenter.y * 1000.0, obs.obsCenter.z * 1000.0;
+            LOGD("Obs3f point: (%f, %f)",obs_point3f.x(), obs_point3f.y());
 
             //没找到车位
             if (slots_map_.empty()) {
                 return;
             }
+
+            for (auto& slot_pair : slots_map_) {
+                slot_pair.second->obs_in_slot_ = 0;
+            }
             
             //只有一个车位
             if (slots_map_.size() < 2) {
                 auto& slot = slots_map_.begin()->second;
-                slot->obs_in_slot_ = 0;  // **重置 obs_in_slot_**
                 if (slot->point_in_rect(obs_point3f)) {
                     slot->obs_in_slot_ = 1;
                 }
@@ -902,33 +922,66 @@ void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs){
                 return;
             }
 
-            //多个车位，找到最近的停车位
+            //多个车位，找到最近的停车位, 纯遍历
             point_t obs_point2f{obs_point3f.x(), obs_point3f.y()};
-            auto nearest_index = slots_tree_->nearest_index(obs_point2f);
-            LOGD("OBS find in slot, nearest_index: %zu", nearest_index);
-            //每次重置 obs_in_slot_
+            LOGD("Obs2f point: (%f, %f)",obs_point2f[0],obs_point2f[1]);
+
+            float min_distance = std::numeric_limits<float>::max();
+            Kalman_filterPtr check_slot = nullptr;
             for (auto& slot_pair : slots_map_) {
-                slot_pair.second->obs_in_slot_ = 0;
+                auto& slot = slot_pair.second;
+                Eigen::Vector3f slot_center = slot->GetSlotCenter();
+                float distance = std::hypot(obs_point2f[0] - slot_center.x(), obs_point2f[1] - slot_center.y());
+
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    check_slot = slot;
+                }
             }
-            //每次计算obs_in_slot_
-            auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
-            LOGD("point_in_rect(obs_point3f): %d",check_slot->point_in_rect(obs_point3f));
-            if (check_slot->point_in_rect(obs_point3f)) {
+            if (!check_slot) {
+                LOGD("No valid slot found for OBS.");
+                return;
+            }
+            LOGD("OBS nearest slot found at center: (%f, %f), distance: %f", 
+                check_slot->GetSlotCenter().x(), check_slot->GetSlotCenter().y(), min_distance);
+
+            // //多个车位，找到最近的停车位, KD-Tree
+            // auto nearest_index = slots_tree_->nearest_index(obs_point2f);
+            // LOGD("OBS find in slot, nearest_index: %zu", nearest_index);
+            // //每次重置 obs_in_slot_
+            // for (auto& slot_pair : slots_map_) {
+            //     slot_pair.second->obs_in_slot_ = 0;
+            // }
+            // //每次计算obs_in_slot_
+            // auto& check_slot = slots_map_.at(slots_remap_.at(nearest_index));
+
+            LOGD("OBS Check slot corners: A(%f, %f) B(%f, %f) C(%f, %f) D(%f, %f)", 
+                check_slot->GetApoint().x(), 
+                check_slot->GetApoint().y(), 
+                check_slot->GetBpoint().x(), 
+                check_slot->GetBpoint().y(), 
+                check_slot->GetCpoint().x(), 
+                check_slot->GetCpoint().y(), 
+                check_slot->GetDpoint().x(), 
+                check_slot->GetDpoint().y());
+            bool is_in_slot = check_slot->point_in_rect(obs_point3f);
+            LOGD("point_in_rect(obs_point3f): %d",is_in_slot);
+            if (is_in_slot) {
                 check_slot->obs_in_slot_ = 1;
             }
             LOGD("obs_in_slot_: %d",check_slot->obs_in_slot_);
 
-            //在obs_point2f周围的半径2000mm内搜索其他邻近停车位
-            auto neighbor_indexes = slots_tree_->neighborhood_indices(obs_point2f, 2000);
-            for (const auto& index : neighbor_indexes) {
-                if (index == nearest_index) continue;
+            // //在obs_point2f周围的半径2000mm内搜索其他邻近停车位
+            // auto neighbor_indexes = slots_tree_->neighborhood_indices(obs_point2f, 2000);
+            // for (const auto& index : neighbor_indexes) {
+            //     if (index == nearest_index) continue;
        
-                auto& check_slot = slots_map_.at(slots_remap_.at(index));
-                if (check_slot->point_in_rect(obs_point3f)) {
-                    check_slot->obs_in_slot_ = 1;
-                }
-                LOGD("Near obs_in_slot_: %d",check_slot->obs_in_slot_);
-            }
+            //     auto& check_slot = slots_map_.at(slots_remap_.at(index));
+            //     if (check_slot->point_in_rect(obs_point3f)) {
+            //         check_slot->obs_in_slot_ = 1;
+            //     }
+            //     LOGD("Near obs_in_slot_: %d",check_slot->obs_in_slot_);
+            // }
         }
 
         // 会被邻近障碍物错误清除OBSINSLOT=1

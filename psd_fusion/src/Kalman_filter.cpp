@@ -567,8 +567,8 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
 
     // 更新车位角点信息
     auto center = GetSlotCenter();
-    auto len_cur = GetSlotLength() * 1000;
-    auto wid_cur = GetSlotWidth() * 1000;
+    auto len_cur = GetSlotLength() * 666;
+    auto wid_cur = GetSlotWidth() * 666;
  
     long_dir_ << std::cos(GetSlotLongAngle()), std::sin(GetSlotLongAngle()),0.0;
     wide_dir_ << std::cos(GetSlotWideAngle()), std::sin(GetSlotWideAngle()),0.0;

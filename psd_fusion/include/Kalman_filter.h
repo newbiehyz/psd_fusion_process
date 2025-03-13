@@ -135,8 +135,8 @@ class Kalman_filter{
     Eigen::Vector3f GetSlotWideDir() const { return wide_dir_; };
     float GetSlotLongAngle() const { return slot_state_[SLOT_ALPHA]; };
     float GetSlotWideAngle() const { return slot_state_[SLOT_BETA]; };
-    float GetSlotLength() const { return slot_state_[SLOT_LENGTH] * 0.66667; };
-    float GetSlotWidth() const { return slot_state_[SLOT_WIDTH] * 0.66667; };
+    float GetSlotLength() const { return slot_state_[SLOT_LENGTH]; };
+    float GetSlotWidth() const { return slot_state_[SLOT_WIDTH]; };
     float GetMinDist2EgoCar() const { return min_dist2egocar_; }
     uint32_t GetLatestFrameId() const { return lastest_frame_id_; }
 
