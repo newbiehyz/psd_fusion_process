@@ -242,31 +242,48 @@ bool Kalman_filter::point_in_slot(const Eigen::Vector3f& point,
 };
 
 
-// 0312 原始判断
+// 0313 根据类型改变长方向短方向 
 bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const{
-    // 创建旋转矩阵（将长方向对齐到 x 轴）
-    Eigen::Matrix3f rotation;
-    rotation.col(0) = long_dir_.normalized();  // 长方向单位向量
-    rotation.col(1) = wide_dir_.normalized();  // 宽方向单位向量
-    
-    // 逆旋转矩阵
-    Eigen::Matrix3f rotation_inv = rotation.transpose(); // 旋转矩阵是正交矩阵，其逆等于转置
-    
-    Eigen::Vector3f center;
-    center<<slot_state_[0],slot_state_[1], 0.0;
-    // 将点转换到矩形的局部坐标系
-    Eigen::Vector3f local_point = (rotation_inv * (point - center));
-    
-    // 检查点是否在矩形的范围内
-    float half_length = slot_state_[SLOT_LENGTH] / 2.0f * 1000;
-    float half_width = slot_state_[SLOT_WIDTH] / 2.0f * 1000;
+    if (this->type_ == SLOT_TYPE::VERTICALSLOT){
+        // 创建旋转矩阵（将长方向对齐到 x 轴）
+        Eigen::Matrix3f rotation;
+        rotation.col(0) = long_dir_.normalized();  // 长方向单位向量
+        rotation.col(1) = wide_dir_.normalized();  // 宽方向单位向量
+        // 逆旋转矩阵
+        Eigen::Matrix3f rotation_inv = rotation.transpose(); // 旋转矩阵是正交矩阵，其逆等于转置
+        Eigen::Vector3f center;
+        center<<slot_state_[0],slot_state_[1], 0.0;
+        // 将点转换到矩形的局部坐标系
+        Eigen::Vector3f local_point = (rotation_inv * (point - center));
+        LOGD("[POINTINRECT]local_point: (%f,%f)",local_point.x(),local_point.y());
+        // 检查点是否在矩形的范围内
+        float half_length = slot_state_[SLOT_LENGTH] / 2.0f * 1000;
+        float half_width = slot_state_[SLOT_WIDTH] / 2.0f * 1000;
+        LOGD("[POINTINRECT] length: %f, width: %f",half_length*2, half_width*2);
 
-    if (this->type_ == SLOT_TYPE::PARALLELSLOT){
+        return (local_point.x() >= -half_width && local_point.x() <= half_width &&
+                local_point.y() >= -half_length  && local_point.y() <= half_length);
+    }else{
+        // 创建旋转矩阵（将长方向对齐到 x 轴）
+        Eigen::Matrix3f rotation;
+        rotation.col(0) = wide_dir_.normalized();  // 长方向单位向量
+        rotation.col(1) = long_dir_.normalized();  // 宽方向单位向量
+        // 逆旋转矩阵
+        Eigen::Matrix3f rotation_inv = rotation.transpose(); // 旋转矩阵是正交矩阵，其逆等于转置
+        Eigen::Vector3f center;
+        center<<slot_state_[0],slot_state_[1], 0.0;
+        // 将点转换到矩形的局部坐标系
+        Eigen::Vector3f local_point = (rotation_inv * (point - center));
+        LOGD("[POINTINRECT]local_point: (%f,%f)",local_point.x(),local_point.y());
+        // 检查点是否在矩形的范围内
+        float half_length = slot_state_[SLOT_LENGTH] / 2.0f * 1000;
+        float half_width = slot_state_[SLOT_WIDTH] / 2.0f * 1000;
         std::swap(half_length, half_width);
-    }
+        LOGD("[POINTINRECT] length: %f, width: %f",half_length*2, half_width*2);
 
-    return (local_point.x() >= -half_width && local_point.x() <= half_width &&
-            local_point.y() >= -half_length  && local_point.y() <= half_length);
+        return (local_point.x() >= -half_width && local_point.x() <= half_width &&
+                local_point.y() >= -half_length  && local_point.y() <= half_length);
+    }
 }
 
 
