@@ -71,7 +71,7 @@ class Kalman_filter{
         float tight_center_coeff = 9e-4f;
         float tight_angle_coeff = 1e-6f;
         float tight_length_coeff = 1e-4f;
-        float loose_center_coeff = 9e-8f;
+        float loose_center_coeff = 9e-4f;
         float loose_angle_coeff = 4e-6f;
         float loose_length_coeff = 4e-4f;
 
@@ -135,8 +135,8 @@ class Kalman_filter{
     Eigen::Vector3f GetSlotWideDir() const { return wide_dir_; };
     float GetSlotLongAngle() const { return slot_state_[SLOT_ALPHA]; };
     float GetSlotWideAngle() const { return slot_state_[SLOT_BETA]; };
-    float GetSlotLength() const { return slot_state_[SLOT_LENGTH]; };
-    float GetSlotWidth() const { return slot_state_[SLOT_WIDTH]; };
+    float GetSlotLength() const { return slot_state_[SLOT_LENGTH] * 0.66667; };
+    float GetSlotWidth() const { return slot_state_[SLOT_WIDTH] * 0.66667; };
     float GetMinDist2EgoCar() const { return min_dist2egocar_; }
     uint32_t GetLatestFrameId() const { return lastest_frame_id_; }
 
