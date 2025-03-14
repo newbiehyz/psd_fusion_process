@@ -112,6 +112,7 @@ public:
     void UpdateVechiclePose(const padVehiclePose& pose_global);
     void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus);
     // void CalStopDisAndLoc(apaSlotInfo psdmoutput, Fus::PkEmapObs &empobs, float &stopdis, int &stoplocation, int &lockinslot, int &obsinslot);
+    void print_checkslot_corners(const Kalman_filterPtr &checkslot);
     void CalStopDisAndLoc(const Fus::PkEmapObs &empobs);
     void adjustRectOrder(apaSlotInfo &rect);
     bool isLeftOfOrigin(const apaSlotInfo rect);

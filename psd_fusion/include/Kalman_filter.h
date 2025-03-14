@@ -56,6 +56,10 @@ enum class SLOT_TYPE : uint8_t {
 enum class SLOT_SOURCE : uint8_t { VISUAL = 0, SPACING = 1, FUSED = 2 };
 enum class SLOT_STATUS : uint8_t { TENTATIVE = 0, CONFIRMED = 1, DELETE = 2 };
 
+//前向定义，保证Kalman_filterPtr可用
+class Kalman_filter;
+typedef std::shared_ptr<Kalman_filter> Kalman_filterPtr;
+
 class Kalman_filter{
  public:
     struct InnerSlotParameters {
@@ -170,12 +174,15 @@ class Kalman_filter{
         lastest_frame_id_ = new_frame_id;
     }
 
-    bool point_in_slot(const Eigen::Vector3f& point,
-                       float ratio_thr = 0.5) const;
+    Kalman_filterPtr checkslot_to_carCoor(const padVehiclePose latest_dr, const Kalman_filterPtr &checkslot) const;
+    bool point_in_slot(const Eigen::Vector3f& point, float ratio_thr = 0.5) const;
     bool point_in_rect(const Eigen::Vector3f& point) const;
     void Update(const QuadInfoPtr& quad_info, const padVehiclePose& m_vehicle_pose);
     void adjustRectOrder(bool isleft, std::array<Eigen::Vector3f, 4> cornerswolrd);
 
+    void SetCornersWorld(const std::array<Eigen::Vector3f, 4>& corners) {
+        corners_world_ = corners;
+    }
 
 
 
