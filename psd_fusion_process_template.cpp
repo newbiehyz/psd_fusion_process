@@ -433,9 +433,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
     // **************************outputSlot_FUSED优化：去除内部重叠车位
     slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
-
-
-
+    // PSD_FusionModuleIFrunable.removeOverlappingSlots(outputSlot_FUSED);
 
     
     // *****************************outputSlot_FUSED优化：以单帧结果修复

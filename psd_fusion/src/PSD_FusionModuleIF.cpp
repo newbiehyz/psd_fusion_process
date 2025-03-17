@@ -831,7 +831,42 @@ void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
     }
 }
 
-
+void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED) {
+    auto &slots = outputSlotFUSED.slots_in_cur_frame;
+    auto &worldRects = outputSlotFUSED.WorldoutRect;
+    std::vector<bool> toDelete(slots.size(), false);
+    
+    for (size_t i = 0; i < slots.size(); ++i) {
+        if (toDelete[i]) continue;
+        
+        Vertexes vert1;
+        changePoint(slots[i], vert1);
+        
+        for (size_t j = i + 1; j < slots.size(); ++j) {
+            if (toDelete[j]) continue;
+            
+            Vertexes vert2;
+            changePoint(slots[j], vert2);
+            
+            double iou = iouEx(vert1, vert2);
+            if (iou > 0.1) {
+                toDelete[j] = true; // 删除索引较大的矩形
+            }
+        }
+    }
+    
+    // 删除标记为 true 的矩形，并同步删除 WorldoutRect 中对应的矩形
+    size_t writeIndex = 0;
+    for (size_t i = 0; i < slots.size(); ++i) {
+        if (!toDelete[i]) {
+            slots[writeIndex] = slots[i];
+            worldRects[writeIndex] = worldRects[i];
+            ++writeIndex;
+        }
+    }
+    slots.resize(writeIndex);
+    worldRects.resize(writeIndex);
+}
 
 
 

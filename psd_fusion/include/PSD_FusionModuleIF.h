@@ -118,6 +118,8 @@ public:
     void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus);
     void SlotTypeCorrect(apaSlotListInfo &outputSlotVIS);
 	void StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS);
+    void removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED);
+
     
     apaSlotListInfo GetOutputSlot()
     {
