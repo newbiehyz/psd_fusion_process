@@ -109,17 +109,16 @@ public:
 
     virtual bool Destroy();
 
-    void UpdateVechiclePose(const padVehiclePose& pose_global);
-    void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus);
-    // void CalStopDisAndLoc(apaSlotInfo psdmoutput, Fus::PkEmapObs &empobs, float &stopdis, int &stoplocation, int &lockinslot, int &obsinslot);
-
-    // void CalStopDisAndLoc(const Fus::PkEmapObs &empobs);
-	void CalStopDisAndLoc(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS);
     bool point_in_rect(const Eigen::Vector3f &point, const apaSlotInfo &slot);
-    void adjustRectOrder(apaSlotInfo &rect);
     bool isLeftOfOrigin(const apaSlotInfo rect);
+    void adjustRectOrder(apaSlotInfo &rect);
 	void obs_transform2world(const padVehiclePose& loc_pose,Eigen::Vector3f& obs_point3f);
 
+    void UpdateVechiclePose(const padVehiclePose& pose_global);
+    void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus);
+    void SlotTypeCorrect(apaSlotListInfo &outputSlotVIS);
+	void StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS);
+    
     apaSlotListInfo GetOutputSlot()
     {
         // std::lock_guard<std::mutex> ld(m_output_slot_mutex);

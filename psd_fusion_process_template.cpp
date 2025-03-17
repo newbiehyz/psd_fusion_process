@@ -384,10 +384,17 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
-    LOGD("Without LOCK/OBS VISSLOTSLIST:")
+
+    LOGD("Without SlotTypeCorrect VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-    PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get,outputSlot_VIS);
-    LOGD("After LOCK/OBS VISSLOTSLIST:")
+    PSD_FusionModuleIFrunable.SlotTypeCorrect(outputSlot_VIS);
+    LOGD("After SlotTypeCorrect VISSLOTSLIST:")
+    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+
+    LOGD("Without StopperLockOBS VISSLOTSLIST:")
+    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+    PSD_FusionModuleIFrunable.StopperLockOBS(obs_info_get,outputSlot_VIS);
+    LOGD("After StopperLockOBS VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
         

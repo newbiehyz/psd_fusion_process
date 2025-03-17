@@ -287,8 +287,40 @@ bool PSD_FusionModuleIF::point_in_rect(const Eigen::Vector3f &point, const apaSl
 }
 
 
+void PSD_FusionModuleIF::SlotTypeCorrect(apaSlotListInfo &outputSlotVIS) {
+    // 根据AB边距离判断水平/垂直车位（不更改斜列车位类型）
+    int slot_type_AB_thr = 3000 * 3000;
+    for (auto &psd_m_output_relative : outputSlotVIS.slots_in_cur_frame) {
+        int pointA_x4type = psd_m_output_relative.rectInfo.pt[0].x;
+        int pointA_y4type = psd_m_output_relative.rectInfo.pt[1].y;
+        int pointB_x4type = psd_m_output_relative.rectInfo.pt[0].x;
+        int pointB_y4type = psd_m_output_relative.rectInfo.pt[1].y;
+        int AB_length4type = (pointA_x4type - pointB_x4type) * (pointA_x4type - pointB_x4type) +
+                             (pointA_y4type - pointB_y4type) * (pointA_y4type - pointB_y4type);
+        if (AB_length4type > slot_type_AB_thr) {
+            psd_m_output_relative.rectInfo.PStype = 1;
+        } else {
+            psd_m_output_relative.rectInfo.PStype = 0;
+        }
+    }
 
-void PSD_FusionModuleIF::CalStopDisAndLoc(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS) {
+    for (auto &psd_m_output_global : outputSlotVIS.WorldoutRect) {
+        int pointA_x4type_g = psd_m_output_global.rectInfo.pt[0].x;
+        int pointA_y4type_g = psd_m_output_global.rectInfo.pt[1].y;
+        int pointB_x4type_g = psd_m_output_global.rectInfo.pt[0].x;
+        int pointB_y4type_g = psd_m_output_global.rectInfo.pt[1].y;
+        int AB_length4type_g = (pointA_x4type_g - pointB_x4type_g) * (pointA_x4type_g - pointB_x4type_g) +
+                             (pointA_y4type_g - pointB_y4type_g) * (pointA_y4type_g - pointB_y4type_g);
+        if (AB_length4type_g > slot_type_AB_thr) {
+            psd_m_output_global.rectInfo.PStype = 1;
+        } else {
+            psd_m_output_global.rectInfo.PStype = 0;
+        }
+    }
+}
+
+
+void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS) {
     for (auto &obs : empobs.pkEmapObs) {
         if (obs.obsTyp == Fus::OBS_WHEELSTOP){
             POINT_I wheelstop_dis, point_a, point_b, point_c, point_d;
