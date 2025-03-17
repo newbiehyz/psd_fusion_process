@@ -506,7 +506,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 
 
-    // part5 输出。下游：VCU，APAHANDLE, PERCEPTION, VCU, PLANNING，STATEMACHINE
+    // part5 输出。下游：VCU，APAHANDLE, PERCEPTION, VCU, PLANNING，STATEMACHINE, USS
 
 
     //***********************************VCU 发送车位列表
@@ -583,6 +583,25 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     // }
 
 
+                    // VCU显示障碍物
+                    psd2vcu.FusionSlotInfo[i].stopperInSlot = psd_m_output.rectInfo.StopperInSlot;
+                    //地锁
+                    psd2vcu.FusionSlotInfo[i].lockInSlot = psd_m_output.rectInfo.LockInSlot;
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.LockInSlot == 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 3;
+                        psd2vcu.FusionSlotInfo[i].lockLocation = 3;
+                    }
+                    //锥桶/禁停牌
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.OBSInSlot == 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 2;
+                    }
+                    //车
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.OBSInSlot != 1 && psd_m_output.rectInfo.LockInSlot != 1 && psd_m_output.rectInfo.StopperInSlot != 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 1;
+                    }
+
+
+
 
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
@@ -644,6 +663,26 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     // }else {
                     //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                     // }
+
+                    // VCU显示障碍物
+                    psd2vcu.FusionSlotInfo[i].stopperInSlot = psd_m_output.rectInfo.StopperInSlot;
+                    //地锁
+                    psd2vcu.FusionSlotInfo[i].lockInSlot = psd_m_output.rectInfo.LockInSlot;
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.LockInSlot == 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 3;
+                        psd2vcu.FusionSlotInfo[i].lockLocation = 3;
+                    }
+                    //锥桶/禁停牌
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.OBSInSlot == 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 2;
+                    }
+                    //车
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.OBSInSlot != 1 && psd_m_output.rectInfo.LockInSlot != 1 && psd_m_output.rectInfo.StopperInSlot != 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 1;
+                    }
+
+
+
 
 
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
@@ -863,6 +902,22 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     }else {
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                     }
+                    // VCU显示障碍物
+                    psd2vcu.FusionSlotInfo[i].stopperInSlot = psd_m_output.rectInfo.StopperInSlot;
+                    //地锁
+                    psd2vcu.FusionSlotInfo[i].lockInSlot = psd_m_output.rectInfo.LockInSlot;
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.LockInSlot == 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 3;
+                        psd2vcu.FusionSlotInfo[i].lockLocation = 3;
+                    }
+                    //锥桶/禁停牌
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.OBSInSlot == 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 2;
+                    }
+                    //车
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.OBSInSlot != 1 && psd_m_output.rectInfo.LockInSlot != 1 && psd_m_output.rectInfo.StopperInSlot != 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 1;
+                    }
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
                 }
@@ -884,6 +939,22 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
                     }else {
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                    }
+                    // VCU显示障碍物
+                    psd2vcu.FusionSlotInfo[i].stopperInSlot = psd_m_output.rectInfo.StopperInSlot;
+                    //地锁
+                    psd2vcu.FusionSlotInfo[i].lockInSlot = psd_m_output.rectInfo.LockInSlot;
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.LockInSlot == 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 3;
+                        psd2vcu.FusionSlotInfo[i].lockLocation = 3;
+                    }
+                    //锥桶/禁停牌
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.OBSInSlot == 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 2;
+                    }
+                    //车
+                    if (psd_m_output.rectInfo.iSodType == 1 && psd_m_output.rectInfo.OBSInSlot != 1 && psd_m_output.rectInfo.LockInSlot != 1 && psd_m_output.rectInfo.StopperInSlot != 1){
+                        psd2vcu.FusionSlotInfo[i].slotInnerObType = 1;
                     }
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
@@ -1288,6 +1359,20 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     psd2statemachine.aps_apaHighlightSlot);
     
     S2S_MCore_Bridge_SetSigStatusDecFusionInput(&psd2statemachine);
+
+    //***********************************USS 发送目标车位ID
+    short targetUssSlotID = 0;
+
+    if (final_ID >= 10000) {
+        if (final_ID > SHRT_MAX) {  // SHRT_MAX 来自 <limits.h>
+            LOGD("Error: final_ID exceeds short range!\n");
+        } else {
+            targetUssSlotID = (short) final_ID;
+            S2S_MCore_Bridge_SetSigtargetUssSlotLabel(&targetUssSlotID);
+        }
+    }
+
+
 
 
 

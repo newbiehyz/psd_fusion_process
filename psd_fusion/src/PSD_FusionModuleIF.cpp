@@ -377,6 +377,9 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
 
             // 如果 Stopper 在车位中，则计算距离和位置更新
             if (is_in_slot) {
+                outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperInSlot = 1;
+                outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperInSlot = 1;
+
                 wheelstop_dis.x = obs_point3f.x();
                 wheelstop_dis.y = obs_point3f.y();
                 point_a.x = nearest_slot.rectInfo.pt[0].x;
