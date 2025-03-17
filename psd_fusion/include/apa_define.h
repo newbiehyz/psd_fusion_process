@@ -160,7 +160,7 @@ struct QuadInfo {
     Eigen::Vector2f wide_dir_world = Eigen::Vector2f::Zero();
 
     float length_world, width_world;
-    // unsigned char slot_type;
+    unsigned char slot_type;
     uint32_t occupy;
     uint32_t material;
 };

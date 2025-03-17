@@ -174,15 +174,12 @@ class Kalman_filter{
         lastest_frame_id_ = new_frame_id;
     }
 
-    Kalman_filterPtr checkslot_to_carCoor(const padVehiclePose latest_dr, const Kalman_filterPtr &checkslot) const;
+
     bool point_in_slot(const Eigen::Vector3f& point, float ratio_thr = 0.5) const;
     bool point_in_rect(const Eigen::Vector3f& point) const;
     void Update(const QuadInfoPtr& quad_info, const padVehiclePose& m_vehicle_pose);
     void adjustRectOrder(bool isleft, std::array<Eigen::Vector3f, 4> cornerswolrd);
 
-    void SetCornersWorld(const std::array<Eigen::Vector3f, 4>& corners) {
-        corners_world_ = corners;
-    }
 
 
 

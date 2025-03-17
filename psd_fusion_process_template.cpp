@@ -330,7 +330,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03121624, continously update obs_in_slot and slot_type, stablize outputSlot while is_Still");
+    LOGD("PSD Version: 03170951 emos7/8 obs_in_slot with outputslot_Fused");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -383,47 +383,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     // part3 算法
     PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
-    PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
-
     LOGD("Without LOCK/OBS VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-    // 根据障碍物位置，判断是否在车位内，判断限位器在车位边，做占用判断
-    for (auto &psd_m_output: outputSlot_VIS.slots_in_cur_frame){
-        //地锁打开/锥筒在车位内，控制占用
-        if (psd_m_output.rectInfo.LockInSlot == 1 || psd_m_output.rectInfo.OBSInSlot == 1){
-            LOGD("LOCKINSLOT / OBSINSLOT, SET ISODTYPE TO 1")
-            psd_m_output.rectInfo.iSodType = 1;
-        }
-        
-        //限位器在垂直车位AB边，在水平车位BC边，控制占用
-        if (psd_m_output.rectInfo.PStype == 0 && psd_m_output.rectInfo.StopperLocation == 1){
-            LOGD("chuizhi type, AB side, SET ISODTYPE TO 1")
-            psd_m_output.rectInfo.iSodType = 1;
-        }
-        if (psd_m_output.rectInfo.PStype == 1 && psd_m_output.rectInfo.StopperLocation == 2){
-            LOGD("pingxing type, BC side, SET ISODTYPE TO 1")
-            psd_m_output.rectInfo.iSodType = 1;
-        }
-        LOGD("[OBS] Slot %d, (%d,%d) (%d,%d) (%d,%d) (%d,%d), StopperDistance:%f,StopperLocation:%d,StopInSlot:%d,LockInSlot:%d,OBSInSlot:%d,SOD:%d",
-                                psd_m_output.rectInfo.label,
-                                psd_m_output.rectInfo.pt[0].x,
-                                psd_m_output.rectInfo.pt[0].y,
-                                psd_m_output.rectInfo.pt[1].x,
-                                psd_m_output.rectInfo.pt[1].y,
-                                psd_m_output.rectInfo.pt[2].x,
-                                psd_m_output.rectInfo.pt[2].y,
-                                psd_m_output.rectInfo.pt[3].x,
-                                psd_m_output.rectInfo.pt[3].y,
-                                psd_m_output.rectInfo.StopperDistance,
-                                psd_m_output.rectInfo.StopperLocation,
-                                psd_m_output.rectInfo.StopperInSlot,
-                                psd_m_output.rectInfo.LockInSlot,
-                                psd_m_output.rectInfo.OBSInSlot,
-                                psd_m_output.rectInfo.iSodType)
-    }
+    PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info_get,outputSlot_VIS);
     LOGD("After LOCK/OBS VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+
         
     if (DEBUG == true){
         filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"/userdata/psd/VISapaSlotListInfo.json");
@@ -459,11 +425,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     // }
 
     // **************************outputSlot_FUSED优化：去除内部重叠车位
-
-
-
-
     slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
+
+
+
+
     
     // *****************************outputSlot_FUSED优化：以单帧结果修复
     apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
@@ -537,8 +503,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 
     //***********************************VCU 发送车位列表
-
-
     //非GUIDANCE时，显示整个车位列表
     if (apa_status != 5){
         LOGD("The apa staus is not 5!");

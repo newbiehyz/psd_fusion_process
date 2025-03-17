@@ -228,34 +228,6 @@ void Kalman_filter::extend_line(const QuadInfoPtr& quad_info,
     
 };
 
-// 先把世界坐标系转到自车坐标系，再判断自车坐标系下的点是否在矩形内
-Kalman_filterPtr Kalman_filter::checkslot_to_carCoor(const padVehiclePose latest_dr, const Kalman_filterPtr &checkslot) const {
-    
-    Kalman_filterPtr local_checkslot = std::make_shared<Kalman_filter>(*checkslot);
-    
-    const auto& yaw = latest_dr.yaw;
-    float cos_yaw = std::cos(yaw);
-    float sin_yaw = std::sin(yaw);
-    float Vx = latest_dr.coord.x;
-    float Vy = latest_dr.coord.y;
-    
-    // 获取世界坐标角点
-    std::array<Eigen::Vector3f, 4> world_corners = checkslot->GetCornersWorld();
-    
-    // 变换四个角点到自车坐标系
-    std::array<Eigen::Vector3f, 4> local_corners;
-    for (size_t i = 0; i < 4; ++i) {
-        float dx = world_corners[i].x() - Vx;
-        float dy = world_corners[i].y() - Vy;
-        float local_x = dx * cos_yaw + dy * sin_yaw;
-        float local_y = -dx * sin_yaw + dy * cos_yaw;
-        local_corners[i] = Eigen::Vector3f(local_x, local_y, 0.0);
-    }
-    
-    local_checkslot->SetCornersWorld(local_corners);
-    return local_checkslot;
-}
-
 
 bool Kalman_filter::point_in_slot(const Eigen::Vector3f& point,
                               float ratio_thr) const {
