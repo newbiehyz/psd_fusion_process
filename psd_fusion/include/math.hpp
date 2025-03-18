@@ -90,8 +90,9 @@ namespace math{
         }
 
         for (int i = 0; i < closest_spots.size(); ++i){
-            LOGD("closet spot no.%d, (%f,%f), (%f,%f), (%f,%f), (%f,%f)",
+            LOGD("closet spot no.%d, ID: %d, (%f,%f), (%f,%f), (%f,%f), (%f,%f)",
             i+1,
+            closest_spots[i].slotLabel,
             closest_spots[i].pt[0].x,
             closest_spots[i].pt[0].y,
             closest_spots[i].pt[1].x,
