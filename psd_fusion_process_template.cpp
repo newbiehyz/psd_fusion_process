@@ -5,6 +5,7 @@
 #include "math.hpp"
 #include "GetInput.hpp"
 #include "utils.h"
+#include "psd2vcu.h"
 
 // ***************************标定量
 #define VEHICLE_LENGTH 5259.9 
@@ -49,6 +50,7 @@ slotfusion fusionslot;
 StatusDecFusionInput psd2statemachine;
 Sfus::Sfsuion2DecPlan psd2planning; //动态车位列表
 Sfus::FusionSlotInfovector psd2vcu;
+Sfus::FusionSlotInfovector prevPsd2vcu; //上一帧的psd2vcu，优化显示用
 Fsm::FusionSlotInfo2Location psd2location;
 
 int HMI_select_ID = 0; //HMI只发1s。HMI_select是HMI发的ID，
@@ -943,6 +945,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
         // }
         if (apa_status != 1){
             LOGD("[RECOMMENDSELECTID] HMI %d, VCU %d, final select %d, recommend: %d, final_ID %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID,RECOMMEND_ID,final_ID);
+            
+            //psd2vcu显示优化
+            PSD2VCUSlotsFilter(psd2vcu, prevPsd2vcu);
+            prevPsd2vcu = psd2vcu;
+            
             EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
         }
     }
