@@ -332,7 +332,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03181515 emos7/8 occupy MEAN filter, remove overlapped slots, displayID fix");
+    LOGD("PSD Version: 03181515 emos7/8 occupy MEAN filter, remove overlapped slots, displayID fix, psd2vcu opti");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
