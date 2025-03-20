@@ -332,7 +332,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03181515 emos7/8 occupy MEAN filter, remove overlapped slots, displayID fix, psd2vcu opti");
+    LOGD("PSD Version: 03200953 emos7/8 ENABLE: occupy realtime update, psd2vcu opti, displayID fix, remove overlapped slots, ISCONFIRMED commented. DISABLE:");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -742,41 +742,91 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 
             // 根据推荐/点选状态，改变VCU车位列表status
-            int closest_slots_size = std::min(10, static_cast<int>(cloest_slots.size()));
+            int closest_slots_size = std::min(4, static_cast<int>(cloest_slots.size()));
 
             LOGD("RECOMMEND condition: final_select_ID: %d, is_Still: %d",final_select_ID,is_Still);
             //点选与推荐的四种情况
             if (final_select_ID == 0 && is_Still) { //当没有点选ID且静止，使用推荐ID
                 LOGD("RECOMMEND1: still, Start Recommend!")
-                int near_ID = 1;
+                
+                // 0319 版本3
+                //第一次推荐
+                if (!recommend_exist){
+                    for (int i = 0; i < closest_slots_size; ++i) {
+                        for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) { //在PSD2VCU里找对应的车位
 
-                // 版本1
-                // 处理最近的车位
-                if (!cloest_slots.empty()) {
-                    for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) {
-                        if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[0].slotLabel) {
-                            if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3) { // 确保车位是available的
-                                psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7; // 设置为推荐车位
-                                RECOMMEND_ID = psd2vcu.FusionSlotInfo[icnt].slotLabel;
-                                recommend_exist = true;
-                                break;
+                            if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[i].slotLabel) {  //找到
+                                
+                                //推荐最近的车位
+                                if (i == 0){ 
+                                    psd2vcu.FusionSlotInfo[i].slotStatusType = 7; 
+                                    RECOMMEND_ID = psd2vcu.FusionSlotInfo[i].slotLabel;
+                                }else{
+                                        psd2vcu.FusionSlotInfo[icnt].displayLabel = i + 1;
+                                }
                             }
                         }
                     }
                 }
+                recommend_exist = true;
 
-                // 处理剩下的四个最近车位
-                for (int i = 1; i < closest_slots_size && i <= 4; ++i) {
-                    for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) {
-                        if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[i].slotLabel) {
-                            if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3) { // 确保车位是available的
-                                psd2vcu.FusionSlotInfo[icnt].displayLabel = near_ID;
-                                near_ID++;
-                                break;
-                            }
-                        }
-                    }
-                }
+                // // 0318 推荐车位正常，但无displayID
+                // int near_ID = 1;
+                // for (int i = 0; i < closest_slots_size; ++i) {
+                //     for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) { //在PSD2VCU里找对应的车位
+
+                //         if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[i].slotLabel && recommend_exist == false) {  //找到
+
+                //             if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 4){ //跳过占用车位
+                //                 continue;
+                //             }
+
+                //             if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3 && !recommend_exist) { //非占用 且不存在推荐车位
+                //                 psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7; 
+                //                 RECOMMEND_ID = psd2vcu.FusionSlotInfo[icnt].slotLabel;
+                //                 recommend_exist = true;
+                //             }
+                //             else if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3 && recommend_exist && near_ID <= 4){ //非占用 且已存在推荐车位。走不到这条else
+                //                 psd2vcu.FusionSlotInfo[icnt].displayLabel = near_ID;
+                //                 near_ID++;
+                //             }
+                //         }
+                //     }
+                // }
+
+
+
+
+                // // 版本1
+                // // 处理最近的车位
+                // if (!cloest_slots.empty()) {
+                //     for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) {
+                //         if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[0].slotLabel) {
+                //             if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3) { // 确保车位是available的
+                //                 psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7; // 设置为推荐车位
+                //                 RECOMMEND_ID = psd2vcu.FusionSlotInfo[icnt].slotLabel;
+                //                 recommend_exist = true;
+                //                 break;
+                //             }
+                //         }
+                //     }
+                // }
+
+                // // 处理剩下的四个最近车位
+                // for (int i = 1; i < closest_slots_size && i <= 4; ++i) {
+                //     for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) {
+                //         if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[i].slotLabel) {
+                //             if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3) { // 确保车位是available的
+                //                 psd2vcu.FusionSlotInfo[icnt].displayLabel = near_ID;
+                //                 near_ID++;
+                //                 break;
+                //             }
+                //         }
+                //     }
+                // }
+
+
+
 
                 // // 版本2
                 // // 获取第一个最近的车位
@@ -818,36 +868,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                 //     }
                 // }
 
-
-
-
-
-
-
-
-
-                // 0318 推荐车位正常，但无displayID
-                // for (int i = 0; i < closest_slots_size; ++i) {
-                //     for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) { //在PSD2VCU里找对应的车位
-
-                //         if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[i].slotLabel && recommend_exist == false) {  //找到
-
-                //             if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 4){ //跳过占用车位
-                //                 continue;
-                //             }
-
-                //             if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3 && !recommend_exist) { //非占用 且不存在推荐车位
-                //                 psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7; 
-                //                 RECOMMEND_ID = psd2vcu.FusionSlotInfo[icnt].slotLabel;
-                //                 recommend_exist = true;
-                //             }
-                //             else if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3 && recommend_exist && near_ID <= 4){ //非占用 且已存在推荐车位
-                //                 psd2vcu.FusionSlotInfo[icnt].displayLabel = near_ID;
-                //                 near_ID++;
-                //             }
-                //         }
-                //     }
-                // }
+                
 
                 // 推荐车位作为final_ID
                 final_ID = RecommendSelectID(final_select_ID,RECOMMEND_ID);

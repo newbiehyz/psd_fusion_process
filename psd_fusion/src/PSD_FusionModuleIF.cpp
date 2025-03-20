@@ -647,10 +647,14 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 Eigen::Vector3d pose{m_vehicle_pose.coord.x, m_vehicle_pose.coord.y, m_vehicle_pose.yaw};
                 Eigen::Vector3f diff = pose.cast<float>() - slot_existance->GetSlotCenter();
                 float dist = diff.head<2>().norm();
-                if (slot_existance->IsConfiremd() &&
-                    dist > slot_existance->GetMinDist2EgoCar()) {
+                if (slot_existance->IsConfiremd()) {
                     continue;
                 }
+                // // 0320原版
+                // if (slot_existance->IsConfiremd() &&
+                //     dist > slot_existance->GetMinDist2EgoCar()) {
+                //     continue;
+                // }
                 // 已经存在与之对应的车位，用角点信息进行更新
                 slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
                 slot_existance->Update(quad,m_vehicle_pose);
