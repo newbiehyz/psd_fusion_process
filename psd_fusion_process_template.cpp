@@ -1365,9 +1365,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
                     psd2planning.SfusionSrchSlots[k].slotType = Sfus::SLOTTYP_OBL;
                 }
                 //*******************
-                if (psd2planning.targetSlot.slotCorners.cornerB.y - psd2planning.targetSlot.slotCorners.cornerA.y > 4000){
-                    psd2planning.targetSlot.slotType = Sfus::SLOTTYP_PARA; //超声波车位给unknown，做个保护
-                }
                 psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
                 if (final_ID >= 1000 && final_ID < 10000){
                     psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;

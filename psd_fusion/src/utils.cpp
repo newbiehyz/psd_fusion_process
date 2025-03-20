@@ -74,7 +74,7 @@ void LogSlotInfo(const apaSlotListInfo& slots, const std::string& slotType) {
                  psd_m_output.rectInfo.pt[3].x,
                  psd_m_output.rectInfo.pt[3].y);
         } else if (slotType == "FUSIONSLOTS") {
-            LOGD("[%s] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, Material: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+            LOGD("[%s RESTRUCT] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, Material: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
                  slotType.c_str(),
                  slots.slots_in_cur_frame.size(),
                  psd_m_output.rectInfo.label,
