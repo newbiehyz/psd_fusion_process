@@ -500,7 +500,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03222010 emos9 release. ENABLE: slottype fix, occupy realtime update, displayID fix, remove overlapped slots. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 03222210 emos9 release. ENABLE: slottype fix, occupy realtime update, displayID fix, remove overlapped slots. DISABLE: psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 

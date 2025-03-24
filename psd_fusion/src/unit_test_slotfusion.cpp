@@ -1002,33 +1002,33 @@ void TimeTrigger_Timer50(){
     dr_pose.DRStatus = dr_data["DRStatus"];
     dr_pose.timeStamp = dr_data["timeStamp"];
 
-    //Get obs info
-    if (!obs_dataloaded){
-        std::string filepath = (parentPath / "ObsInfo.json").string();
-        loadAllData(filepath, allObsData);
-        obs_dataloaded = true;
-    }
-    static size_t currentOBSIndex = 0;
-    if(currentOBSIndex >= allObsData.size()){
-        // std::cout<<"所有数据已处理完毕"<<std::endl;
-        return;
-    }
-    const auto &obs_data = allObsData[currentOBSIndex];
+    // //Get obs info
+    // if (!obs_dataloaded){
+    //     std::string filepath = (parentPath / "ObsInfo.json").string();
+    //     loadAllData(filepath, allObsData);
+    //     obs_dataloaded = true;
+    // }
+    // static size_t currentOBSIndex = 0;
+    // if(currentOBSIndex >= allObsData.size()){
+    //     // std::cout<<"所有数据已处理完毕"<<std::endl;
+    //     return;
+    // }
+    // const auto &obs_data = allObsData[currentOBSIndex];
 
     Fus::PkEmapObs obs_info;
-    const auto& obs_info_array = obs_data["PkEmapObs"];
-    for (int obs_index = 0; obs_index < 50; ++obs_index){
-        const auto & obs_info_array_json = obs_info_array[obs_index];
-        obs_info.pkEmapObs[obs_index].FrameIndex = obs_info_array_json["FrameIndex"];
-        obs_info.pkEmapObs[obs_index].obsID = obs_info_array_json["obsID"];
-        obs_info.pkEmapObs[obs_index].obsTyp = obs_info_array_json["obsTyp"];
-        obs_info.pkEmapObs[obs_index].obsCenter.x = obs_info_array_json["obsCenter"]["x"];
-        obs_info.pkEmapObs[obs_index].obsCenter.y = obs_info_array_json["obsCenter"]["y"];
-        obs_info.pkEmapObs[obs_index].obsCenter.z = obs_info_array_json["obsCenter"]["z"];
-        obs_info.pkEmapObs[obs_index].age = obs_info_array_json["age"];
+    // const auto& obs_info_array = obs_data["PkEmapObs"];
+    // for (int obs_index = 0; obs_index < 50; ++obs_index){
+    //     const auto & obs_info_array_json = obs_info_array[obs_index];
+    //     obs_info.pkEmapObs[obs_index].FrameIndex = obs_info_array_json["FrameIndex"];
+    //     obs_info.pkEmapObs[obs_index].obsID = obs_info_array_json["obsID"];
+    //     obs_info.pkEmapObs[obs_index].obsTyp = obs_info_array_json["obsTyp"];
+    //     obs_info.pkEmapObs[obs_index].obsCenter.x = obs_info_array_json["obsCenter"]["x"];
+    //     obs_info.pkEmapObs[obs_index].obsCenter.y = obs_info_array_json["obsCenter"]["y"];
+    //     obs_info.pkEmapObs[obs_index].obsCenter.z = obs_info_array_json["obsCenter"]["z"];
+    //     obs_info.pkEmapObs[obs_index].age = obs_info_array_json["age"];
 
-        std::cout<<"FrameIndex:"<<obs_info.pkEmapObs[obs_index].FrameIndex<<std::endl;
-    }
+    //     std::cout<<"FrameIndex:"<<obs_info.pkEmapObs[obs_index].FrameIndex<<std::endl;
+    // }
 
 
 
@@ -1188,7 +1188,7 @@ void TimeTrigger_Timer50(){
 
 
     // ********************************Calculate OBS new
-    PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info);
+    // PSD_FusionModuleIFrunable.CalStopDisAndLoc(obs_info);
 
     // *******************************Load original USS data 
     // Get USS info
@@ -1381,8 +1381,8 @@ void TimeTrigger_Timer50(){
     currentIndex++;
     currentDRIndex++;
     // currentVisionIndex++;
-    currentUSSIndex++;
-    currentOBSIndex++;
+    // currentUSSIndex++;
+    // currentOBSIndex++;
 }
 
 int main(int argc, char **argv) {
