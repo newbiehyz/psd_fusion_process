@@ -526,8 +526,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     // search_interrupt = getInput.search_interrupt; //@TODO VC9 RELEASE
 
     parkout_flag = IsParkOut(apa_status);
+    LOGD("[PARKOUT] flag: %d", parkout_flag);
     is_Still = IsStill(dr_pose,previous_dr_pose);
-    LOGD("[Still] is Still: %d", is_Still);
+    LOGD("[STILL] is Still: %d", is_Still);
 
     // 时间同步 1500ms
     if (!CheckTimeSync(current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp)) {
@@ -1478,7 +1479,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     //***********************************PLANNING 发送目标车位
     //check psd output to planning(2 target slot)
     //拿到目标车位ID后，发送目标车位信息给planning
-    if (final_ID > 0 && apa_status != 5){ //进入guidance后固定目标车位角点
+    if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
         for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
             if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){
                 psd2planning.targetSlot.slotCorners.cornerA.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x; 
@@ -1526,45 +1527,49 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
         }
     }
-    if (apa_status == 1 || apa_status == 6 || apa_status == 7 || apa_status == 0){
-        memset(&psd2planning, 0, sizeof(Sfus::Sfsuion2DecPlan));
-        EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
-    }else{
-        LOGD("[PSD2PLANNING] APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
-        apa_status,
-        psd2planning.targetSlot.slotType,
-        psd2planning.targetSlot.slotSource,
-        psd2planning.targetSlot.stopper_Dis,
-        psd2planning.targetSlot.slotCorners.cornerA.x,
-        psd2planning.targetSlot.slotCorners.cornerA.y,
-        psd2planning.targetSlot.slotCorners.cornerB.x,
-        psd2planning.targetSlot.slotCorners.cornerB.y,
-        psd2planning.targetSlot.slotCorners.cornerC.x,
-        psd2planning.targetSlot.slotCorners.cornerC.y,
-        psd2planning.targetSlot.slotCorners.cornerD.x,
-        psd2planning.targetSlot.slotCorners.cornerD.y);
-        EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
-
+    if (parkout_flag != 1){
+        if (apa_status == 1 || apa_status == 6 || apa_status == 7 || apa_status == 0){
+            memset(&psd2planning, 0, sizeof(Sfus::Sfsuion2DecPlan));
+            EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
+        }
+        else{
+            LOGD("[PSD2PLANNING] APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            apa_status,
+            psd2planning.targetSlot.slotType,
+            psd2planning.targetSlot.slotSource,
+            psd2planning.targetSlot.stopper_Dis,
+            psd2planning.targetSlot.slotCorners.cornerA.x,
+            psd2planning.targetSlot.slotCorners.cornerA.y,
+            psd2planning.targetSlot.slotCorners.cornerB.x,
+            psd2planning.targetSlot.slotCorners.cornerB.y,
+            psd2planning.targetSlot.slotCorners.cornerC.x,
+            psd2planning.targetSlot.slotCorners.cornerC.y,
+            psd2planning.targetSlot.slotCorners.cornerD.x,
+            psd2planning.targetSlot.slotCorners.cornerD.y);
+            EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
+        }
     }
+    
 
 
     //***********************************PERCEPTION 发送目标车位
     // 拿到目标车位后，发送给planning的目标车位信息，再给perception
-    Sfus::SfusionSlots psd2perception;
-    memset(&psd2perception, 0, sizeof(Sfus::SfusionSlots));
-    if (psd2planning.targetSlot.slotCorners.cornerA.x != 0){
-        psd2perception.slotCorners.cornerA.x = psd2planning.targetSlot.slotCorners.cornerA.x;
-        psd2perception.slotCorners.cornerA.y = psd2planning.targetSlot.slotCorners.cornerA.y;
-        psd2perception.slotCorners.cornerB.x = psd2planning.targetSlot.slotCorners.cornerB.x;
-        psd2perception.slotCorners.cornerB.y = psd2planning.targetSlot.slotCorners.cornerB.y;
-        psd2perception.slotCorners.cornerC.x = psd2planning.targetSlot.slotCorners.cornerC.x;
-        psd2perception.slotCorners.cornerC.y = psd2planning.targetSlot.slotCorners.cornerC.y;
-        psd2perception.slotCorners.cornerD.x = psd2planning.targetSlot.slotCorners.cornerD.x;
-        psd2perception.slotCorners.cornerD.y = psd2planning.targetSlot.slotCorners.cornerD.y;
-        psd2perception.slotType = psd2planning.targetSlot.slotType;
-        psd2perception.slotSource = psd2planning.targetSlot.slotSource;
-        psd2perception.timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
-    }
+    if (parkout_flag != 1){
+        Sfus::SfusionSlots psd2perception;
+        memset(&psd2perception, 0, sizeof(Sfus::SfusionSlots));
+        if (psd2planning.targetSlot.slotCorners.cornerA.x != 0){
+            psd2perception.slotCorners.cornerA.x = psd2planning.targetSlot.slotCorners.cornerA.x;
+            psd2perception.slotCorners.cornerA.y = psd2planning.targetSlot.slotCorners.cornerA.y;
+            psd2perception.slotCorners.cornerB.x = psd2planning.targetSlot.slotCorners.cornerB.x;
+            psd2perception.slotCorners.cornerB.y = psd2planning.targetSlot.slotCorners.cornerB.y;
+            psd2perception.slotCorners.cornerC.x = psd2planning.targetSlot.slotCorners.cornerC.x;
+            psd2perception.slotCorners.cornerC.y = psd2planning.targetSlot.slotCorners.cornerC.y;
+            psd2perception.slotCorners.cornerD.x = psd2planning.targetSlot.slotCorners.cornerD.x;
+            psd2perception.slotCorners.cornerD.y = psd2planning.targetSlot.slotCorners.cornerD.y;
+            psd2perception.slotType = psd2planning.targetSlot.slotType;
+            psd2perception.slotSource = psd2planning.targetSlot.slotSource;
+            psd2perception.timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
+        }
         LOGD("[PSD2PERCEPTION] timestamp: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
         psd2perception.timeStamp,
         apa_status,
@@ -1578,7 +1583,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         psd2perception.slotCorners.cornerC.y,
         psd2perception.slotCorners.cornerD.x,
         psd2perception.slotCorners.cornerD.y);
-    EMC_psd_fusion_process_SetFieldSfusionSlots(psd2perception);
+        EMC_psd_fusion_process_SetFieldSfusionSlots(psd2perception);
+    }
+    
 
 
     //***********************************STATEMACHINE 交互
