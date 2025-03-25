@@ -500,7 +500,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03222210 emos9 release. ENABLE: slottype fix, occupy realtime update, displayID fix, remove overlapped slots. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 03241837 emos9 add psd2vcu timestamp. ENABLE: slottype fix, occupy realtime update, displayID fix, remove overlapped slots. DISABLE: psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -771,6 +771,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
+                    psd2vcu.FusionSlotInfo[i].timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
                 }
                 //右侧
                 else{
@@ -853,6 +854,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
+                    psd2vcu.FusionSlotInfo[i].timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
                 }
                 i++;
             }
@@ -1092,7 +1094,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
         // For Test VCU slot lists
         for (int icnt = 0; icnt < slotlist_size; icnt++){
-            LOGD("[PSD2VCUSLOTLIST] apa_status: %d, slotsize: %d, TYPE: %d, STATUS: %d, ID: %d, displayID: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            LOGD("[PSD2VCUSLOTLIST] apa_status: %d, slotsize: %d, TYPE: %d, STATUS: %d, ID: %d, displayID: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f), timestamp: %llu",
             apa_status,
             slotlist_size,
             psd2vcu.FusionSlotInfo[icnt].slotType,
@@ -1106,7 +1108,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2vcu.FusionSlotInfo[icnt].pt[2].x,
             psd2vcu.FusionSlotInfo[icnt].pt[2].y,
             psd2vcu.FusionSlotInfo[icnt].pt[3].x,
-            psd2vcu.FusionSlotInfo[icnt].pt[3].y);
+            psd2vcu.FusionSlotInfo[icnt].pt[3].y,
+            psd2vcu.FusionSlotInfo[icnt].timeStamp);
         }
         // // 固定点选车位
         // for (int i = 0; i < slotlist_size; i++) {
@@ -1178,6 +1181,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     }
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
+                    psd2vcu.FusionSlotInfo[i].timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
                 }
                 //右侧
                 else{
@@ -1216,6 +1220,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     }
                     psd2vcu.FusionSlotInfo[i].backInAvailableFlag = 1;
                     psd2vcu.FusionSlotInfo[i].parkInHeadInSoftButtonCurrentValue = 1;
+                    psd2vcu.FusionSlotInfo[i].timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
                 }
 
                 // // 点选车位VCU显示， 作为点选flag，下个版本有新接口后更换
@@ -1228,7 +1233,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
         }
         for (int i = 0; i < slotlist_size; i++){
-            LOGD("[PSD2VCUSLOTLIST] IN GUIDANCE, Slot#%d, type: %d, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            LOGD("[PSD2VCUSLOTLIST] IN GUIDANCE, Slot#%d, type: %d, (%f,%f) (%f,%f) (%f,%f) (%f,%f), timestamp: %llu",
             psd2vcu.FusionSlotInfo[i].slotLabel,
             psd2vcu.FusionSlotInfo[i].slotStatusType,
             psd2vcu.FusionSlotInfo[i].pt[0].x,
@@ -1238,7 +1243,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2vcu.FusionSlotInfo[i].pt[2].x,
             psd2vcu.FusionSlotInfo[i].pt[2].y,
             psd2vcu.FusionSlotInfo[i].pt[3].x,
-            psd2vcu.FusionSlotInfo[i].pt[3].y);
+            psd2vcu.FusionSlotInfo[i].pt[3].y,
+            psd2vcu.FusionSlotInfo[i].timeStamp);
         }
         EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
 
