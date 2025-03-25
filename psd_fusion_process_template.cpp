@@ -500,7 +500,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03251101 emos9 fix isNeedSingleframe2Update outputslot_fused order. ENABLE: occupy realtime update. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 03251433 emos9 fix isNeedSingleframe2Update outputslot_fused order. ENABLE: occupy realtime update. DISABLE: psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
