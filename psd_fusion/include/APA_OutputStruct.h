@@ -144,6 +144,8 @@ struct SApaPSRect
 
 	int iMaterial;				 //车位下的地面材质，0其他，1草砖，2机械
 
+	int NotToRelease; 			 //不应该被释放的车位（入口边过窄）,1为不应该被释放，0为被释放
+
 	SApaPSRect()
 	{
 		iSceneType			= E_SCENE_DEFAULT;
@@ -168,6 +170,7 @@ struct SApaPSRect
 		OBSInSlot			= 0;
 
 		iMaterial	 		= 0;
+		NotToRelease		= 0;
 
 		for(int i = 0; i < RECTPointNum; i++)
 		{

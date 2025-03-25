@@ -500,7 +500,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03251433 emos9 fix isNeedSingleframe2Update outputslot_fused order. ENABLE: occupy realtime update. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 03252006 emos9 add NotToRelease(2000,9500), fix isNeedSingleframe2Update outputslot_fused order. ENABLE: occupy realtime update. DISABLE: psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -564,12 +564,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
 
+    //类型修正
     LOGD("Without SlotTypeCorrect VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
     PSD_FusionModuleIFrunable.SlotTypeCorrect(outputSlot_VIS);
     LOGD("After SlotTypeCorrect VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
+    //限位块、地锁、其他障碍物
     LOGD("Without StopperLockOBS VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
     PSD_FusionModuleIFrunable.StopperLockOBS(obs_info_get,outputSlot_VIS);
@@ -627,6 +629,18 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
         }
     }
+
+    // *****************************outputSlot_FUSED优化：标记入口边过窄的车位，用于不释放
+    double AB_threshold = 2000.0;
+    double faraway_threshold = 9500.0;
+
+    LOGD("Without markNotToReleaseSlot FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_FUSED,AB_threshold,faraway_threshold);
+    LOGD("After markNotToReleaseSlot FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+
+
     //******************************
 
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
@@ -724,7 +738,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     else if (psd_m_output.rectInfo.iSodType != 1 && psd_m_output.rectInfo.label != RECOMMEND_ID){
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                     }
-
                     // // 0228ride临时占用判断：车头越过车位后才开始算占用非占用
                     // if (psd2vcu.FusionSlotInfo[i].pt[0].x >= -4.5){
                     //     psd2vcu.FusionSlotInfo[i].slotStatusType = 4;  // 被占用
@@ -750,6 +763,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     // }else {
                     //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                     // }
+
+                    // Unavailable 车位判断
+                    if (psd_m_output.rectInfo.NotToRelease == 1){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
+                    }
 
 
                     // VCU显示障碍物
@@ -805,9 +823,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     else if (psd_m_output.rectInfo.iSodType != 1 && psd_m_output.rectInfo.label != RECOMMEND_ID){
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                     }
-
-
-
                     // // 0228ride临时占用判断：车头越过车位后才开始算占用非占用
                     // if (psd2vcu.FusionSlotInfo[i].pt[0].x > -4.5){
                     //     psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
@@ -831,6 +846,16 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     // }else {
                     //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                     // }
+
+
+                    // Unavailable 车位判断
+                    if (psd_m_output.rectInfo.NotToRelease == 1){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
+                    }
+
+
+
+
 
                     // VCU显示障碍物
                     psd2vcu.FusionSlotInfo[i].stopperInSlot = psd_m_output.rectInfo.StopperInSlot;
@@ -929,7 +954,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) { 
                             if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[i].slotLabel) {  
 
-                                if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 4){ //跳过占用车位
+                                if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 4 || psd2vcu.FusionSlotInfo[icnt].slotStatusType == 6){ //跳过占用,unavailable车位
                                     continue;
                                 }
 
@@ -1037,7 +1062,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     if (psd2vcu.FusionSlotInfo[i].slotStatusType == 4) { //占用的保持占用
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
                     }
-                    else { //不占用的回到available
+                    else if (psd2vcu.FusionSlotInfo[i].slotStatusType == 6){ //unavailable的保持unavailable
+                        psd2vcu.FusionSlotInfo[i].slotStatusType == 6;
+                    }
+                    else { //剩下的回到available
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                     }
                 }
@@ -1063,7 +1091,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
                     }
-                    //剩下的非选中车位，不占用的回到available
+                    //剩下的非选中车位，unavailable的保持unavailable
+                    else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 6) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6; // 设置为unavailable状态
+                    }
+                    //剩下的非选中车位，不占用,不unavailable的回到available
                     else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                     }
@@ -1085,6 +1117,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2vcu.FusionSlotInfo[i].displayLabel = 0;
                     if (psd2vcu.FusionSlotInfo[i].slotStatusType == 4) { //占用的保持占用
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
+                    }
+                    else if (psd2vcu.FusionSlotInfo[i].slotStatusType == 6){ //unavailable的保持unavailable
+                        psd2vcu.FusionSlotInfo[i].slotStatusType == 6;
                     }
                     else { //不占用的回到available
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态

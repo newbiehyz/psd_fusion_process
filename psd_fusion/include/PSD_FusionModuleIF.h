@@ -120,6 +120,9 @@ public:
     void SlotTypeCorrect(apaSlotListInfo &outputSlotVIS);
 	void StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS);
     void removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED);
+    void markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, double ABThreshold, double originDistThreshold);
+
+
 
     
     apaSlotListInfo GetOutputSlot()

@@ -894,7 +894,34 @@ void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED
     worldRects.resize(writeIndex);
 }
 
+// 计算两点之间的欧氏距离
+inline double distance(const POINT_I& p1, const POINT_I& p2) {
+    return std::sqrt(static_cast<double>((p1.x - p2.x) * (p1.x - p2.x) + 
+                                         (p1.y - p2.y) * (p1.y - p2.y)));
+}
 
+// 标记不应被释放的车位
+void PSD_FusionModuleIF::markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, double ABThreshold, double originDistThreshold) {
+    size_t slotCount = std::min(outputSlotFUSED.slots_in_cur_frame.size(),
+                                 outputSlotFUSED.WorldoutRect.size());
+
+    for (size_t i = 0; i < slotCount; ++i) {
+        auto& curFrameSlot = outputSlotFUSED.slots_in_cur_frame[i];
+        auto& worldSlot = outputSlotFUSED.WorldoutRect[i];
+
+        const POINT_I& pt0 = curFrameSlot.rectInfo.pt[0];
+        const POINT_I& pt1 = curFrameSlot.rectInfo.pt[1];
+
+        double edgeLength = distance(pt0, pt1);
+        double distToOrigin0 = distance(pt0, POINT_I(0, 0));
+        double distToOrigin1 = distance(pt1, POINT_I(0, 0));
+
+        if (edgeLength <= ABThreshold && (distToOrigin0 >= originDistThreshold || distToOrigin1 >= originDistThreshold)) {
+            curFrameSlot.rectInfo.NotToRelease = 1;
+            worldSlot.rectInfo.NotToRelease = 1;
+        }
+    }
+}
 
 
 void PSD_FusionModuleIF::world2car(Eigen::Vector3f &pt){
