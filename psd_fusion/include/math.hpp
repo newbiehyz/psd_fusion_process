@@ -168,12 +168,12 @@ namespace math{
         single_slot_a.y = slot_list_b.rectInfo.pt[0].y;
         single_slot_b.x = slot_list_b.rectInfo.pt[1].x;
         single_slot_b.y = slot_list_b.rectInfo.pt[1].y;
-        // LOGD("single_frame slot compare: outputSlot_FUSED: (%d, %d), (%d, %d)",slot_a.x,slot_a.y,slot_b.x,slot_b.y);
-        // LOGD("single_frame slot compare: singleframe_local: (%d, %d), (%d, %d)",single_slot_a.x,single_slot_a.y,single_slot_b.x,single_slot_b.y);
+        LOGD("single_frame slot compare: outputSlot_FUSED: (%d, %d), (%d, %d)",slot_a.x,slot_a.y,slot_b.x,slot_b.y);
+        LOGD("single_frame slot compare: singleframe_local: (%d, %d), (%d, %d)",single_slot_a.x,single_slot_a.y,single_slot_b.x,single_slot_b.y);
 
         int threadhole_a = CalcDistance(slot_a, single_slot_a);
         int threadhole_b = CalcDistance(slot_b, single_slot_b);
-        // LOGD("single_frame slot compare: threadhole_a: %d, threadhole_b: %d",threadhole_a, threadhole_b);
+        LOGD("single_frame slot compare: threadhole_a: %d, threadhole_b: %d",threadhole_a, threadhole_b);
 
         // same slot
         if ((threadhole_a + threadhole_b) / 2 < 800){
@@ -182,4 +182,63 @@ namespace math{
             return false;
         }
     }
+
+    void adjustOutputSlotFusedRectOrder(apaSlotListInfo& slot_list_info)
+    {
+        for (auto& slot : slot_list_info.slots_in_cur_frame) {
+            // 将 rectInfo 的 4 个点转换为 Eigen::Vector3f
+            std::array<Eigen::Vector3f, 4> corners_world;
+            for (int i = 0; i < 4; ++i) {
+                corners_world[i] = Eigen::Vector3f(
+                    static_cast<float>(slot.rectInfo.pt[i].x),
+                    static_cast<float>(slot.rectInfo.pt[i].y),
+                    0.0f
+                );
+            }
+
+            // 计算车位中心点 x 坐标，判断是否在原点左侧
+            int center_x = 0;
+            for (int i = 0; i < 4; ++i) {
+                center_x += slot.rectInfo.pt[i].x;
+            }
+            center_x /= 4;
+            bool is_left = (center_x < 0);
+
+            // 调整角点顺序
+            // 按照 x 轴排序，先排左边的两个点，再排右边的两个点
+            std::sort(corners_world.begin(), corners_world.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+                return a.x() < b.x();
+            });
+
+            // 左侧两个点，右侧两个点
+            std::array<Eigen::Vector3f, 2> left = {corners_world[0], corners_world[1]};
+            std::array<Eigen::Vector3f, 2> right = {corners_world[2], corners_world[3]};
+
+            // 按 y 轴排序（y 值大的在前），确保 top 和 bottom
+            std::sort(left.begin(), left.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+                return a.y() > b.y();
+            });
+            std::sort(right.begin(), right.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+                return a.y() > b.y();
+            });
+
+            std::array<Eigen::Vector3f, 4> ordered;
+            if (is_left) {
+                // 左侧车位顺序：右下，右上，左上，左下
+                ordered = {right[1], right[0], left[0], left[1]}; // A, B, C, D
+            } else {
+                // 右侧车位顺序：左下，左上，右上，右下
+                ordered = {left[1], left[0], right[0], right[1]}; // A, B, C, D
+            }
+
+            // 写回 rectInfo.pt
+            for (int i = 0; i < 4; ++i) {
+                slot.rectInfo.pt[i].x = static_cast<int>(ordered[i].x());
+                slot.rectInfo.pt[i].y = static_cast<int>(ordered[i].y());
+            }
+        }
+    }
+
+
+
 }

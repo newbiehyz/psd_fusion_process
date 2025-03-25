@@ -500,7 +500,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03251101 emos9 add psd2vcu timestamp. ENABLE: slottype fix, occupy realtime update, displayID fix, remove overlapped slots. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 03251101 emos9 fix isNeedSingleframe2Update outputslot_fused order. ENABLE: occupy realtime update. DISABLE: psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -604,6 +604,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     // *****************************outputSlot_FUSED优化：以单帧结果修复
     apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
+    math::adjustOutputSlotFusedRectOrder(singleframe_local_slots);
     for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
         // LOGD("single_frame update! fused size:%d", outputSlot_FUSED.slots_in_cur_frame.size());
         // LOGD("single_frame update! singleframe_local_slots size:%d", singleframe_local_slots.slots_in_cur_frame.size());
@@ -614,8 +615,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 
                 PSD_FusionModuleIFrunable.shrink_quad(single_frame_slot);
                 for (int icnt = 0; icnt < 4; ++icnt){
-                    // LOGD("single_frame update! fused_slot(%d, %d)", slot.rectInfo.pt[icnt].x, slot.rectInfo.pt[icnt].y);
-                    // LOGD("single_frame update! single_slot(%d, %d)", single_frame_slot.rectInfo.pt[icnt].x, single_frame_slot.rectInfo.pt[icnt].y);
+                    LOGD("single_frame update! fused_slot(%d, %d)", slot.rectInfo.pt[icnt].x, slot.rectInfo.pt[icnt].y);
+                    LOGD("single_frame update! single_slot(%d, %d)", single_frame_slot.rectInfo.pt[icnt].x, single_frame_slot.rectInfo.pt[icnt].y);
 
                     slot.rectInfo.pt[icnt].x = single_frame_slot.rectInfo.pt[icnt].x;
                     slot.rectInfo.pt[icnt].y = single_frame_slot.rectInfo.pt[icnt].y;
@@ -1452,6 +1453,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         } else {
             psd2planning.SfusionSrchSlots[k].slotSource = Sfus::SLOTSRC_NULL;
         }
+        psd2planning.SfusionSrchSlots[k].stopper_Dis = psd_m_output.rectInfo.StopperDistance;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.x = psd_m_output.rectInfo.pt[0].x;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerA.y = psd_m_output.rectInfo.pt[0].y;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerB.x = psd_m_output.rectInfo.pt[1].x;
