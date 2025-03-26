@@ -347,7 +347,7 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
             // 将 Stopper 转换到世界坐标系
             Eigen::Vector3f obs_point3f;
             obs_point3f << obs.obsCenter.x * 1000.0, obs.obsCenter.y * 1000.0, obs.obsCenter.z * 1000.0;
-            LOGD("LOCK3f point: (%f, %f)", obs_point3f.x(), obs_point3f.y());
+            LOGD("Stopper3f point: (%f, %f)", obs_point3f.x(), obs_point3f.y());
 
             // 没找到车位
             if (outputSlotVIS.slots_in_cur_frame.empty()) {
@@ -380,7 +380,7 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
             }
 
             if (nearest_index == -1) {
-                LOGD("No valid slot found for OBS.");
+                LOGD("No valid slot found for Stopper.");
                 return;
             }
 
@@ -393,12 +393,13 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                  nearest_slot.rectInfo.pt[3].x, nearest_slot.rectInfo.pt[3].y);
 
             bool is_in_slot = point_in_rect(obs_point3f, nearest_slot);
-            LOGD("OBS nearest slot index: %d, in slot: %d", nearest_index, is_in_slot);
+            LOGD("Stopper nearest slot index: %d, in slot: %d", nearest_index, is_in_slot);
 
             // 如果 Stopper 在车位中，则计算距离和位置更新
             if (is_in_slot) {
                 outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperInSlot = 1;
                 outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperInSlot = 1;
+
 
                 wheelstop_dis.x = obs_point3f.x();
                 wheelstop_dis.y = obs_point3f.y();
@@ -668,11 +669,11 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 Eigen::Vector3f diff = pose.cast<float>() - slot_existance->GetSlotCenter();
                 float dist = diff.head<2>().norm();
 
-                // 0320不更新
-                // if (slot_existance->IsConfiremd()) {
-                //     continue;
-                // }
-                // 0320原版
+                // 0326不更新
+                if (dist < slot_existance->GetMinDist2EgoCar()) {
+                    slot_existance->SetMinDist2EgoCar(dist);
+                }
+                // 原版
                 if (slot_existance->IsConfiremd() &&
                     dist > slot_existance->GetMinDist2EgoCar()) {
                     continue;
@@ -917,6 +918,7 @@ void PSD_FusionModuleIF::markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, 
         double distToOrigin1 = distance(pt1, POINT_I(0, 0));
 
         if (edgeLength <= ABThreshold && (distToOrigin0 >= originDistThreshold || distToOrigin1 >= originDistThreshold)) {
+            LOGD("NotToRelease ACTIVE!")
             curFrameSlot.rectInfo.NotToRelease = 1;
             worldSlot.rectInfo.NotToRelease = 1;
         }

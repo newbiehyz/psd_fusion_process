@@ -500,7 +500,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03252006 emos9 add NotToRelease(2000,9500), fix isNeedSingleframe2Update outputslot_fused order. ENABLE: occupy realtime update. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 03261603 emos9 rewrite RECOMMEND, add ego2slotcenter. ENABLE: NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order, occupy realtime update. DISABLE: psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -935,59 +935,94 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             LOGD("cloest_slots size: %d",cloest_slots.size());
 
 
-            // *****************************************************0320 爆改版 BEGIN
-            // 维护全局变量，存储第一次计算的推荐车位和 displayLabel 车位
-            static int saved_RECOMMEND_ID = -1; // 存储 slotStatusType = 7 的车位
-            static std::vector<int> saved_displayLabels(4, -1); // 存储 displayLabel 车位的 ID
-
-            // 根据推荐/点选状态，改变VCU车位列表status
-            //点选与推荐的四种情况
+            // *****************************************************0326 重写版 BEGIN
             if (final_select_ID == 0 && is_Still) { //当没有点选ID且静止，使用推荐ID
                 LOGD("RECOMMEND1: still, Start Recommend!")
 
-                // // *************************************************************************0320 记忆版本
-                int closest_slots_size = std::min(5, static_cast<int>(cloest_slots.size()));
-                if (saved_RECOMMEND_ID == -1) {  
-                    LOGD("First-time recommendation, saving slot information!");
+                const int max_recommend_num = 3; //display设置为1，2，3
 
-                    for (int i = 0; i < closest_slots_size; ++i) {
-                        for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) { 
-                            if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[i].slotLabel) {  
-
-                                if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 4 || psd2vcu.FusionSlotInfo[icnt].slotStatusType == 6){ //跳过占用,unavailable车位
-                                    continue;
-                                }
-
-                                if (i == 0) { // 推荐最近的车位
-                                    psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7; 
-                                    saved_RECOMMEND_ID = psd2vcu.FusionSlotInfo[icnt].slotLabel; // 保存推荐车位 ID
-                                    RECOMMEND_ID = saved_RECOMMEND_ID;
-                                } 
-                                else if (i <= 4) { // 赋值 displayLabel
-                                    psd2vcu.FusionSlotInfo[icnt].displayLabel = i;
-                                    saved_displayLabels[i - 1] = psd2vcu.FusionSlotInfo[icnt].slotLabel; // 保存 displayLabel 车位 ID
-                                }
-                            }
+                // 步骤 1：设置 cloest_slots[0] 对应 slot 的 slotStatusType 为 7
+                if (!cloest_slots.empty()) {
+                    int targetLabel = cloest_slots[0].slotLabel;
+                    RECOMMEND_ID = targetLabel;
+                    for (int i = 0; i < psd2vcu.slotNum; ++i) {
+                        if (psd2vcu.FusionSlotInfo[i].slotLabel == targetLabel) {
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 7;
+                            break; // 只设置第一个推荐车位
                         }
                     }
                 }
-                else {  
-                    // 如果已经有推荐车位，不重新计算，而是继续沿用之前的值
-                    LOGD("Reusing saved slot recommendations!");
 
-                    for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) {
-                        if (psd2vcu.FusionSlotInfo[icnt].slotLabel == saved_RECOMMEND_ID) {  
-                            psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7; 
-                            RECOMMEND_ID = saved_RECOMMEND_ID;
-                        }
-                        for (int j = 0; j < 4; ++j) {  
-                            if (psd2vcu.FusionSlotInfo[icnt].slotLabel == saved_displayLabels[j]) {  
-                                psd2vcu.FusionSlotInfo[icnt].displayLabel = j + 1;  
-                            }
+                // 步骤 2：设置推荐车位的 displayLabel 从 1 到 max_recommend_num
+                for (int idx = 1; idx <= max_recommend_num && idx < cloest_slots.size(); ++idx) {
+                    int targetLabel = cloest_slots[idx].slotLabel;
+
+                    for (int i = 0; i < psd2vcu.slotNum; ++i) {
+                        if (psd2vcu.FusionSlotInfo[i].slotLabel == targetLabel) {
+                            psd2vcu.FusionSlotInfo[i].displayLabel = idx; // 从1开始编号
+                            break;
                         }
                     }
                 }
-                // *************************************************************************
+
+
+
+            // *****************************************************0326 重写版 END
+
+
+            // *****************************************************0320 爆改版 BEGIN
+            // // 维护全局变量，存储第一次计算的推荐车位和 displayLabel 车位
+            // static int saved_RECOMMEND_ID = -1; // 存储 slotStatusType = 7 的车位
+            // static std::vector<int> saved_displayLabels(4, -1); // 存储 displayLabel 车位的 ID
+
+            // // 根据推荐/点选状态，改变VCU车位列表status
+            // //点选与推荐的四种情况
+            // if (final_select_ID == 0 && is_Still) { //当没有点选ID且静止，使用推荐ID
+            //     LOGD("RECOMMEND1: still, Start Recommend!")
+
+            //     // // *************************************************************************0320 记忆版本
+            //     int closest_slots_size = std::min(5, static_cast<int>(cloest_slots.size()));
+            //     if (saved_RECOMMEND_ID == -1) {  
+            //         LOGD("First-time recommendation, saving slot information!");
+
+            //         for (int i = 0; i < closest_slots_size; ++i) {
+            //             for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) { 
+            //                 if (psd2vcu.FusionSlotInfo[icnt].slotLabel == cloest_slots[i].slotLabel) {  
+
+            //                     if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 4 || psd2vcu.FusionSlotInfo[icnt].slotStatusType == 6){ //跳过占用,unavailable车位
+            //                         continue;
+            //                     }
+
+            //                     if (i == 0) { // 推荐最近的车位
+            //                         psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7; 
+            //                         saved_RECOMMEND_ID = psd2vcu.FusionSlotInfo[icnt].slotLabel; // 保存推荐车位 ID
+            //                         RECOMMEND_ID = saved_RECOMMEND_ID;
+            //                     } 
+            //                     else if (i <= 4) { // 赋值 displayLabel
+            //                         psd2vcu.FusionSlotInfo[icnt].displayLabel = i;
+            //                         saved_displayLabels[i - 1] = psd2vcu.FusionSlotInfo[icnt].slotLabel; // 保存 displayLabel 车位 ID
+            //                     }
+            //                 }
+            //             }
+            //         }
+            //     }
+            //     else {  
+            //         // 如果已经有推荐车位，不重新计算，而是继续沿用之前的值
+            //         LOGD("Reusing saved slot recommendations!");
+
+            //         for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt) {
+            //             if (psd2vcu.FusionSlotInfo[icnt].slotLabel == saved_RECOMMEND_ID) {  
+            //                 psd2vcu.FusionSlotInfo[icnt].slotStatusType = 7; 
+            //                 RECOMMEND_ID = saved_RECOMMEND_ID;
+            //             }
+            //             for (int j = 0; j < 4; ++j) {  
+            //                 if (psd2vcu.FusionSlotInfo[icnt].slotLabel == saved_displayLabels[j]) {  
+            //                     psd2vcu.FusionSlotInfo[icnt].displayLabel = j + 1;  
+            //                 }
+            //             }
+            //         }
+            //     }
+            //     // *************************************************************************
 
 			    // // 0320 实时更新版本
                 // int closest_slots_size = std::min(5, static_cast<int>(cloest_slots.size()));
@@ -1051,7 +1086,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
             else if (final_select_ID == 0 && !is_Still) { //当没有点选ID且运动，保留RD原状态
                 LOGD("RECOMMEND2: not still, NO Recommend!")
-                saved_RECOMMEND_ID = -1;
+                // saved_RECOMMEND_ID = -1;
                 RECOMMEND_ID = 0;
                 final_select_ID = 0;
                 final_ID = 0;
@@ -1073,7 +1108,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
             else if (final_select_ID != 0 && is_Still) { //当有点选车位且静止，使用点选ID
                 LOGD("RECOMMEND3: still, Select!")
-                saved_RECOMMEND_ID = -1;
+                // saved_RECOMMEND_ID = -1;
                 RECOMMEND_ID = 0;
                 final_ID = final_select_ID;
                 already_has_recommend_slot = false;
@@ -1104,7 +1139,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
             else{ //当有点选车位且运动，清除所有ID。@TODO 前后距离超过一定值
                 LOGD("RECOMMEND4: no still, no recommend, no select")
-                saved_RECOMMEND_ID = -1;
+                // saved_RECOMMEND_ID = -1;
                 HMI_temp_ID = 0;
                 HMI_select_ID = 0;
                 VCU_select_ID_ON = 0;
@@ -1455,6 +1490,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             std::cout<<"die in planning and size is:"<< slotlist_size << std::endl;
             break;
         }
+
+        psd2planning.timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
         psd2planning.SfusionSrchSlots[k].slotID = psd_m_output.rectInfo.label;
         // *******************正逆鱼骨
         double ABx = psd_m_output.rectInfo.pt[1].x - psd_m_output.rectInfo.pt[0].x;
@@ -1518,7 +1555,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         k++;
     }
 
-
     //***********************************PLANNING 发送目标车位
     //check psd output to planning(2 target slot)
     //拿到目标车位ID后，发送目标车位信息给planning
@@ -1576,7 +1612,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
         }
         else{
-            LOGD("[PSD2PLANNING] APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            LOGD("[PSD2PLANNING] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            psd2planning.timeStamp,
             apa_status,
             psd2planning.targetSlot.slotType,
             psd2planning.targetSlot.slotSource,
@@ -1613,7 +1650,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2perception.slotSource = psd2planning.targetSlot.slotSource;
             psd2perception.timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
         }
-        LOGD("[PSD2PERCEPTION] timestamp: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+        LOGD("[PSD2PERCEPTION] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
         psd2perception.timeStamp,
         apa_status,
         psd2perception.slotType,
