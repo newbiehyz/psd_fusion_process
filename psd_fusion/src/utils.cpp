@@ -96,6 +96,66 @@ void LogSlotInfo(const apaSlotListInfo& slots, const std::string& slotType) {
     }
 }
 
+void LogWorldSlotInfo(const apaSlotListInfo& slots, const std::string& slotType) {
+    for (const auto& psd_m_output : slots.WorldoutRect) {
+        if (slotType == "ORIGIN VISSLOTS") {
+            LOGD("[%s World] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+                 slotType.c_str(),
+                 slots.WorldoutRect.size(),
+                 psd_m_output.rectInfo.label,
+                 psd_m_output.rectInfo.PStype,
+                 psd_m_output.rectInfo.iSodType,
+                 psd_m_output.rectInfo.StopperDistance,
+                 psd_m_output.rectInfo.StopperLocation,
+                 psd_m_output.rectInfo.pt[0].x,
+                 psd_m_output.rectInfo.pt[0].y,
+                 psd_m_output.rectInfo.pt[1].x,
+                 psd_m_output.rectInfo.pt[1].y,
+                 psd_m_output.rectInfo.pt[2].x,
+                 psd_m_output.rectInfo.pt[2].y,
+                 psd_m_output.rectInfo.pt[3].x,
+                 psd_m_output.rectInfo.pt[3].y);
+        } else if (slotType == "ORIGIN USSSLOTS") {
+            LOGD("[%s World] TOTAL SLOT NUM: %d, Slot#%d, type: %d, SOD: %d, DownSlotSOD: %d, iMinOtherSideDist: %d, iRoadEdgeDist: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+                 slotType.c_str(),
+                 slots.WorldoutRect.size(),
+                 psd_m_output.rectInfo.label,
+                 psd_m_output.rectInfo.PStype,
+                 psd_m_output.rectInfo.iSodType,
+                 psd_m_output.rectInfo.iDownSlotSOD,
+                 psd_m_output.rectInfo.iMinOtherSideDist,
+                 psd_m_output.rectInfo.iRoadEdgeDist,
+                 psd_m_output.rectInfo.pt[0].x,
+                 psd_m_output.rectInfo.pt[0].y,
+                 psd_m_output.rectInfo.pt[1].x,
+                 psd_m_output.rectInfo.pt[1].y,
+                 psd_m_output.rectInfo.pt[2].x,
+                 psd_m_output.rectInfo.pt[2].y,
+                 psd_m_output.rectInfo.pt[3].x,
+                 psd_m_output.rectInfo.pt[3].y);
+        } else if (slotType == "FUSIONSLOTS") {
+            LOGD("[%s World] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, Material: %d, NotToRelease: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+                 slotType.c_str(),
+                 slots.WorldoutRect.size(),
+                 psd_m_output.rectInfo.label,
+                 psd_m_output.rectInfo.PStype,
+                 psd_m_output.rectInfo.iSodType,
+                 psd_m_output.rectInfo.StopperDistance,
+                 psd_m_output.rectInfo.StopperLocation,
+                 psd_m_output.rectInfo.iMaterial,
+                 psd_m_output.rectInfo.NotToRelease,
+                 psd_m_output.rectInfo.pt[0].x,
+                 psd_m_output.rectInfo.pt[0].y,
+                 psd_m_output.rectInfo.pt[1].x,
+                 psd_m_output.rectInfo.pt[1].y,
+                 psd_m_output.rectInfo.pt[2].x,
+                 psd_m_output.rectInfo.pt[2].y,
+                 psd_m_output.rectInfo.pt[3].x,
+                 psd_m_output.rectInfo.pt[3].y);
+        }
+    }
+}
+
 void ClearSelectRecommendSlot(int& HMI_temp_ID, int& HMI_select_ID, int& VCU_select_ID_ON, int& final_select_ID, int& RECOMMEND_ID, int& final_ID, int apa_status) {
     HMI_temp_ID = 0;
     HMI_select_ID = 0;

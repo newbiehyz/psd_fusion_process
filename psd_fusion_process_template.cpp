@@ -502,7 +502,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03261927 emos9 add psd2control, rewrite RECOMMEND, add ego2slotcenter. ENABLE: NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order, occupy realtime update. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 03281934 emos9 add psd2control, rewrite RECOMMEND, add ego2slotcenter. ENABLE: NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order, occupy realtime update. DISABLE: psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -659,6 +659,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     // 输出USS FUSION车位列表
     LogSlotInfo(outputSlot_USS, "ORIGIN USSSLOTS");
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    LogWorldSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
 
 
