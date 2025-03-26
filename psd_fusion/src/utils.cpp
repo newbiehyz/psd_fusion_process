@@ -39,7 +39,7 @@ bool CheckRDFrameTimestamp(uint64_t currentTimestamp) {
 void LogSlotInfo(const apaSlotListInfo& slots, const std::string& slotType) {
     for (const auto& psd_m_output : slots.slots_in_cur_frame) {
         if (slotType == "ORIGIN VISSLOTS") {
-            LOGD("[%s] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+            LOGD("[%s] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, Stopper: (%d, %d) (%d, %d). (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
                  slotType.c_str(),
                  slots.slots_in_cur_frame.size(),
                  psd_m_output.rectInfo.label,
@@ -47,6 +47,10 @@ void LogSlotInfo(const apaSlotListInfo& slots, const std::string& slotType) {
                  psd_m_output.rectInfo.iSodType,
                  psd_m_output.rectInfo.StopperDistance,
                  psd_m_output.rectInfo.StopperLocation,
+                 psd_m_output.rectInfo.StopperX[0],
+                 psd_m_output.rectInfo.StopperY[0],
+                 psd_m_output.rectInfo.StopperX[1],
+                 psd_m_output.rectInfo.StopperY[1],
                  psd_m_output.rectInfo.pt[0].x,
                  psd_m_output.rectInfo.pt[0].y,
                  psd_m_output.rectInfo.pt[1].x,
@@ -74,7 +78,7 @@ void LogSlotInfo(const apaSlotListInfo& slots, const std::string& slotType) {
                  psd_m_output.rectInfo.pt[3].x,
                  psd_m_output.rectInfo.pt[3].y);
         } else if (slotType == "FUSIONSLOTS") {
-            LOGD("[%s] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, Material: %d, NotToRelease: %d, (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+            LOGD("[%s] TOTAL SLOT NUM: %d, Slot#%d, type: %d, occ: %d, StopDis: %f, StopLoc: %d, Material: %d, NotToRelease: %d, ParkInSlot: %d, Stopper: (%d, %d) (%d, %d). (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
                  slotType.c_str(),
                  slots.slots_in_cur_frame.size(),
                  psd_m_output.rectInfo.label,
@@ -84,6 +88,11 @@ void LogSlotInfo(const apaSlotListInfo& slots, const std::string& slotType) {
                  psd_m_output.rectInfo.StopperLocation,
                  psd_m_output.rectInfo.iMaterial,
                  psd_m_output.rectInfo.NotToRelease,
+                 psd_m_output.rectInfo.ParkInSlot,
+                 psd_m_output.rectInfo.StopperX[0],
+                 psd_m_output.rectInfo.StopperY[0],
+                 psd_m_output.rectInfo.StopperX[1],
+                 psd_m_output.rectInfo.StopperY[1],
                  psd_m_output.rectInfo.pt[0].x,
                  psd_m_output.rectInfo.pt[0].y,
                  psd_m_output.rectInfo.pt[1].x,

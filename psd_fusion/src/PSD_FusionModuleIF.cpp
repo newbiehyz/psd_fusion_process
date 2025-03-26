@@ -345,6 +345,7 @@ void PSD_FusionModuleIF::SlotTypeCorrect(apaSlotListInfo &outputSlotVIS) {
 void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS) {
     for (auto &obs : empobs.pkEmapObs) {
         if (obs.obsTyp == Fus::OBS_WHEELSTOP){
+            LOGD("Processing Stopper obsID: %d", obs.obsID);
             POINT_I wheelstop_dis, point_a, point_b, point_c, point_d;
             // 将 Stopper 转换到世界坐标系
             Eigen::Vector3f obs_point3f;
@@ -388,7 +389,9 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
 
             // 检查 Stopper 是否在最近车位中
             auto &nearest_slot = outputSlotVIS.slots_in_cur_frame[nearest_index];
-            LOGD("Nearest slot corners: A(%d, %d) B(%d, %d) C(%d, %d) D(%d, %d)", 
+            LOGD("Nearest slot ID: %d, ParkInSlot: %d, A(%d, %d) B(%d, %d) C(%d, %d) D(%d, %d)", 
+                 nearest_slot.rectInfo.label,
+                 nearest_slot.rectInfo.ParkInSlot,
                  nearest_slot.rectInfo.pt[0].x, nearest_slot.rectInfo.pt[0].y,
                  nearest_slot.rectInfo.pt[1].x, nearest_slot.rectInfo.pt[1].y,
                  nearest_slot.rectInfo.pt[2].x, nearest_slot.rectInfo.pt[2].y,
@@ -402,6 +405,7 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                 
                 //最近车位是目标车位的话，车位属性添加坐标值
                 if (outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.ParkInSlot == 1){
+                    LOGD("Stopper is in target slot (final_ID slot).");
                     auto& rectInfo = outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo;
 
                     bool foundExisting = false;
@@ -413,6 +417,7 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                             rectInfo.StopperX[i] = static_cast<int>(obs_point3f.x());
                             rectInfo.StopperY[i] = static_cast<int>(obs_point3f.y());
                             foundExisting = true;
+                            LOGD("Updated existing Stopper slot[%d] with obsID: %d", i, obs.obsID);
                             break;
                         }
                         // 记录第一个空槽
@@ -426,6 +431,8 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                         rectInfo.StopperX[emptyIdx] = static_cast<int>(obs_point3f.x());
                         rectInfo.StopperY[emptyIdx] = static_cast<int>(obs_point3f.y());
                         rectInfo.StopperCount++;
+                        LOGD("Inserted new Stopper at slot[%d]: ID=%d, X=%d, Y=%d",
+                             emptyIdx, obs.obsID, rectInfo.StopperX[emptyIdx], rectInfo.StopperY[emptyIdx]);
                     }
 
                     // 同步更新到 WorldoutRect
@@ -973,6 +980,8 @@ void PSD_FusionModuleIF::markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int a
     if (apa_status != 4)
         return;
 
+    LOGD("Start marking ParkInSlot for final_ID: %d", final_ID);
+
     // 先将两个列表中所有车位的 ParkInSlot 都清为 0
     for (auto &slot : outputSlot_FUSED.WorldoutRect)
     {
@@ -999,6 +1008,7 @@ void PSD_FusionModuleIF::markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int a
         if (slot.rectInfo.label == final_ID)
         {
             slot.rectInfo.ParkInSlot = 1;
+            LOGD("Marked ParkInSlot=1 in slots_in_cur_frame for label %d", final_ID);
             break; // 找到后即可跳出
         }
     }

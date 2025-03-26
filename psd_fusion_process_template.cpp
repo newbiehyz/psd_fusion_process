@@ -15,7 +15,7 @@
 
 // ***************************配置文件修改的参数(@TODO：从配置文件读取后转成const)
 bool DEBUG = false; //功能开关
- 
+
 // // ***************************输入的全局变量，用于ON方式获取
 // //RD
 // rd::QuadParkingSlots rd_info;
@@ -502,7 +502,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03281934 emos9 add psd2control, rewrite RECOMMEND, add ego2slotcenter. ENABLE: NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order, occupy realtime update. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 03282134 emos9 add psd2control, rewrite RECOMMEND, add ego2slotcenter. ENABLE: NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order, occupy realtime update. DISABLE: psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -645,6 +645,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     // *****************************outputSlot_FUSED优化：标记进入GUIDANCE时的目标车位
     PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED,apa_status,final_ID);
+    LOGD("After markParkInSlot FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
 
     //******************************
@@ -1105,7 +1107,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
                     }
                     else if (psd2vcu.FusionSlotInfo[i].slotStatusType == 6){ //unavailable的保持unavailable
-                        psd2vcu.FusionSlotInfo[i].slotStatusType == 6;
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
                     }
                     else { //剩下的回到available
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
@@ -1161,7 +1163,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
                     }
                     else if (psd2vcu.FusionSlotInfo[i].slotStatusType == 6){ //unavailable的保持unavailable
-                        psd2vcu.FusionSlotInfo[i].slotStatusType == 6;
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
                     }
                     else { //不占用的回到available
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
