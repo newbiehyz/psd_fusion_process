@@ -70,6 +70,8 @@ using namespace IOU;
 #define SLANT 2
 #define KF true
 
+extern int final_ID; 
+
 bool PSD_FusionModuleIF::Initialize()
 {
     m_select_slot_label_id = -1;
@@ -393,10 +395,50 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                  nearest_slot.rectInfo.pt[3].x, nearest_slot.rectInfo.pt[3].y);
 
             bool is_in_slot = point_in_rect(obs_point3f, nearest_slot);
-            LOGD("Stopper nearest slot index: %d, in slot: %d", nearest_index, is_in_slot);
+            LOGD("Stopper nearest slot index: %d, in slot: %d. final_ID: %d", nearest_index, is_in_slot, final_ID);
 
-            // 如果 Stopper 在车位中，则计算距离和位置更新
+            // 如果 Stopper 在车位中，则添加到车位属性，计算距离，位置更新
             if (is_in_slot) {
+                
+                //最近车位是目标车位的话，车位属性添加坐标值
+                if (outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.ParkInSlot == 1){
+                    auto& rectInfo = outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo;
+
+                    bool foundExisting = false;
+                    int emptyIdx = -1;
+
+                    for (int i = 0; i < 2; ++i) {
+                        // 如果找到了相同 obsID，更新位置
+                        if (rectInfo.StopperID[i] == obs.obsID) {
+                            rectInfo.StopperX[i] = static_cast<int>(obs_point3f.x());
+                            rectInfo.StopperY[i] = static_cast<int>(obs_point3f.y());
+                            foundExisting = true;
+                            break;
+                        }
+                        // 记录第一个空槽
+                        if (rectInfo.StopperID[i] == -1 && emptyIdx == -1) {
+                            emptyIdx = i;
+                        }
+                    }
+
+                    if (!foundExisting && emptyIdx != -1) {
+                        rectInfo.StopperID[emptyIdx] = obs.obsID;
+                        rectInfo.StopperX[emptyIdx] = static_cast<int>(obs_point3f.x());
+                        rectInfo.StopperY[emptyIdx] = static_cast<int>(obs_point3f.y());
+                        rectInfo.StopperCount++;
+                    }
+
+                    // 同步更新到 WorldoutRect
+                    auto& worldRectInfo = outputSlotVIS.WorldoutRect[nearest_index].rectInfo;
+                    for (int i = 0; i < 2; ++i) {
+                        worldRectInfo.StopperID[i] = rectInfo.StopperID[i];
+                        worldRectInfo.StopperX[i] = rectInfo.StopperX[i];
+                        worldRectInfo.StopperY[i] = rectInfo.StopperY[i];
+                    }
+                    worldRectInfo.StopperCount = rectInfo.StopperCount;
+                }
+
+
                 outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperInSlot = 1;
                 outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperInSlot = 1;
 
@@ -729,7 +771,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 rect_car_center.rectInfo.pt[3] = coordConvert_car_center(slot.d); 
                 
                 m_output_slot.slots_in_cur_frame.push_back(rect_car_center);
-            }  
+            }
         }
     }
     delete_invalid_slots();
@@ -924,6 +966,44 @@ void PSD_FusionModuleIF::markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, 
         }
     }
 }
+
+
+void PSD_FusionModuleIF::markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int apa_status, int final_ID)
+{
+    if (apa_status != 4)
+        return;
+
+    // 先将两个列表中所有车位的 ParkInSlot 都清为 0
+    for (auto &slot : outputSlot_FUSED.WorldoutRect)
+    {
+        slot.rectInfo.ParkInSlot = 0;
+    }
+
+    for (auto &slot : outputSlot_FUSED.slots_in_cur_frame)
+    {
+        slot.rectInfo.ParkInSlot = 0;
+    }
+
+    // 设置 label == final_ID 的车位的 ParkInSlot 为 1（只会有一个满足条件）
+    for (auto &slot : outputSlot_FUSED.WorldoutRect)
+    {
+        if (slot.rectInfo.label == final_ID)
+        {
+            slot.rectInfo.ParkInSlot = 1;
+            break; // 找到后即可跳出
+        }
+    }
+
+    for (auto &slot : outputSlot_FUSED.slots_in_cur_frame)
+    {
+        if (slot.rectInfo.label == final_ID)
+        {
+            slot.rectInfo.ParkInSlot = 1;
+            break; // 找到后即可跳出
+        }
+    }
+}
+
 
 
 void PSD_FusionModuleIF::world2car(Eigen::Vector3f &pt){

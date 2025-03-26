@@ -140,16 +140,17 @@ struct SApaPSRect
 	int StopperLocation;		 //用于车位内限位器位置，0为NO，1为AB，2为BC，3为CD，4为DA
 	int StopperInSlot;			 //车位内是否有限位器
 	int StopperCount;			 //车位内有多少限位器
+	int StopperID[2];			 //车位内限位器的ID
 	int StopperX[2]; 			 //车位内限位器的X坐标
 	int StopperY[2];			 //车位内限位器的Y坐标
 	int LockInSlot;			 	 //车位内是否有地锁
 	int OBSInSlot;			 	 //车位内是否有障碍物
 	
-	
-
 	int iMaterial;				 //车位下的地面材质，0其他，1草砖，2机械
 
 	int NotToRelease; 			 //不应该被释放的车位（入口边过窄）,1为不应该被释放，0为被释放
+
+	int ParkInSlot;				 //要泊入的车位，0不是，1是当前泊入的
 
 	SApaPSRect()
 	{
@@ -167,7 +168,7 @@ struct SApaPSRect
 		label 				= 0;
 		iOtherSideSOD 		= 0;
 		isDriveSpaceEnough 	= false;
-		
+
 		StopperCount 		= 0;
 		StopperDistance		= 0.0;
 		StopperLocation	    = 0;
@@ -177,6 +178,8 @@ struct SApaPSRect
 
 		iMaterial	 		= 0;
 		NotToRelease		= 0;
+		
+		ParkInSlot			= 0;
 
 		for(int i = 0; i < RECTPointNum; i++)
 		{
@@ -188,6 +191,7 @@ struct SApaPSRect
 		{
 			StopperX[i] = 0;
 			StopperY[i] = 0;
+			StopperID[i] = -1;
 		}
 	}
 };

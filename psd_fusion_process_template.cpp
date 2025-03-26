@@ -52,6 +52,8 @@ StatusDecFusionInput psd2statemachine;
 Sfus::Sfsuion2DecPlan psd2planning; //动态车位列表
 Sfus::FusionSlotInfovector psd2vcu;
 Fsm::FusionSlotInfo2Location psd2location;
+APAControlBumpInput psd2control;
+
 
 int HMI_select_ID = 0; //HMI只发1s。HMI_select是HMI发的ID，
 int HMI_temp_ID = 0;  //HMI_temp_ID是存下来的ID
@@ -500,7 +502,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03261603 emos9 rewrite RECOMMEND, add ego2slotcenter. ENABLE: NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order, occupy realtime update. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 03261927 emos9 add psd2control, rewrite RECOMMEND, add ego2slotcenter. ENABLE: NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order, occupy realtime update. DISABLE: psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -639,6 +641,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_FUSED,AB_threshold,faraway_threshold);
     LOGD("After markNotToReleaseSlot FUSIONSLOTS:")
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+
+
+    // *****************************outputSlot_FUSED优化：标记进入GUIDANCE时的目标车位
+    PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED,apa_status,final_ID);
 
 
     //******************************
@@ -1715,9 +1721,24 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         }
     }
 
+    //***********************************Control 发送限位块信息
+    memset(&psd2control, 0, sizeof(APAControlBumpInput));
+    if (final_ID != 0){
+        for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
+            if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){
+                for (int j = 0; j < 2; ++j) {
+                    psd2control.apc_LimitBarX[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperX[j]);
+                    psd2control.apc_LimitBarY[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperY[j]);
+                }
+            }
+        }
+    }
+    LOGD("[PSD2CONTROL]LimitBar for final_ID #%d: (%d, %d), (%d, %d)", 
+       final_ID,
+       psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
+       psd2control.apc_LimitBarX[1], psd2control.apc_LimitBarY[1]);
 
-
-
+    S2S_MCore_Bridge_SetSigAPAControlBumpInput(&psd2control);
 
 
 
