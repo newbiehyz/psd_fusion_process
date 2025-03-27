@@ -963,7 +963,19 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
                 const int max_recommend_num = 3; //display设置为1，2，3
 
-                // 步骤 1：设置 cloest_slots[0] 对应 slot 的 slotStatusType 为 7
+                // Step 0: 清除旧的推荐信息
+                for (int i = 0; i < psd2vcu.slotNum; ++i) {
+                    if (psd2vcu.FusionSlotInfo[i].slotStatusType == 7) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 0;
+                    }
+
+                    if (psd2vcu.FusionSlotInfo[i].displayLabel >= 1 && 
+                        psd2vcu.FusionSlotInfo[i].displayLabel <= max_recommend_num) {
+                        psd2vcu.FusionSlotInfo[i].displayLabel = 0;
+                    }
+                }
+
+                // Step 1：设置 cloest_slots[0] 对应 slot 的 slotStatusType 为 7
                 if (!cloest_slots.empty()) {
                     int targetLabel = cloest_slots[0].slotLabel;
                     RECOMMEND_ID = targetLabel;
@@ -975,7 +987,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     }
                 }
 
-                // 步骤 2：设置推荐车位的 displayLabel 从 1 到 max_recommend_num
+                // Step 2：设置推荐车位的 displayLabel 从 1 到 max_recommend_num
                 for (int idx = 1; idx <= max_recommend_num && idx < cloest_slots.size(); ++idx) {
                     int targetLabel = cloest_slots[idx].slotLabel;
 
