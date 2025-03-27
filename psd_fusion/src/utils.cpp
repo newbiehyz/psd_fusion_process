@@ -1,5 +1,26 @@
 #include "utils.h"
 
+void ClearRD(rd::QuadParkingSlots& rd_info) {
+    rd_info = rd::QuadParkingSlots{};
+    LOGD("CLEAR rd_info");
+}
+
+void ClearDR(Loc::App2emap_DR& dr_pose, padVehiclePose& pose_globaldata) {
+    dr_pose = Loc::App2emap_DR{};       
+    pose_globaldata = padVehiclePose{};  
+    LOGD("CLEAR dr_pose and pose_globaldata");
+}
+
+void ClearOBS(Fus::PkEmapObs& obs_info_get) {
+    obs_info_get = Fus::PkEmapObs{};
+    LOGD("CLEAR obs_info_get");
+}
+
+void ClearUSSInfo(UssIf_stPLVOutputInfo_t& uss_info) {
+    uss_info = UssIf_stPLVOutputInfo_t{};
+    LOGD("CLEAR uss_info");
+}
+
 void ClearParkingSlots(std::vector<padVisionSlotCoord>& singleframeslots, unsigned long long& singleframeslotsID, apaSlotListInfo& outputSlot_VIS, apaSlotListInfo& outputSlot_USS, apaSlotListInfo& outputSlot_FUSED, int& parkout_flag) {
     singleframeslots.clear();
     singleframeslotsID = 0;

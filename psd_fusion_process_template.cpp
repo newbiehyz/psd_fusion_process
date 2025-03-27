@@ -502,7 +502,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03282134 emos9 add psd2control, rewrite RECOMMEND, add ego2slotcenter. ENABLE: NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order, occupy realtime update. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 03271318 emos9 fix clear after last SEARCH, add psd2control, rewrite RECOMMEND, add ego2slotcenter. ENABLE: NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order, occupy realtime update. DISABLE: psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -513,6 +513,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     Loc::App2emap_DR dr_pose;
     padVehiclePose pose_globaldata;
     Fus::PkEmapObs obs_info_get;
+    UssIf_stPLVOutputInfo_t uss_info;
     StatusDecOutput statemachine_info;
 
     GetInput getInput;
@@ -526,6 +527,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     obs_info_get = getInput.obs_info_get;
     apa_status = getInput.apa_status;
     // search_interrupt = getInput.search_interrupt; //@TODO VC9 RELEASE
+
+    if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
+        ClearRD(rd_info);
+        ClearDR(dr_pose,pose_globaldata);
+        ClearOBS(obs_info_get);
+        ClearUSS(uss_info);
+        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
+    }
 
     parkout_flag = IsParkOut(apa_status);
     LOGD("[PARKOUT] flag: %d", parkout_flag);
@@ -552,6 +561,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     }
 
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
+        ClearRD(rd_info);
+        ClearDR(dr_pose,pose_globaldata);
+        ClearOBS(obs_info_get);
+        ClearUSS(uss_info);
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
     }
 
@@ -591,7 +604,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
     //***********************************get USS
-    UssIf_stPLVOutputInfo_t uss_info;
+
     S2S_MCore_Bridge_GetSigUssIf_stPLVOutputInfo(&uss_info);
     if (DEBUG == true){
         filetojson.SaveUssInfoToJson(uss_info,"/userdata/psd/USSapaSlotListInfo.json");
