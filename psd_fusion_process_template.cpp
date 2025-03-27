@@ -526,7 +526,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     pose_globaldata = getInput.pose_globaldata;
     obs_info_get = getInput.obs_info_get;
     apa_status = getInput.apa_status;
-    // search_interrupt = getInput.search_interrupt; //@TODO VC9 RELEASE
+    // search_interrupt = getInput.search_interrupt; //@TODO
 
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
         ClearRD(rd_info);
@@ -546,7 +546,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         RETURN_NOERROR;
     }
 
-    // RD拿到重复帧
+    // 剔除RD重复帧
     if (!CheckRDFrameTimestamp(rd_info.frameTimeStampNs)){
         RETURN_NOERROR;
     }
@@ -616,7 +616,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     // **************************outputSlot_FUSED优化：去除内部重叠车位
     PSD_FusionModuleIFrunable.removeOverlappingSlots(outputSlot_FUSED);
-    slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
 
     
     // *****************************outputSlot_FUSED优化：以单帧结果修复
@@ -660,6 +659,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED,apa_status,final_ID);
     LOGD("After markParkInSlot FUSIONSLOTS:")
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+
+    //******************************outputSlot_FUSED优化：完成所有后处理，统计车位数
+    slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
 
 
     //******************************
@@ -966,7 +968,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 // Step 0: 清除旧的推荐信息
                 for (int i = 0; i < psd2vcu.slotNum; ++i) {
                     if (psd2vcu.FusionSlotInfo[i].slotStatusType == 7) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 0;
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
                     }
 
                     if (psd2vcu.FusionSlotInfo[i].displayLabel >= 1 && 
