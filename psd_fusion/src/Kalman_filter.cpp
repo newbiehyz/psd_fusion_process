@@ -14,7 +14,7 @@ Kalman_filter::Kalman_filter(const ParkingSlotResultPtr& post_slot,
     missing_time_ = 0;
     apa_id_ = id_generator_;
 
-    // occupy_ = quad_info->occupy;
+    occupy_ = quad_info->occupy;
 
     // //占用滤波
     // occupy_ = 1;
