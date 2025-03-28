@@ -183,7 +183,7 @@ namespace math{
         }
     }
 
-    void adjustOutputSlotFusedRectOrder(apaSlotListInfo& slot_list_info)
+    void adjustOutputSlotVISRectOrder(apaSlotListInfo& slot_list_info)
     {
         for (auto& slot : slot_list_info.slots_in_cur_frame) {
             // 将 rectInfo 的 4 个点转换为 Eigen::Vector3f

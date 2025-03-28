@@ -926,7 +926,8 @@ void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED
             
             double iou = iouEx(vert1, vert2);
             if (iou > 0.05) {
-                toDelete[j] = true; // 删除索引较大的矩形
+                toDelete[i] = true; // 删除索引较小的矩形
+                break; // 当前 i 已标记删除，退出内层循环
             }
         }
     }
@@ -943,6 +944,7 @@ void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED
     slots.resize(writeIndex);
     worldRects.resize(writeIndex);
 }
+
 
 // 计算两点之间的欧氏距离
 inline double distance(const POINT_I& p1, const POINT_I& p2) {
