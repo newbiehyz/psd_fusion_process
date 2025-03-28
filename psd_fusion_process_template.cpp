@@ -663,7 +663,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
 
     // **************************outputSlot_FUSED优化：去除内部重叠车位
-    // PSD_FusionModuleIFrunable.removeOverlappingSlots(outputSlot_FUSED);
+    PSD_FusionModuleIFrunable.removeOverlappingSlots(outputSlot_FUSED);
 
     
     // // *****************************outputSlot_FUSED优化：以单帧结果修复
@@ -992,6 +992,16 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
             // dev版本，更新成一样的结构体
             // 从psd2vcu拿到最近的车位列表cloest_slots
+
+            // Step 0: 清除旧的推荐信息
+            for (int i = 0; i < psd2vcu.slotNum; ++i) {
+                if (psd2vcu.FusionSlotInfo[i].slotStatusType == 7) {
+                    psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                }
+
+                psd2vcu.FusionSlotInfo[i].displayLabel = 0;
+            }
+
             std::vector<Sfus::FusionSlotInfo> vcu_available_slots; //找出available车位
             std::vector<Sfus::FusionSlotInfo> cloest_slots; // 找出available里的closet车位
             for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
@@ -1019,17 +1029,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
                 const int max_recommend_num = 3; //display设置为1，2，3
 
-                // Step 0: 清除旧的推荐信息
-                for (int i = 0; i < psd2vcu.slotNum; ++i) {
-                    if (psd2vcu.FusionSlotInfo[i].slotStatusType == 7) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
-                    }
-
-                    if (psd2vcu.FusionSlotInfo[i].displayLabel >= 1 && 
-                        psd2vcu.FusionSlotInfo[i].displayLabel <= max_recommend_num) {
-                        psd2vcu.FusionSlotInfo[i].displayLabel = 0;
-                    }
-                }
 
                 // Step 1：设置 cloest_slots[0] 对应 slot 的 slotStatusType 为 7
                 if (!cloest_slots.empty()) {

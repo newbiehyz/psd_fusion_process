@@ -926,8 +926,7 @@ void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED
             
             double iou = iouEx(vert1, vert2);
             if (iou > 0.05) {
-                toDelete[i] = true; // 删除索引较小的矩形
-                break; // 当前 i 已标记删除，退出内层循环
+                toDelete[j] = true; // 删除索引较大的矩形
             }
         }
     }
