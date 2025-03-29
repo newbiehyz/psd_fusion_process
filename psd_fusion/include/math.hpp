@@ -168,7 +168,7 @@ namespace math{
         single_slot_a.y = slot_list_b.rectInfo.pt[0].y;
         single_slot_b.x = slot_list_b.rectInfo.pt[1].x;
         single_slot_b.y = slot_list_b.rectInfo.pt[1].y;
-        LOGD("single_frame slot compare: outputSlot_VIS: (%d, %d), (%d, %d)",slot_a.x,slot_a.y,slot_b.x,slot_b.y);
+        LOGD("single_frame slot compare: outputSlot_FUSED: (%d, %d), (%d, %d)",slot_a.x,slot_a.y,slot_b.x,slot_b.y);
         LOGD("single_frame slot compare: singleframe_local: (%d, %d), (%d, %d)",single_slot_a.x,single_slot_a.y,single_slot_b.x,single_slot_b.y);
 
         int threadhole_a = CalcDistance(slot_a, single_slot_a);
@@ -183,7 +183,7 @@ namespace math{
         }
     }
 
-    void adjustOutputSlotVISRectOrder(apaSlotListInfo& slot_list_info)
+    void adjustOutputSlotRectOrder(apaSlotListInfo& slot_list_info)
     {
         for (auto& slot : slot_list_info.slots_in_cur_frame) {
             // 将 rectInfo 的 4 个点转换为 Eigen::Vector3f

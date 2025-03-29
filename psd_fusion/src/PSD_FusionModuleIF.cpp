@@ -718,15 +718,15 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 Eigen::Vector3f diff = pose.cast<float>() - slot_existance->GetSlotCenter();
                 float dist = diff.head<2>().norm();
 
-                // 0326不更新
-                if (dist < slot_existance->GetMinDist2EgoCar()) {
-                    slot_existance->SetMinDist2EgoCar(dist);
-                }
-                // 原版
-                if (slot_existance->IsConfiremd() &&
-                    dist > slot_existance->GetMinDist2EgoCar()) {
-                    continue;
-                }
+                // // 0326不更新
+                // if (dist < slot_existance->GetMinDist2EgoCar()) {
+                //     slot_existance->SetMinDist2EgoCar(dist);
+                // }
+                // // 原版
+                // if (slot_existance->IsConfiremd() &&
+                //     dist > slot_existance->GetMinDist2EgoCar()) {
+                //     continue;
+                // }
                 // 已经存在与之对应的车位，用角点信息进行更新
                 slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
                 slot_existance->Update(quad,m_vehicle_pose);
@@ -925,7 +925,7 @@ void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED
             changePoint(slots[j], vert2);
             
             double iou = iouEx(vert1, vert2);
-            if (iou > 0.4) {
+            if (iou > 0.2) {
                 toDelete[j] = true; // 删除索引较大的矩形
             }
         }

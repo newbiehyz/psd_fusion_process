@@ -42,6 +42,7 @@ int park_request = 0;
 const int search_interrupt = 0; //@TODO VC7 RELEASE
 int is_Still;
 Loc::App2emap_DR previous_dr_pose;
+std::vector<apaSlotInfo> g_singleframe_locked_slots;
 
 
 SaveFileToJson filetojson;
@@ -593,39 +594,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LOGD("After StopperLockOBS VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
-    //***********************************outputSlot_VIS优化：以单帧结果校准
-    apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
-    //确保角点顺序调整
-    LOGD("Without adjustOutputSlotFusedRectOrder VISSLOTS:")
-    LogSlotInfo(singleframe_local_slots, "ORIGIN VISSLOTS");
-    math::adjustOutputSlotVISRectOrder(singleframe_local_slots);
-    LOGD("After adjustOutputSlotFusedRectOrder VISSLOTS:")
-    LogSlotInfo(singleframe_local_slots, "ORIGIN VISSLOTS");
-
-    for (auto & slot : outputSlot_VIS.slots_in_cur_frame){
-        // LOGD("single_frame update! fused size:%d", outputSlot_FUSED.slots_in_cur_frame.size());
-        // LOGD("single_frame update! singleframe_local_slots size:%d", singleframe_local_slots.slots_in_cur_frame.size());
-        
-        for (auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
-            if(math::isNeedSingleframe2Update(slot, single_frame_slot)){
-                // LOGD("single_frame update! apa_status:%d", apa_status);
-                
-                PSD_FusionModuleIFrunable.shrink_quad(single_frame_slot);
-                for (int icnt = 0; icnt < 4; ++icnt){
-                    // LOGD("single_frame update! fused_slot(%d, %d)", slot.rectInfo.pt[icnt].x, slot.rectInfo.pt[icnt].y);
-                    // LOGD("single_frame update! single_slot(%d, %d)", single_frame_slot.rectInfo.pt[icnt].x, single_frame_slot.rectInfo.pt[icnt].y);
-
-                    slot.rectInfo.pt[icnt].x = single_frame_slot.rectInfo.pt[icnt].x;
-                    slot.rectInfo.pt[icnt].y = single_frame_slot.rectInfo.pt[icnt].y;
-                }
-                break;
-            }else{
-                continue;
-            }
-        }
-    }
-
-    // *****************************outputSlot_VIS优化：标记入口边过窄的车位，用于不释放
+    //***********************************outputSlot_VIS优化：标记入口边过窄的车位，用于不释放
     double AB_threshold = 2000.0;
     double faraway_threshold = 9500.0;
 
@@ -636,7 +605,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
 
-    // *****************************outputSlot_VIS优化：标记进入GUIDANCE时的目标车位
+    //***********************************outputSlot_VIS优化：标记进入GUIDANCE时的目标车位
     PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_VIS,apa_status,final_ID);
     LOGD("After markParkInSlot VISSLOTS:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
@@ -662,9 +631,96 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     fusionslot.postprocessUSSslots(uss_info_restruct);
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
 
+
+
     // **************************outputSlot_FUSED优化：去除内部重叠车位
     PSD_FusionModuleIFrunable.removeOverlappingSlots(outputSlot_FUSED);
+    
 
+
+
+    // ***********************************outputSlot_FUSED优化：静止时以单帧结果校准
+    // 第一步：强制还原锁定车位
+    for (auto & slot : outputSlot_FUSED.slots_in_cur_frame) {
+        for (const auto & locked_slot : g_singleframe_locked_slots) {
+            if (slot.rectInfo.label == locked_slot.rectInfo.label) {
+                slot.rectInfo = locked_slot.rectInfo;
+                break;
+            }
+        }
+    }
+
+    // 第二步：进行单帧校准
+    if (is_Still == 1){
+        apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
+        math::adjustOutputSlotRectOrder(singleframe_local_slots);
+
+        for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
+            for (auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
+                if (math::isNeedSingleframe2Update(slot, single_frame_slot)){
+                    PSD_FusionModuleIFrunable.shrink_quad(single_frame_slot);
+                    for (int icnt = 0; icnt < 4; ++icnt){
+                        slot.rectInfo.pt[icnt] = single_frame_slot.rectInfo.pt[icnt];
+                    }
+                    slot.rectInfo.is_singleframe_calibrated = true;
+
+                    // 添加到锁定列表中
+                    bool already_locked = false;
+                    for (const auto & s : g_singleframe_locked_slots) {
+                        if (s.rectInfo.label == slot.rectInfo.label) {
+                            already_locked = true;
+                            break;
+                        }
+                    }
+                    if (!already_locked) {
+                        g_singleframe_locked_slots.push_back(slot);
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+    // 第三步：车移动时清除锁定
+    if (is_Still == 0){
+        g_singleframe_locked_slots.clear();
+    }
+    
+
+    
+
+    // // ***********************************outputSlot_FUSED优化：静止时以单帧结果校准，0328原版
+    // apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
+    // //确保角点顺序调整
+    // LOGD("Without adjustOutputSlotFusedRectOrder VISSLOTS:")
+    // LogSlotInfo(singleframe_local_slots, "ORIGIN VISSLOTS");
+    // math::adjustOutputSlotRectOrder(singleframe_local_slots);
+    // LOGD("After adjustOutputSlotFusedRectOrder VISSLOTS:")
+    // LogSlotInfo(singleframe_local_slots, "ORIGIN VISSLOTS");
+
+    // for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
+    //     // LOGD("single_frame update! fused size:%d", outputSlot_FUSED.slots_in_cur_frame.size());
+    //     // LOGD("single_frame update! singleframe_local_slots size:%d", singleframe_local_slots.slots_in_cur_frame.size());
+        
+    //     for (auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
+    //         if(math::isNeedSingleframe2Update(slot, single_frame_slot)){
+    //             // LOGD("single_frame update! apa_status:%d", apa_status);
+                
+    //             PSD_FusionModuleIFrunable.shrink_quad(single_frame_slot);
+    //             for (int icnt = 0; icnt < 4; ++icnt){
+    //                 // LOGD("single_frame update! fused_slot(%d, %d)", slot.rectInfo.pt[icnt].x, slot.rectInfo.pt[icnt].y);
+    //                 // LOGD("single_frame update! single_slot(%d, %d)", single_frame_slot.rectInfo.pt[icnt].x, single_frame_slot.rectInfo.pt[icnt].y);
+
+    //                 slot.rectInfo.pt[icnt].x = single_frame_slot.rectInfo.pt[icnt].x;
+    //                 slot.rectInfo.pt[icnt].y = single_frame_slot.rectInfo.pt[icnt].y;
+    //             }
+    //             break;
+    //         }else{
+    //             continue;
+    //         }
+    //     }
+    // }
     
     // // *****************************outputSlot_FUSED优化：以单帧结果修复
     // apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);

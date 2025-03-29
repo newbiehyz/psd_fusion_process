@@ -152,6 +152,8 @@ struct SApaPSRect
 
 	int ParkInSlot;				 //要泊入的车位，0不是，1是当前泊入的
 
+	bool is_singleframe_calibrated; //是否被单帧校准过
+
 	SApaPSRect()
 	{
 		iSceneType			= E_SCENE_DEFAULT;
@@ -180,6 +182,8 @@ struct SApaPSRect
 		NotToRelease		= 0;
 		
 		ParkInSlot			= 0;
+
+		is_singleframe_calibrated = false;
 
 		for(int i = 0; i < RECTPointNum; i++)
 		{
