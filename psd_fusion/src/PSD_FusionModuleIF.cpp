@@ -925,7 +925,7 @@ void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED
             changePoint(slots[j], vert2);
             
             double iou = iouEx(vert1, vert2);
-            if (iou > 0.05) {
+            if (iou > 0.4) {
                 toDelete[j] = true; // 删除索引较大的矩形
             }
         }
@@ -968,7 +968,7 @@ void PSD_FusionModuleIF::markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, 
         double distToOrigin1 = distance(pt1, POINT_I(0, 0));
 
         if (edgeLength <= ABThreshold && (distToOrigin0 >= originDistThreshold || distToOrigin1 >= originDistThreshold)) {
-            LOGD("NotToRelease ACTIVE!")
+            LOGD("NotToRelease ACTIVE!");
             curFrameSlot.rectInfo.NotToRelease = 1;
             worldSlot.rectInfo.NotToRelease = 1;
         }

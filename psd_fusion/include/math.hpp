@@ -100,7 +100,7 @@ namespace math{
             closest_spots[i].pt[2].x,
             closest_spots[i].pt[2].y,
             closest_spots[i].pt[3].x,
-            closest_spots[i].pt[3].y)
+            closest_spots[i].pt[3].y);
         }
 
         return closest_spots;

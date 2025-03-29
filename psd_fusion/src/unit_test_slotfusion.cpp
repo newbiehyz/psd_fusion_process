@@ -1,3 +1,5 @@
+#include <cstdio>
+#include <cstdarg>
 #include <vector>
 #include <fstream>
 #include <thread>
@@ -9,6 +11,10 @@
 #include "psd_fusion_process_header.h"
 #include "fusion.h" // 替换为你的实际头文件
 #include "PSD_FusionModuleIF.h"
+#include "math.h"
+#include "math.hpp"
+
+
 
 #define TESTCASE 0
 
