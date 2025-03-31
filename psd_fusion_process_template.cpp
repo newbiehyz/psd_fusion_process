@@ -503,7 +503,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03281203 emos9 calib Output_VIS with singleframe, update occupy, fix clear after last SEARCH, add psd2control, rewrite RECOMMEND, add ego2slotcenter. ENABLE: NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order. DISABLE: remove overlapped slots, psd2vcu fixed");
+    LOGD("PSD Version: 03311549 emos9 clear slots_map + clear when search once, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order. DISABLE: remove overlapped slots, psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -527,14 +527,26 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     pose_globaldata = getInput.pose_globaldata;
     obs_info_get = getInput.obs_info_get;
     apa_status = getInput.apa_status;
+    static bool has_cleared_for_SEARCH_once = false; //是否已经保护清零（SEARCH清零一次）
     // search_interrupt = getInput.search_interrupt; //@TODO
 
-    if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
+    if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){ //正常清零
         ClearRD(rd_info);
         ClearDR(dr_pose,pose_globaldata);
         ClearOBS(obs_info_get);
         ClearUSS(uss_info);
+        PSD_FusionModuleIFrunable.ClearSlotsMap();
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
+        has_cleared_for_SEARCH_once = false; //flag重置
+    }
+    else if (apa_status == 2 && !has_cleared_for_SEARCH_once){ //第一次进search清零
+        ClearRD(rd_info);
+        ClearDR(dr_pose,pose_globaldata);
+        ClearOBS(obs_info_get);
+        ClearUSS(uss_info);
+        PSD_FusionModuleIFrunable.ClearSlotsMap();
+        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
+        has_cleared_for_SEARCH_once = true;
     }
 
     parkout_flag = IsParkOut(apa_status);
@@ -566,6 +578,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         ClearDR(dr_pose,pose_globaldata);
         ClearOBS(obs_info_get);
         ClearUSS(uss_info);
+        PSD_FusionModuleIFrunable.ClearSlotsMap();
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
     }
 
@@ -580,6 +593,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
     outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
 
+
     //***********************************outputSlot_VIS优化：类型修正
     LOGD("Without SlotTypeCorrect VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
@@ -587,12 +601,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LOGD("After SlotTypeCorrect VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
+
     //***********************************outputSlot_VIS优化：限位块、地锁、其他障碍物
     LOGD("Without StopperLockOBS VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
     PSD_FusionModuleIFrunable.StopperLockOBS(obs_info_get,outputSlot_VIS);
     LOGD("After StopperLockOBS VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+
 
     //***********************************outputSlot_VIS优化：标记入口边过窄的车位，用于不释放
     double AB_threshold = 2000.0;
@@ -686,73 +702,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     if (is_Still == 0){
         g_singleframe_locked_slots.clear();
     }
-    
-
-    
-
-    // // ***********************************outputSlot_FUSED优化：静止时以单帧结果校准，0328原版
-    // apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
-    // //确保角点顺序调整
-    // LOGD("Without adjustOutputSlotFusedRectOrder VISSLOTS:")
-    // LogSlotInfo(singleframe_local_slots, "ORIGIN VISSLOTS");
-    // math::adjustOutputSlotRectOrder(singleframe_local_slots);
-    // LOGD("After adjustOutputSlotFusedRectOrder VISSLOTS:")
-    // LogSlotInfo(singleframe_local_slots, "ORIGIN VISSLOTS");
-
-    // for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
-    //     // LOGD("single_frame update! fused size:%d", outputSlot_FUSED.slots_in_cur_frame.size());
-    //     // LOGD("single_frame update! singleframe_local_slots size:%d", singleframe_local_slots.slots_in_cur_frame.size());
-        
-    //     for (auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
-    //         if(math::isNeedSingleframe2Update(slot, single_frame_slot)){
-    //             // LOGD("single_frame update! apa_status:%d", apa_status);
-                
-    //             PSD_FusionModuleIFrunable.shrink_quad(single_frame_slot);
-    //             for (int icnt = 0; icnt < 4; ++icnt){
-    //                 // LOGD("single_frame update! fused_slot(%d, %d)", slot.rectInfo.pt[icnt].x, slot.rectInfo.pt[icnt].y);
-    //                 // LOGD("single_frame update! single_slot(%d, %d)", single_frame_slot.rectInfo.pt[icnt].x, single_frame_slot.rectInfo.pt[icnt].y);
-
-    //                 slot.rectInfo.pt[icnt].x = single_frame_slot.rectInfo.pt[icnt].x;
-    //                 slot.rectInfo.pt[icnt].y = single_frame_slot.rectInfo.pt[icnt].y;
-    //             }
-    //             break;
-    //         }else{
-    //             continue;
-    //         }
-    //     }
-    // }
-    
-    // // *****************************outputSlot_FUSED优化：以单帧结果修复
-    // apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
-    // // //确保角点顺序调整
-    // // LOGD("Without adjustOutputSlotFusedRectOrder FUSIONSLOTS:")
-    // // LogSlotInfo(singleframe_local_slots, "FUSIONSLOTS");
-    // // math::adjustOutputSlotFusedRectOrder(singleframe_local_slots);
-    // // LOGD("After adjustOutputSlotFusedRectOrder FUSIONSLOTS:")
-    // // LogSlotInfo(singleframe_local_slots, "FUSIONSLOTS");
-
-    // for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
-    //     // LOGD("single_frame update! fused size:%d", outputSlot_FUSED.slots_in_cur_frame.size());
-    //     // LOGD("single_frame update! singleframe_local_slots size:%d", singleframe_local_slots.slots_in_cur_frame.size());
-        
-    //     for (auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
-    //         if(math::isNeedSingleframe2Update(slot, single_frame_slot)){
-    //             // LOGD("single_frame update! apa_status:%d", apa_status);
-                
-    //             PSD_FusionModuleIFrunable.shrink_quad(single_frame_slot);
-    //             for (int icnt = 0; icnt < 4; ++icnt){
-    //                 // LOGD("single_frame update! fused_slot(%d, %d)", slot.rectInfo.pt[icnt].x, slot.rectInfo.pt[icnt].y);
-    //                 // LOGD("single_frame update! single_slot(%d, %d)", single_frame_slot.rectInfo.pt[icnt].x, single_frame_slot.rectInfo.pt[icnt].y);
-
-    //                 slot.rectInfo.pt[icnt].x = single_frame_slot.rectInfo.pt[icnt].x;
-    //                 slot.rectInfo.pt[icnt].y = single_frame_slot.rectInfo.pt[icnt].y;
-    //             }
-    //             break;
-    //         }else{
-    //             continue;
-    //         }
-    //     }
-    // }
 
     // // *****************************outputSlot_FUSED优化：标记入口边过窄的车位，用于不释放
     // double AB_threshold = 2000.0;

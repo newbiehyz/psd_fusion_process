@@ -671,6 +671,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
         slots_map_.clear();
         m_output_slot.slots_in_cur_frame.clear();
     }
+    LOGD("UPDATE slots_map_ size: %d, slots_remap_ size: %d", slots_map_.size(),slots_remap_.size());
 
     m_output_slot.slots_in_cur_frame.clear();
     m_output_slot.WorldoutRect.clear();

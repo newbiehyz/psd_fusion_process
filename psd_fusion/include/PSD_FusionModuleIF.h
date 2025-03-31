@@ -117,12 +117,18 @@ public:
 
     void UpdateVechiclePose(const padVehiclePose& pose_global);
     void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus);
+    
+
     void SlotTypeCorrect(apaSlotListInfo &outputSlotVIS);
 	void StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS);
     void removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED);
     void markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, double ABThreshold, double originDistThreshold);
     void markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int apa_status, int final_ID);
 
+    void ClearSlotsMap() {
+        slots_map_.clear();
+        LOGD("Clear slots_map_");
+    }
 
 
 
@@ -178,7 +184,8 @@ private:
                            float &score,
                            float boarder_dis = 2.F);
     void world2car(Eigen::Vector3f &pt);
- public:
+
+public:
     void shrink_quad(apaSlotInfo &original_rect);
 
 
