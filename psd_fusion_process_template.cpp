@@ -569,18 +569,19 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     is_Still = IsStill(dr_pose,previous_dr_pose);
     LOGD("[STILL] is Still: %d", is_Still);
 
-    // 用历史DR与实时RD匹配
-    if (getInput.GetMatchedDRPose(rd_info.frameTimeStampNs, matched_dr_pose)) {
+    // 匹配最近的DR（不再区分是否为旧数据）
+    if (getInput.GetClosestDRPose(rd_info.frameTimeStampNs, matched_dr_pose)) {
         dr_pose = matched_dr_pose;
         pose_globaldata.coord.x = int(dr_pose.x);
         pose_globaldata.coord.y = int(dr_pose.y);
         pose_globaldata.yaw = dr_pose.canAng;
 
-        LOGD("[MATCHED DR] Using OLD DR timestamp: %llu for RD timestamp: %llu", 
+        LOGD("[MATCHED DR] Using closest DR timestamp: %llu for RD timestamp: %llu", 
             dr_pose.timeStamp, rd_info.frameTimeStampNs);
     } else {
         dr_pose = getInput.dr_pose;
-        LOGW("[MATCHED DR] NO MORE OLD, Using LATEST DR timestamp: %llu, for RD timestamp: %llu",dr_pose.timeStamp, rd_info.frameTimeStampNs);
+        LOGW("[MATCHED DR] NO MATCHED DR, Using LATEST DR timestamp: %llu, for RD timestamp: %llu",
+            dr_pose.timeStamp, rd_info.frameTimeStampNs);
     }
 
     // 折叠后视镜，清空单帧
@@ -629,15 +630,15 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
 
-    //***********************************outputSlot_VIS优化：标记入口边过窄的车位，用于不释放
-    double AB_threshold = 2000.0;
-    double faraway_threshold = 9500.0;
+    // //***********************************outputSlot_VIS优化：标记入口边过窄的车位，用于不释放
+    // double AB_threshold = 2000.0;
+    // double faraway_threshold = 9500.0;
 
-    LOGD("Without markNotToReleaseSlot VISSLOTS:")
-    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-    PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_VIS,AB_threshold,faraway_threshold);
-    LOGD("After markNotToReleaseSlot VISSLOTS:")
-    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+    // LOGD("Without markNotToReleaseSlot VISSLOTS:")
+    // LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+    // PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_VIS,AB_threshold,faraway_threshold);
+    // LOGD("After markNotToReleaseSlot VISSLOTS:")
+    // LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
 
     //***********************************outputSlot_VIS优化：标记进入GUIDANCE时的目标车位
@@ -665,13 +666,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto uss_info_restruct = uss_info;
     fusionslot.postprocessUSSslots(uss_info_restruct);
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
-
-
-
-    // **************************outputSlot_FUSED优化：去除内部重叠车位
-    PSD_FusionModuleIFrunable.removeOverlappingSlots(outputSlot_FUSED);
-    
-
 
 
     // ***********************************outputSlot_FUSED优化：静止时以单帧结果校准
@@ -722,15 +716,19 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         g_singleframe_locked_slots.clear();
     }
 
-    // // *****************************outputSlot_FUSED优化：标记入口边过窄的车位，用于不释放
-    // double AB_threshold = 2000.0;
-    // double faraway_threshold = 9500.0;
+    // **************************outputSlot_FUSED优化：去除内部重叠车位
+    PSD_FusionModuleIFrunable.removeOverlappingSlots(outputSlot_FUSED);
+    
 
-    // LOGD("Without markNotToReleaseSlot FUSIONSLOTS:")
-    // LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
-    // PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_FUSED,AB_threshold,faraway_threshold);
-    // LOGD("After markNotToReleaseSlot FUSIONSLOTS:")
-    // LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    // *****************************outputSlot_FUSED优化：标记入口边过窄的车位，用于不释放
+    double AB_threshold = 2000.0;
+    double faraway_threshold = 9500.0;
+
+    LOGD("Without markNotToReleaseSlot FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_FUSED,AB_threshold,faraway_threshold);
+    LOGD("After markNotToReleaseSlot FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
 
     // // *****************************outputSlot_FUSED优化：标记进入GUIDANCE时的目标车位

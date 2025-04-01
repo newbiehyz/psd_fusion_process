@@ -23,7 +23,8 @@ public:
     
     void GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2emap_DR& previous_dr_pose, padVehiclePose& pose_globaldata, bool& is_Still, int& still_count);
     void UpdateDRPoseBuffer(const Loc::App2emap_DR& dr_pose);
-    bool GetMatchedDRPose(unsigned long long rd_timestamp, Loc::App2emap_DR& matched_pose);
+    bool GetClosestDRPose(unsigned long long rd_timestamp, Loc::App2emap_DR& matched_pose);
+
 
     void GetPerception(Fus::PkEmapObs& obs_info_get);
     void GetAPAStatus(StatusDecOutput& apastatus_info, int& apa_status);
@@ -52,7 +53,7 @@ public:
     int search_interrupt;
 
     std::deque<DRPoseWithTime> dr_pose_buffer;
-    const size_t MAX_BUFFER_SIZE = 20;
+    const size_t MAX_BUFFER_SIZE = 15;
     const size_t MAX_RD_DR_ALLOWANCE = 100;
 
 

@@ -111,21 +111,19 @@ void GetInput::UpdateDRPoseBuffer(const Loc::App2emap_DR& dr_pose) {
     }
 }
 
-// 获取匹配的DR
-// 1. 新的RD + 老的DR
-// 2. 最大但小于RD的时间戳，差值不超过MAX_RD_DR_ALLOWANCE
-bool GetInput::GetMatchedDRPose(unsigned long long rd_timestamp, Loc::App2emap_DR& matched_pose) {
+// 获取距离 RD 时间戳最近的 DR
+bool GetInput::GetClosestDRPose(unsigned long long rd_timestamp, Loc::App2emap_DR& matched_pose) {
     bool found = false;
     unsigned long long closest_diff = UINT64_MAX;
 
-    for (auto it = dr_pose_buffer.begin(); it != dr_pose_buffer.end(); ++it) {
-        if (it->timestamp < rd_timestamp) {
-            unsigned long long diff = rd_timestamp - it->timestamp;
-            if (diff <= MAX_RD_DR_ALLOWANCE && diff < closest_diff) {
-                matched_pose = it->dr_pose;
-                closest_diff = diff;
-                found = true;
-            }
+    for (auto& it : dr_pose_buffer) {
+        unsigned long long diff = (rd_timestamp > it.timestamp)
+                                      ? rd_timestamp - it.timestamp
+                                      : it.timestamp - rd_timestamp;
+        if (diff < closest_diff) {
+            matched_pose = it.dr_pose;
+            closest_diff = diff;
+            found = true;
         }
     }
 
