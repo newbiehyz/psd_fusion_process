@@ -89,7 +89,37 @@ void GetInput::GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2em
         pose_globaldata.coord.x = int(dr_pose.x);
         pose_globaldata.coord.y = int(dr_pose.y);
         pose_globaldata.yaw = dr_pose.canAng;
+
+        // 更新缓存池
+        UpdateDRPoseBuffer(dr_pose); 
+        // 打印缓存池
+        int index = 0;
+        for (const auto& dr_item : dr_pose_buffer) {
+            LOGD("[DR BUFFER][%d] timestamp: %llu, x: %f, y: %f, yaw: %f",
+                dr_item.timestamp, index, dr_item.dr_pose.x, dr_item.dr_pose.y, dr_item.dr_pose.canAng);
+            ++index;
+        }
     }
+}
+
+// 更新缓存池
+void GetInput::UpdateDRPoseBuffer(const Loc::App2emap_DR& dr_pose) {
+    DRPoseWithTime dr_with_time = { dr_pose, dr_pose.timeStamp };
+    dr_pose_buffer.push_back(dr_with_time);
+    if (dr_pose_buffer.size() > MAX_BUFFER_SIZE) {
+        dr_pose_buffer.pop_front();
+    }
+}
+
+// 获取匹配的DR
+bool GetInput::GetMatchedDRPose(unsigned long long rd_timestamp, Loc::App2emap_DR& matched_pose) {
+    for (auto it = dr_pose_buffer.rbegin(); it != dr_pose_buffer.rend(); ++it) {
+        if (rd_timestamp >= it->timestamp && (rd_timestamp - it->timestamp) >= MAX_RD_DR_ALLOWANCE) {
+            matched_pose = it->dr_pose;
+            return true;
+        }
+    }
+    return false;
 }
 
 void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {

@@ -503,7 +503,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 03311549 emos9 clear slots_map + clear when search once, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500), isNeedSingleframe2Update outputslot_fused order. DISABLE: remove overlapped slots, psd2vcu fixed");
+    LOGD("PSD Version: 04011123 emos9 use history DR, clear slots_map + clear when search once, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -512,6 +512,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     unsigned long long singleframeslotsID;
     std::vector<padVisionSlotCoord> singleframeslots;
     Loc::App2emap_DR dr_pose;
+    Loc::App2emap_DR matched_dr_pose; //延时DR
     padVehiclePose pose_globaldata;
     Fus::PkEmapObs obs_info_get;
     UssIf_stPLVOutputInfo_t uss_info;
@@ -529,6 +530,19 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     apa_status = getInput.apa_status;
     static bool has_cleared_for_SEARCH_once = false; //是否已经保护清零（SEARCH清零一次）
     // search_interrupt = getInput.search_interrupt; //@TODO
+
+    // 用历史DR与实时RD匹配
+    if (getInput.GetMatchedDRPose(rd_info.frameTimeStampNs, matched_dr_pose)) {
+        dr_pose = matched_dr_pose;
+        pose_globaldata.coord.x = int(dr_pose.x);
+        pose_globaldata.coord.y = int(dr_pose.y);
+        pose_globaldata.yaw = dr_pose.canAng;
+
+        LOGD("[MATCHED DR] Using DR timestamp: %llu for RD timestamp: %llu", 
+            dr_pose.timeStamp, rd_info.frameTimeStampNs);
+    } else {
+        LOGW("[MATCHED DR] No suitable matched DR found for RD timestamp: %llu", rd_info.frameTimeStampNs);
+    }
 
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){ //正常清零
         ClearRD(rd_info);
