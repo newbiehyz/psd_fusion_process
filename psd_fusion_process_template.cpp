@@ -531,20 +531,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     static bool has_cleared_for_SEARCH_once = false; //是否已经保护清零（SEARCH清零一次）
     // search_interrupt = getInput.search_interrupt; //@TODO
 
-    // 用历史DR与实时RD匹配
-    if (getInput.GetMatchedDRPose(rd_info.frameTimeStampNs, matched_dr_pose)) {
-        dr_pose = matched_dr_pose;
-        pose_globaldata.coord.x = int(dr_pose.x);
-        pose_globaldata.coord.y = int(dr_pose.y);
-        pose_globaldata.yaw = dr_pose.canAng;
-
-        LOGD("[MATCHED DR] Using OLD DR timestamp: %llu for RD timestamp: %llu", 
-            dr_pose.timeStamp, rd_info.frameTimeStampNs);
-    } else {
-        dr_pose = getInput.dr_pose;
-        LOGW("[MATCHED DR] NO OLD, Using NEW DR timestamp: %llu, for RD timestamp: %llu",dr_pose.timeStamp, rd_info.frameTimeStampNs);
-    }
-
+    // 根据状态机清空车位
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){ //正常清零
         ClearRD(rd_info);
         ClearDR(dr_pose,pose_globaldata);
@@ -564,22 +551,36 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         has_cleared_for_SEARCH_once = true;
     }
 
-    parkout_flag = IsParkOut(apa_status);
-    LOGD("[PARKOUT] flag: %d", parkout_flag);
-    is_Still = IsStill(dr_pose,previous_dr_pose);
-    LOGD("[STILL] is Still: %d", is_Still);
-
     // 时间同步 1500ms
     if (!CheckTimeSync(current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp)) {
         RETURN_NOERROR;
     }
 
-    // 剔除RD重复帧
+        // 剔除RD重复帧
     if (!CheckRDFrameTimestamp(rd_info.frameTimeStampNs)){
         ClearRD(rd_info);
         singleframeslots.clear();
         singleframeslotsID = 0;
         // RETURN_NOERROR;
+    }
+
+    parkout_flag = IsParkOut(apa_status);
+    LOGD("[PARKOUT] flag: %d", parkout_flag);
+    is_Still = IsStill(dr_pose,previous_dr_pose);
+    LOGD("[STILL] is Still: %d", is_Still);
+
+    // 用历史DR与实时RD匹配
+    if (getInput.GetMatchedDRPose(rd_info.frameTimeStampNs, matched_dr_pose)) {
+        dr_pose = matched_dr_pose;
+        pose_globaldata.coord.x = int(dr_pose.x);
+        pose_globaldata.coord.y = int(dr_pose.y);
+        pose_globaldata.yaw = dr_pose.canAng;
+
+        LOGD("[MATCHED DR] Using OLD DR timestamp: %llu for RD timestamp: %llu", 
+            dr_pose.timeStamp, rd_info.frameTimeStampNs);
+    } else {
+        dr_pose = getInput.dr_pose;
+        LOGW("[MATCHED DR] NO MORE OLD, Using LATEST DR timestamp: %llu, for RD timestamp: %llu",dr_pose.timeStamp, rd_info.frameTimeStampNs);
     }
 
     // 折叠后视镜，清空单帧

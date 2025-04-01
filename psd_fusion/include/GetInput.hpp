@@ -52,8 +52,8 @@ public:
     int search_interrupt;
 
     std::deque<DRPoseWithTime> dr_pose_buffer;
-    const size_t MAX_BUFFER_SIZE = 5;
-    const size_t MAX_RD_DR_ALLOWANCE = 20;
+    const size_t MAX_BUFFER_SIZE = 20;
+    const size_t MAX_RD_DR_ALLOWANCE = 100;
 
 
 private:
