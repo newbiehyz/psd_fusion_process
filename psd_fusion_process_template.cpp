@@ -503,7 +503,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04011123 emos9 use history DR, clear slots_map + clear when search once, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
+    LOGD("PSD Version: 04011318 emos9 use history DR, clear slots_map + clear when search once, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -538,10 +538,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         pose_globaldata.coord.y = int(dr_pose.y);
         pose_globaldata.yaw = dr_pose.canAng;
 
-        LOGD("[MATCHED DR] Using DR timestamp: %llu for RD timestamp: %llu", 
+        LOGD("[MATCHED DR] Using OLD DR timestamp: %llu for RD timestamp: %llu", 
             dr_pose.timeStamp, rd_info.frameTimeStampNs);
     } else {
-        LOGW("[MATCHED DR] No suitable matched DR found for RD timestamp: %llu", rd_info.frameTimeStampNs);
+        dr_pose = getInput.dr_pose;
+        LOGW("[MATCHED DR] NO OLD, Using NEW DR timestamp: %llu, for RD timestamp: %llu",dr_pose.timeStamp, rd_info.frameTimeStampNs);
     }
 
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){ //正常清零
@@ -575,7 +576,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     // 剔除RD重复帧
     if (!CheckRDFrameTimestamp(rd_info.frameTimeStampNs)){
-        RETURN_NOERROR;
+        ClearRD(rd_info);
+        singleframeslots.clear();
+        singleframeslotsID = 0;
+        // RETURN_NOERROR;
     }
 
     // 折叠后视镜，清空单帧
