@@ -503,7 +503,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04021002 emos9 use history DR, clear slots_map + clear when search once, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
+    LOGD("PSD Version: 04021505 emos9 use history DR, clear slots_map + clear when search once, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -516,6 +516,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     padVehiclePose pose_globaldata;
     Fus::PkEmapObs obs_info_get;
     UssIf_stPLVOutputInfo_t uss_info;
+    auto uss_info_restruct = uss_info;
     StatusDecOutput statemachine_info;
 
     GetInput getInput;
@@ -536,7 +537,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         ClearRD(rd_info);
         ClearDR(dr_pose,pose_globaldata);
         ClearOBS(obs_info_get);
-        ClearUSS(uss_info);
+        ClearUSS(uss_info,uss_info_restruct);
         PSD_FusionModuleIFrunable.ClearSlotsMap();
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
         has_cleared_for_SEARCH_once = false; //flag重置
@@ -545,7 +546,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         ClearRD(rd_info);
         ClearDR(dr_pose,pose_globaldata);
         ClearOBS(obs_info_get);
-        ClearUSS(uss_info);
+        ClearUSS(uss_info,uss_info_restruct);
         PSD_FusionModuleIFrunable.ClearSlotsMap();
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
         has_cleared_for_SEARCH_once = true;
@@ -557,7 +558,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LOGD("[STILL] is Still: %d", is_Still);
 
 
-    // 用历史DR与实时RD匹配
+    // 时间同步，用历史DR与实时RD匹配
     if (GetMatchedDRPose(rd_info.frameTimeStampNs, matched_dr_pose)) {
         dr_pose = matched_dr_pose;
         pose_globaldata.coord.x = int(dr_pose.x);
@@ -570,7 +571,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         LOGW("[MATCHED DR] NO MORE OLD, Using LATEST DR timestamp: %llu, for RD timestamp: %llu",dr_pose.timeStamp, rd_info.frameTimeStampNs);
     }
 
-    // 时间同步 1500ms
+    // 剔除历史输入 1500ms
     if (!CheckTimeSync(current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp)) {
         RETURN_NOERROR;
     }
@@ -578,12 +579,24 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     // 剔除RD重复帧
     if (!CheckRDFrameTimestamp(rd_info.frameTimeStampNs)){
         // ClearRD(rd_info);
+        for(auto it = dr_pose_buffer.begin(); it!= dr_pose_buffer.end();++it){
+            if(it->dr_pose.timeStamp == matched_dr_pose.timeStamp){
+                if(std::next(it)!=dr_pose_buffer.end()){
+                    
+                    matched_dr_pose = std::next(it)->dr_pose;
+                    dr_pose = matched_dr_pose;
+                    pose_globaldata.coord.x = int(dr_pose.x);
+                    pose_globaldata.coord.y = int(dr_pose.y);
+                    pose_globaldata.yaw = dr_pose.canAng;
+        }
+            }
+
+        }
         singleframeslots.clear();
         singleframeslotsID = 0;
         // RETURN_NOERROR;
         // dr_pose = getInput.dr_pose;
     }
-
 
     // 折叠后视镜，清空单帧
     LOGD("[MIRRORFOLD] Flag: %d, singleframeslots.size: %d",mirror_fold_flag,singleframeslots.size());
@@ -598,7 +611,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     //     ClearRD(rd_info);
     //     ClearDR(dr_pose,pose_globaldata);
     //     ClearOBS(obs_info_get);
-    //     ClearUSS(uss_info);
+    //     ClearUSS(uss_info,uss_info_restruct);
     //     PSD_FusionModuleIFrunable.ClearSlotsMap();
     //     ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
     // }
@@ -621,15 +634,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     PSD_FusionModuleIFrunable.SlotTypeCorrect(outputSlot_VIS);
     LOGD("After SlotTypeCorrect VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-
-
-    //***********************************outputSlot_VIS优化：限位块、地锁、其他障碍物
-    LOGD("Without StopperLockOBS VISSLOTSLIST:")
-    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-    PSD_FusionModuleIFrunable.StopperLockOBS(obs_info_get,outputSlot_VIS);
-    LOGD("After StopperLockOBS VISSLOTSLIST:")
-    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-
+    
 
     // //***********************************outputSlot_VIS优化：标记入口边过窄的车位，用于不释放
     // double AB_threshold = 2000.0;
@@ -664,7 +669,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         filetojson.SaveUssInfoToJson(uss_info,"/userdata/psd/USSapaSlotListInfo.json");
     }
     fusionslot.fillVisonstruct(uss_info, outputSlot_USS);
-    auto uss_info_restruct = uss_info;
+    
     fusionslot.postprocessUSSslots(uss_info_restruct);
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
 
@@ -719,7 +724,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     // **************************outputSlot_FUSED优化：去除内部重叠车位
     PSD_FusionModuleIFrunable.removeOverlappingSlots(outputSlot_FUSED);
-    
+
 
     // *****************************outputSlot_FUSED优化：标记入口边过窄的车位，用于不释放
     double AB_threshold = 2000.0;
@@ -729,6 +734,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
     PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_FUSED,AB_threshold,faraway_threshold);
     LOGD("After markNotToReleaseSlot FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+
+
+    //***********************************outputSlot_VIS优化：限位块、地锁、其他障碍物
+    LOGD("Without StopperLockOBS FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSD_FusionModuleIFrunable.StopperLockOBS(obs_info_get,outputSlot_FUSED);
+    LOGD("After StopperLockOBS FUSIONSLOTS:")
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
 

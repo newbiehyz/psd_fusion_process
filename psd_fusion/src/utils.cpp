@@ -16,8 +16,9 @@ void ClearOBS(Fus::PkEmapObs& obs_info_get) {
     LOGD("CLEAR obs_info_get");
 }
 
-void ClearUSS(UssIf_stPLVOutputInfo_t& uss_info) {
+void ClearUSS(UssIf_stPLVOutputInfo_t& uss_info, UssIf_stPLVOutputInfo_t& uss_restruct) {
     uss_info = UssIf_stPLVOutputInfo_t{};
+    uss_restruct = UssIf_stPLVOutputInfo_t{};
     LOGD("CLEAR uss_info");
 }
 

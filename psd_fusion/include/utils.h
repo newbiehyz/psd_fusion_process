@@ -16,7 +16,7 @@ void ClearDR(Loc::App2emap_DR& dr_pose, padVehiclePose& pose_globaldata);
 
 void ClearOBS(Fus::PkEmapObs& obs_info_get);
 
-void ClearUSS(UssIf_stPLVOutputInfo_t& uss_info);
+void ClearUSS(UssIf_stPLVOutputInfo_t& uss_info, UssIf_stPLVOutputInfo_t& uss_restruct);
 
 void ClearParkingSlots(std::vector<padVisionSlotCoord>& singleframeslots, 
                        unsigned long long& singleframeslotsID, 
