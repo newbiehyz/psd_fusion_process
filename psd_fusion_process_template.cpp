@@ -551,22 +551,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         has_cleared_for_SEARCH_once = true;
     }
 
-    // 时间同步 1500ms
-    if (!CheckTimeSync(current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp)) {
-        RETURN_NOERROR;
-    }
-
-    // 剔除RD重复帧
-    if (!CheckRDFrameTimestamp(rd_info.frameTimeStampNs)){
-        // ClearRD(rd_info);
-        // singleframeslots.clear();
-        // singleframeslotsID = 0;
-        RETURN_NOERROR;
-        // dr_pose = getInput.dr_pose;
-    }
-
-
-
     parkout_flag = IsParkOut(apa_status);
     LOGD("[PARKOUT] flag: %d", parkout_flag);
     is_Still = IsStill(dr_pose,previous_dr_pose);
@@ -574,7 +558,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
     // 用历史DR与实时RD匹配
-    if (getInput.GetMatchedDRPose(rd_info.frameTimeStampNs, matched_dr_pose)) {
+    if (GetMatchedDRPose(rd_info.frameTimeStampNs, matched_dr_pose)) {
         dr_pose = matched_dr_pose;
         pose_globaldata.coord.x = int(dr_pose.x);
         pose_globaldata.coord.y = int(dr_pose.y);
@@ -583,8 +567,21 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         LOGD("[MATCHED DR] Using OLD DR timestamp: %llu for RD timestamp: %llu", 
             dr_pose.timeStamp, rd_info.frameTimeStampNs);
     } else {
-        dr_pose = getInput.dr_pose;
         LOGW("[MATCHED DR] NO MORE OLD, Using LATEST DR timestamp: %llu, for RD timestamp: %llu",dr_pose.timeStamp, rd_info.frameTimeStampNs);
+    }
+
+    // 时间同步 1500ms
+    if (!CheckTimeSync(current1970_ms, rd_info.frameTimeStampNs, dr_pose.timeStamp)) {
+        RETURN_NOERROR;
+    }
+
+    // 剔除RD重复帧
+    if (!CheckRDFrameTimestamp(rd_info.frameTimeStampNs)){
+        // ClearRD(rd_info);
+        singleframeslots.clear();
+        singleframeslotsID = 0;
+        // RETURN_NOERROR;
+        // dr_pose = getInput.dr_pose;
     }
 
 
@@ -597,14 +594,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         singleframeslotsID = 0;
     }
 
-    if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-        ClearRD(rd_info);
-        ClearDR(dr_pose,pose_globaldata);
-        ClearOBS(obs_info_get);
-        ClearUSS(uss_info);
-        PSD_FusionModuleIFrunable.ClearSlotsMap();
-        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
-    }
+    // if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
+    //     ClearRD(rd_info);
+    //     ClearDR(dr_pose,pose_globaldata);
+    //     ClearOBS(obs_info_get);
+    //     ClearUSS(uss_info);
+    //     PSD_FusionModuleIFrunable.ClearSlotsMap();
+    //     ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
+    // }
 
     //***********************************check
     LOGD("[CHECK SIZE] CHECK singleframeslots size: %d",singleframeslots.size());

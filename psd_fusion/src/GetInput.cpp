@@ -8,6 +8,40 @@ extern bool DEBUG;
 extern SaveFileToJson filetojson;
 extern int STILL_THRESHOLD;
 
+std::deque<DRPoseWithTime> dr_pose_buffer;
+const size_t MAX_BUFFER_SIZE = 20;
+const size_t MAX_RD_DR_ALLOWANCE = 200;
+
+// 更新DR缓存池
+void UpdateDRPoseBuffer(const Loc::App2emap_DR& dr_pose) {
+    DRPoseWithTime dr_with_time = { dr_pose, dr_pose.timeStamp };
+    dr_pose_buffer.push_back(dr_with_time);
+    if (dr_pose_buffer.size() > MAX_BUFFER_SIZE) {
+        dr_pose_buffer.pop_front();
+    }
+}
+
+// 获取匹配的DR
+// 1. 新的RD + 老的DR
+// 2. 最大但小于RD的时间戳，差值不超过MAX_RD_DR_ALLOWANCE
+bool GetMatchedDRPose(unsigned long long rd_timestamp, Loc::App2emap_DR& matched_pose) {
+    bool found = false;
+    unsigned long long closest_diff = UINT64_MAX;
+
+    for (auto it = dr_pose_buffer.begin(); it != dr_pose_buffer.end(); ++it) {
+        if (it->timestamp < rd_timestamp) {
+            unsigned long long diff = rd_timestamp - it->timestamp;
+            if (diff <= MAX_RD_DR_ALLOWANCE && diff < closest_diff) {
+                matched_pose = it->dr_pose;
+                closest_diff = diff;
+                found = true;
+            }
+        }
+    }
+
+    return found;
+}
+
 // 构造函数
 GetInput::GetInput() {
 
@@ -100,36 +134,6 @@ void GetInput::GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2em
             ++index;
         }
     }
-}
-
-// 更新DR缓存池
-void GetInput::UpdateDRPoseBuffer(const Loc::App2emap_DR& dr_pose) {
-    DRPoseWithTime dr_with_time = { dr_pose, dr_pose.timeStamp };
-    dr_pose_buffer.push_back(dr_with_time);
-    if (dr_pose_buffer.size() > MAX_BUFFER_SIZE) {
-        dr_pose_buffer.pop_front();
-    }
-}
-
-// 获取匹配的DR
-// 1. 新的RD + 老的DR
-// 2. 最大但小于RD的时间戳，差值不超过MAX_RD_DR_ALLOWANCE
-bool GetInput::GetMatchedDRPose(unsigned long long rd_timestamp, Loc::App2emap_DR& matched_pose) {
-    bool found = false;
-    unsigned long long closest_diff = UINT64_MAX;
-
-    for (auto it = dr_pose_buffer.begin(); it != dr_pose_buffer.end(); ++it) {
-        if (it->timestamp < rd_timestamp) {
-            unsigned long long diff = rd_timestamp - it->timestamp;
-            if (diff <= MAX_RD_DR_ALLOWANCE && diff < closest_diff) {
-                matched_pose = it->dr_pose;
-                closest_diff = diff;
-                found = true;
-            }
-        }
-    }
-
-    return found;
 }
 
 
