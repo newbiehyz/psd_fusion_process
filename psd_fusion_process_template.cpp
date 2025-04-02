@@ -503,7 +503,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04021505 emos9 use history DR, clear slots_map + clear when search once, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
+    LOGD("PSD Version: 04021745 emos9 use history DR, clear USS, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -647,11 +647,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     // LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
 
-    //***********************************outputSlot_VIS优化：标记进入GUIDANCE时的目标车位
-    PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_VIS,apa_status,final_ID);
-    LOGD("After markParkInSlot VISSLOTS:")
-    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-    //******************************
+    // //***********************************outputSlot_VIS优化：标记进入GUIDANCE时的目标车位
+    // PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_VIS,final_ID);
+    // LOGD("After markParkInSlot VISSLOTS:")
+    // LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+    // //******************************
 
     if (DEBUG == true){
         filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"/userdata/psd/VISapaSlotListInfo.json");
@@ -737,18 +737,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
 
-    //***********************************outputSlot_VIS优化：限位块、地锁、其他障碍物
+    //***********************************outputSlot_FUSED优化：限位块、地锁、其他障碍物
     LOGD("Without StopperLockOBS FUSIONSLOTS:")
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
     PSD_FusionModuleIFrunable.StopperLockOBS(obs_info_get,outputSlot_FUSED);
     LOGD("After StopperLockOBS FUSIONSLOTS:")
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
-
-    // // *****************************outputSlot_FUSED优化：标记进入GUIDANCE时的目标车位
-    // PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED,apa_status,final_ID);
-    // LOGD("After markParkInSlot FUSIONSLOTS:")
-    // LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
     //******************************outputSlot_FUSED优化：完成所有后处理，统计车位数
     slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
@@ -1208,6 +1203,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
                 // 推荐车位作为final_ID
                 final_ID = RecommendSelectID(final_select_ID,RECOMMEND_ID);
+                // *****************************outputSlot_FUSED优化：标记进入GUIDANCE时的目标车位
+                LOGD("Final ID: %d, Before markParkInSlot FUSIONSLOTS:",final_ID)
+                LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+                PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED,final_ID);
+                LOGD("After markParkInSlot FUSIONSLOTS:")
+                LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+                // *******************************
             }
             else if (final_select_ID == 0 && !is_Still) { //当没有点选ID且运动，保留RD原状态
                 LOGD("RECOMMEND2: not still, NO Recommend!")
@@ -1229,6 +1231,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                     }
                 }
+                // *****************************outputSlot_FUSED优化：标记进入GUIDANCE时的目标车位
+                LOGD("Final ID: %d, Before markParkInSlot FUSIONSLOTS:",final_ID)
+                LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+                PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED,final_ID);
+                LOGD("After markParkInSlot FUSIONSLOTS:")
+                LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+                // *******************************
             }
 
             else if (final_select_ID != 0 && is_Still) { //当有点选车位且静止，使用点选ID
@@ -1260,6 +1269,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                     }
                 }
+                // *****************************outputSlot_FUSED优化：标记进入GUIDANCE时的目标车位
+                LOGD("Final ID: %d, Before markParkInSlot FUSIONSLOTS:",final_ID)
+                LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+                PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED,final_ID);
+                LOGD("After markParkInSlot FUSIONSLOTS:")
+                LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+                // *******************************
             }
 
             else{ //当有点选车位且运动，清除所有ID。@TODO 前后距离超过一定值
@@ -1285,6 +1301,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                     }
                 }
+                // *****************************outputSlot_FUSED优化：标记进入GUIDANCE时的目标车位
+                LOGD("Final ID: %d, Before markParkInSlot FUSIONSLOTS:",final_ID)
+                LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+                PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED,final_ID);
+                LOGD("After markParkInSlot FUSIONSLOTS:")
+                LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+                // *******************************
             }
         }
 

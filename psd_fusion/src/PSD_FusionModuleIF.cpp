@@ -977,13 +977,8 @@ void PSD_FusionModuleIF::markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, 
 }
 
 
-void PSD_FusionModuleIF::markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int apa_status, int final_ID)
+void PSD_FusionModuleIF::markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int final_ID)
 {
-    if (apa_status != 4)
-        return;
-
-    LOGD("Start marking ParkInSlot for final_ID: %d", final_ID);
-
     // 先将两个列表中所有车位的 ParkInSlot 都清为 0
     for (auto &slot : outputSlot_FUSED.WorldoutRect)
     {
