@@ -503,7 +503,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04011318 emos9 use history DR, clear slots_map + clear when search once, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
+    LOGD("PSD Version: 04021002 emos9 use history DR, clear slots_map + clear when search once, add psd2control, rewrite RECOMMEND. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
@@ -556,33 +556,37 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         RETURN_NOERROR;
     }
 
-        // 剔除RD重复帧
+    // 剔除RD重复帧
     if (!CheckRDFrameTimestamp(rd_info.frameTimeStampNs)){
-        ClearRD(rd_info);
-        singleframeslots.clear();
-        singleframeslotsID = 0;
-        // RETURN_NOERROR;
+        // ClearRD(rd_info);
+        // singleframeslots.clear();
+        // singleframeslotsID = 0;
+        RETURN_NOERROR;
+        // dr_pose = getInput.dr_pose;
     }
+
+
 
     parkout_flag = IsParkOut(apa_status);
     LOGD("[PARKOUT] flag: %d", parkout_flag);
     is_Still = IsStill(dr_pose,previous_dr_pose);
     LOGD("[STILL] is Still: %d", is_Still);
 
-    // 匹配最近的DR（不再区分是否为旧数据）
-    if (getInput.GetClosestDRPose(rd_info.frameTimeStampNs, matched_dr_pose)) {
+
+    // 用历史DR与实时RD匹配
+    if (getInput.GetMatchedDRPose(rd_info.frameTimeStampNs, matched_dr_pose)) {
         dr_pose = matched_dr_pose;
         pose_globaldata.coord.x = int(dr_pose.x);
         pose_globaldata.coord.y = int(dr_pose.y);
         pose_globaldata.yaw = dr_pose.canAng;
 
-        LOGD("[MATCHED DR] Using closest DR timestamp: %llu for RD timestamp: %llu", 
+        LOGD("[MATCHED DR] Using OLD DR timestamp: %llu for RD timestamp: %llu", 
             dr_pose.timeStamp, rd_info.frameTimeStampNs);
     } else {
         dr_pose = getInput.dr_pose;
-        LOGW("[MATCHED DR] NO MATCHED DR, Using LATEST DR timestamp: %llu, for RD timestamp: %llu",
-            dr_pose.timeStamp, rd_info.frameTimeStampNs);
+        LOGW("[MATCHED DR] NO MORE OLD, Using LATEST DR timestamp: %llu, for RD timestamp: %llu",dr_pose.timeStamp, rd_info.frameTimeStampNs);
     }
+
 
     // 折叠后视镜，清空单帧
     LOGD("[MIRRORFOLD] Flag: %d, singleframeslots.size: %d",mirror_fold_flag,singleframeslots.size());
