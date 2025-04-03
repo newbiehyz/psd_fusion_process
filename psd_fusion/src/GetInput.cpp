@@ -130,7 +130,7 @@ void GetInput::GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2em
         int index = 0;
         for (const auto& dr_item : dr_pose_buffer) {
             LOGD("[DR BUFFER][%d] timestamp: %llu, x: %f, y: %f, yaw: %f",
-                dr_item.timestamp, index, dr_item.dr_pose.x, dr_item.dr_pose.y, dr_item.dr_pose.canAng);
+                index, dr_item.timestamp, dr_item.dr_pose.x, dr_item.dr_pose.y, dr_item.dr_pose.canAng);
             ++index;
         }
     }

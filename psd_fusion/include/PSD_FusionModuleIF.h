@@ -127,7 +127,8 @@ public:
 
     void ClearSlotsMap() {
         slots_map_.clear();
-        LOGD("Clear slots_map_");
+        slots_remap_.clear();
+        LOGD("Clear slots_map_, remap_");
     }
 
 

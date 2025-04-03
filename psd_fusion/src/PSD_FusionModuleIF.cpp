@@ -402,48 +402,46 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
 
             // 如果 Stopper 在车位中，则添加到车位属性，计算距离，位置更新
             if (is_in_slot) {
-                
-                //最近车位是目标车位的话，车位属性添加坐标值
-                if (outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.ParkInSlot == 1){
-                    LOGD("Stopper is in target slot (final_ID slot).");
-                    auto& rectInfo = outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo;
+                // ************************************************************************************
+                LOGD("Stopper is in slot");
+                auto& rectInfo = outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo;
 
-                    bool foundExisting = false;
-                    int emptyIdx = -1;
+                bool foundExisting = false;
+                int emptyIdx = -1;
 
-                    for (int i = 0; i < 2; ++i) {
-                        // 如果找到了相同 obsID，更新位置
-                        if (rectInfo.StopperID[i] == obs.obsID) {
-                            rectInfo.StopperX[i] = static_cast<int>(obs_point3f.x());
-                            rectInfo.StopperY[i] = static_cast<int>(obs_point3f.y());
-                            foundExisting = true;
-                            LOGD("Updated existing Stopper slot[%d] with obsID: %d", i, obs.obsID);
-                            break;
-                        }
-                        // 记录第一个空槽
-                        if (rectInfo.StopperID[i] == -1 && emptyIdx == -1) {
-                            emptyIdx = i;
-                        }
+                for (int i = 0; i < 2; ++i) {
+                    // 如果找到了相同 obsID，更新位置
+                    if (rectInfo.StopperID[i] == obs.obsID) {
+                        rectInfo.StopperX[i] = static_cast<int>(obs_point3f.x());
+                        rectInfo.StopperY[i] = static_cast<int>(obs_point3f.y());
+                        foundExisting = true;
+                        LOGD("Updated existing Stopper slot[%d] with obsID: %d", i, obs.obsID);
+                        break;
                     }
-
-                    if (!foundExisting && emptyIdx != -1) {
-                        rectInfo.StopperID[emptyIdx] = obs.obsID;
-                        rectInfo.StopperX[emptyIdx] = static_cast<int>(obs_point3f.x());
-                        rectInfo.StopperY[emptyIdx] = static_cast<int>(obs_point3f.y());
-                        rectInfo.StopperCount++;
-                        LOGD("Inserted new Stopper at slot[%d]: ID=%d, X=%d, Y=%d",
-                             emptyIdx, obs.obsID, rectInfo.StopperX[emptyIdx], rectInfo.StopperY[emptyIdx]);
+                    // 记录第一个空槽
+                    if (rectInfo.StopperID[i] == -1 && emptyIdx == -1) {
+                        emptyIdx = i;
                     }
-
-                    // 同步更新到 WorldoutRect
-                    auto& worldRectInfo = outputSlotVIS.WorldoutRect[nearest_index].rectInfo;
-                    for (int i = 0; i < 2; ++i) {
-                        worldRectInfo.StopperID[i] = rectInfo.StopperID[i];
-                        worldRectInfo.StopperX[i] = rectInfo.StopperX[i];
-                        worldRectInfo.StopperY[i] = rectInfo.StopperY[i];
-                    }
-                    worldRectInfo.StopperCount = rectInfo.StopperCount;
                 }
+
+                if (!foundExisting && emptyIdx != -1) {
+                    rectInfo.StopperID[emptyIdx] = obs.obsID;
+                    rectInfo.StopperX[emptyIdx] = static_cast<int>(obs_point3f.x());
+                    rectInfo.StopperY[emptyIdx] = static_cast<int>(obs_point3f.y());
+                    rectInfo.StopperCount++;
+                    LOGD("Inserted new Stopper at slot[%d]: ID=%d, X=%d, Y=%d",
+                            emptyIdx, obs.obsID, rectInfo.StopperX[emptyIdx], rectInfo.StopperY[emptyIdx]);
+                }
+
+                // 同步更新到 WorldoutRect
+                auto& worldRectInfo = outputSlotVIS.WorldoutRect[nearest_index].rectInfo;
+                for (int i = 0; i < 2; ++i) {
+                    worldRectInfo.StopperID[i] = rectInfo.StopperID[i];
+                    worldRectInfo.StopperX[i] = rectInfo.StopperX[i];
+                    worldRectInfo.StopperY[i] = rectInfo.StopperY[i];
+                }
+                worldRectInfo.StopperCount = rectInfo.StopperCount;
+                // ************************************************************************************
 
 
                 outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperInSlot = 1;
