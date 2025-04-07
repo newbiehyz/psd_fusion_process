@@ -512,6 +512,8 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
         }
 
         else if (obs.obsTyp == Fus::OBS_SLOT_LOCK){
+            LOGD("Processing LOCK obsID: %d", obs.obsID);
+            POINT_I lock_dis, point_a, point_b, point_c, point_d;
             // 将 LOCK 转换到世界坐标系
             Eigen::Vector3f obs_point3f;
             obs_point3f << obs.obsCenter.x * 1000.0, obs.obsCenter.y * 1000.0, obs.obsCenter.z * 1000.0;
@@ -564,11 +566,37 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
             LOGD("LOCK nearest slot index: %d, in slot: %d", nearest_index, is_in_slot);
 
             if (is_in_slot) {
-                // 更新 WorldoutRect 和 slots_in_cur_frame
-                outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot = 1;
-                outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
-                outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.LockInSlot = 1;
-                outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
+                LOGD("LOCK is in slot");
+
+                lock_dis.x = obs_point3f.x();
+                lock_dis.y = obs_point3f.y();
+                point_a.x = nearest_slot.rectInfo.pt[0].x;
+                point_a.y = nearest_slot.rectInfo.pt[0].y;
+                point_b.x = nearest_slot.rectInfo.pt[1].x;
+                point_b.y = nearest_slot.rectInfo.pt[1].y;
+                point_c.x = nearest_slot.rectInfo.pt[2].x;
+                point_c.y = nearest_slot.rectInfo.pt[2].y;
+                point_d.x = nearest_slot.rectInfo.pt[3].x;
+                point_d.y = nearest_slot.rectInfo.pt[3].y;
+
+                // ADAS-3363 兜底OD误检地锁，垂直车位较远的地锁认为无效
+                if (outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.PStype == 0){ // 垂直
+                    // 计算距离
+                    float temp_dis1 = CalPointAndLineDistance(lock_dis, point_a, point_b);
+                    if (temp_dis1 >= 3000){
+                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot = 0;
+                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 0;
+                        outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.LockInSlot = 0;
+                        outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 0;
+                    }
+                }
+                else{// 水平
+                    // 更新 WorldoutRect 和 slots_in_cur_frame
+                    outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot = 1;
+                    outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
+                    outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.LockInSlot = 1;
+                    outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
+                }
             }
 
             LOGD("Updated LockInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot);
