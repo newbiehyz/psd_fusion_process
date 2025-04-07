@@ -503,7 +503,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04031330 emos9 send null to vcu/statemachine, fix stopper, use history DR. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
+    LOGD("PSD Version: 04071617 emos9 stable version. Send null to vcu/statemachine, fix stopper, use history DR. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
     
     // part2 输入，上游：RD, DR, USS, peception, VCU select ID, statemachine
 
