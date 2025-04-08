@@ -504,7 +504,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04081333 emos9 selectedFlag, fix psd2control. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
+    LOGD("PSD Version: 04081745 emos9 selectedFlag, fix psd2control. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
