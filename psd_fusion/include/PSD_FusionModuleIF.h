@@ -117,6 +117,7 @@ public:
 
     void UpdateVechiclePose(const padVehiclePose& pose_global);
     void UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int holdstatus);
+    void shrink_quad(apaSlotInfo &original_rect);
     
 
     void SlotTypeCorrect(apaSlotListInfo &outputSlotVIS);
@@ -124,6 +125,11 @@ public:
     void removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED);
     void markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, double ABThreshold, double originDistThreshold);
     void markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int final_ID);
+    void restoreSelectedSlot(apaSlotListInfo& slot_list);
+    bool isSameSlot(const apaSlotInfo& a, const apaSlotInfo& b);
+
+
+
 
     void ClearSlotsMap() {
         slots_map_.clear();
@@ -187,7 +193,8 @@ private:
     void world2car(Eigen::Vector3f &pt);
 
 public:
-    void shrink_quad(apaSlotInfo &original_rect);
+    apaSlotInfo selected_slot_;      // 保存被选中的车位信息
+    bool has_selected_slot_ = false; // 标记当前是否有保存
 
 
  PSD_FusionModuleIF(const PSD_FusionModuleIF &);

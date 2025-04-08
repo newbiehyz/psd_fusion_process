@@ -599,6 +599,7 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                 }
             }
 
+
             LOGD("Updated LockInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot);
             LOGD("Updated iSodInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType);
             LOGD("Updated LockInSlot: %d", outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.LockInSlot);
@@ -1005,7 +1006,9 @@ void PSD_FusionModuleIF::markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, 
 
 void PSD_FusionModuleIF::markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int final_ID)
 {
-    // 先将两个列表中所有车位的 ParkInSlot 都清为 0
+    has_selected_slot_ = false; // 每次重新打标前重置
+
+    // 清空两个列表中的 ParkInSlot
     for (auto &slot : outputSlot_FUSED.WorldoutRect)
     {
         slot.rectInfo.ParkInSlot = 0;
@@ -1016,26 +1019,70 @@ void PSD_FusionModuleIF::markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int f
         slot.rectInfo.ParkInSlot = 0;
     }
 
-    // 设置 label == final_ID 的车位的 ParkInSlot 为 1（只会有一个满足条件）
+    if (final_ID == 0)
+    {
+        return;
+    }
+
+    // 在 WorldoutRect 中标记
     for (auto &slot : outputSlot_FUSED.WorldoutRect)
     {
         if (slot.rectInfo.label == final_ID)
         {
             slot.rectInfo.ParkInSlot = 1;
-            break; // 找到后即可跳出
+            // 保存副本
+            selected_slot_ = slot;// 更新为当前帧
+            has_selected_slot_ = true;
+            LOGD("Marked ParkInSlot=1 in WorldoutRect for label %d", final_ID);
+            break;
         }
     }
 
+    // 在 slots_in_cur_frame 中标记
     for (auto &slot : outputSlot_FUSED.slots_in_cur_frame)
     {
         if (slot.rectInfo.label == final_ID)
         {
             slot.rectInfo.ParkInSlot = 1;
+            has_selected_slot_ = true;
             LOGD("Marked ParkInSlot=1 in slots_in_cur_frame for label %d", final_ID);
-            break; // 找到后即可跳出
+            break;
         }
     }
 }
+
+bool PSD_FusionModuleIF::isSameSlot(const apaSlotInfo& a, const apaSlotInfo& b)
+{
+    float cx_a = 0, cy_a = 0, cx_b = 0, cy_b = 0;
+    for (int i = 0; i < RECTPointNum; ++i) {
+        cx_a += a.rectInfo.pt[i].x;
+        cy_a += a.rectInfo.pt[i].y;
+        cx_b += b.rectInfo.pt[i].x;
+        cy_b += b.rectInfo.pt[i].y;
+    }
+    cx_a /= RECTPointNum;
+    cy_a /= RECTPointNum;
+    cx_b /= RECTPointNum;
+    cy_b /= RECTPointNum;
+
+    float dx = cx_a - cx_b;
+    float dy = cy_a - cy_b;
+    float dist = std::sqrt(dx * dx + dy * dy);
+
+    return dist < 900.0f; // 900mm容忍范围
+}
+
+void PSD_FusionModuleIF::restoreSelectedSlot(apaSlotListInfo& slot_list){
+    if (!has_selected_slot_) return;
+
+    for (auto& slot : slot_list.WorldoutRect) {
+        if (isSameSlot(slot, selected_slot_)) {
+            slot.rectInfo.ParkInSlot = 1;
+            break;
+        }
+    }
+}
+
 
 
 
