@@ -504,7 +504,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04081745 emos9 selectedFlag, fix psd2control. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
+    LOGD("PSD Version: 04081754 emos9 selectedFlag, fix psd2control. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1649,37 +1649,37 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         }
     }
 
-    // //***********************************Control 发送限位块信息
-    // memset(&psd2control, 0, sizeof(APAControlBumpInput));
-    // if (final_ID != 0){
-    //     for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
-    //         if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.ParkInSlot == 1){
-    //             for (int j = 0; j < 2; ++j) {
-    //                 psd2control.apc_LimitBarX[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperX[j]);
-    //                 psd2control.apc_LimitBarY[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperY[j]);
-    //             }
-    //         }
-    //     }
-    // }
-    // LOGD("[PSD2CONTROL]LimitBar for target slot: (%d, %d), (%d, %d)", 
-    //    psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
-    //    psd2control.apc_LimitBarX[1], psd2control.apc_LimitBarY[1]);
-
-    // S2S_MCore_Bridge_SetSigAPAControlBumpInput(&psd2control);
-
-
-    //***********************************Control MOCK test
+    //***********************************Control 发送限位块信息
     memset(&psd2control, 0, sizeof(APAControlBumpInput));
-    psd2control.apc_LimitBarX[0] = 11;
-    psd2control.apc_LimitBarY[0] = 12;
-    psd2control.apc_LimitBarX[1] = 21;
-    psd2control.apc_LimitBarX[2] = 22;
-
+    if (final_ID != 0){
+        for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
+            if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.ParkInSlot == 1){
+                for (int j = 0; j < 2; ++j) {
+                    psd2control.apc_LimitBarX[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperX[j]);
+                    psd2control.apc_LimitBarY[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperY[j]);
+                }
+            }
+        }
+    }
     LOGD("[PSD2CONTROL]LimitBar for target slot: (%d, %d), (%d, %d)", 
        psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
        psd2control.apc_LimitBarX[1], psd2control.apc_LimitBarY[1]);
 
     S2S_MCore_Bridge_SetSigAPAControlBumpInput(&psd2control);
+
+
+    // //***********************************Control MOCK test
+    // memset(&psd2control, 0, sizeof(APAControlBumpInput));
+    // psd2control.apc_LimitBarX[0] = 11;
+    // psd2control.apc_LimitBarY[0] = 12;
+    // psd2control.apc_LimitBarX[1] = 21;
+    // psd2control.apc_LimitBarX[2] = 22;
+
+    // LOGD("[PSD2CONTROL]LimitBar for target slot: (%d, %d), (%d, %d)", 
+    //    psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
+    //    psd2control.apc_LimitBarX[1], psd2control.apc_LimitBarY[1]);
+
+    // S2S_MCore_Bridge_SetSigAPAControlBumpInput(&psd2control);
 
 
 
