@@ -377,6 +377,11 @@ tResult cpsd_fusion_process::OnStateMachine_Output(const StateMachine_Output& us
 
 tResult cpsd_fusion_process::OnApp2emap_DR(const Loc::App2emap_DR& userData)
 {
+    DRPoseWithTime dr_with_time = { userData, userData.timeStamp };
+    dr_pose_buffer.push_back(dr_with_time);
+    if (dr_pose_buffer.size() > MAX_BUFFER_SIZE) {
+        dr_pose_buffer.pop_front();
+    }
     RETURN_NOERROR;
 }
 
