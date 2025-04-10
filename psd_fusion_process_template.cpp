@@ -67,7 +67,8 @@ bool already_has_recommend_slot = false;
 
 
 int parkout_flag = 0; //当前是否为泊出
-int mirror_fold_flag = 0; //后视镜是否被折叠
+int mirror_fold_flag_ahead = 0; // 从planning拿的原始折叠flag（存在提前）
+int mirror_fold_flag = 0; //后视镜是否被折叠（准确值）
 
 
 CDT_PSD_FUSION_PROCESS_TEMPLATE(cpsd_fusion_process)
@@ -486,8 +487,25 @@ tResult cpsd_fusion_process::OnDecPlan2Emap(const Pla::DecPlan2Emap& userData)
 
 tResult cpsd_fusion_process::OnPlan2Psd(const Pla::Plan2Psd& userData)
 {
-    mirror_fold_flag = userData.mirrorFoldFlg;
-    LOGD("[MIRRORFOLD] OnPlan2Psd mirror_fold_flag: %d !!!!",mirror_fold_flag);
+    mirror_fold_flag_ahead = userData.mirrorFoldFlg;
+    // 0 -> 1
+    if (mirror_fold_flag == 0 && mirror_fold_flag_ahead == 1)
+    {
+        mirror_fold_flag = 1;
+    }
+    //KEEP
+    if (mirror_fold_flag == 1 && apa_status == 5)
+    {
+        mirror_fold_flag = 1;
+    }
+    //RESET
+    if (mirror_fold_flag_ahead == 0 && apa_status != 5)
+    {
+        mirror_fold_flag = 0;
+    }
+
+    LOGD("[MIRRORFOLD] OnPlan2Psd apastatus: %d, mirror_fold_flag_ahead: %d, mirror_fold_flag: %d",apa_status,mirror_fold_flag_ahead,mirror_fold_flag);
+    
     RETURN_NOERROR;
 }
 
