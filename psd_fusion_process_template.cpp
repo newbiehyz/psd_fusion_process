@@ -504,7 +504,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04081754 emos9 selectedFlag, fix psd2control. ENABLE: Calib OUTPUTFUSED, NotToRelease(2000,9500). DISABLE: remove overlapped slots, psd2vcu fixed");
+    LOGD("PSD Version: 04101535 emos9 mirrorfold2apahandle / perception. ENABLE: Calib OUTPUTFUSED. DISABLE: psd2control, selectedFlag, psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -547,6 +547,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         ClearUSS(uss_info,uss_info_restruct);
         PSD_FusionModuleIFrunable.ClearSlotsMap();
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
+        g_singleframe_locked_slots.clear();
         has_cleared_for_SEARCH_once = false; //flag重置
     }
     else if (apa_status == 2 && !has_cleared_for_SEARCH_once){ //第一次进search清零
@@ -557,6 +558,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         PSD_FusionModuleIFrunable.ClearSlotsMap();
         ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
         // 第一次清零，发送空值
+        g_singleframe_locked_slots.clear();
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
         EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
         memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
@@ -1379,11 +1381,20 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2location.fusionSlotInfo[j].pt[3].x = psd_m_output.rectInfo.pt[3].x;
             psd2location.fusionSlotInfo[j].pt[3].y = psd_m_output.rectInfo.pt[3].y;
 
-            LOGD("[PSD2APAHANDLE] TOTAL SLOT NUM: %d, Slot#%d, slottype: %d, fusionslottype: %d (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
+            //后视镜折叠状态
+            if (psd_m_output.rectInfo.label == final_ID){
+                psd2location.fusionSlotInfo[j].displayLabel = mirror_fold_flag;
+            }
+            else{
+                psd2location.fusionSlotInfo[j].displayLabel = 0;
+            }
+
+            LOGD("[PSD2APAHANDLE] TOTAL SLOT NUM: %d, Slot#%d, slottype: %d, fusionslottype: %d, mirrorfold: %d (%d, %d) (%d, %d) (%d, %d) (%d, %d)",
                     psd2location.slotNum,
                     psd2location.fusionSlotInfo[j].slotLabel,
                     psd2location.fusionSlotInfo[j].slotType,
                     psd2location.fusionSlotInfo[j].fusionSlotType,
+                    psd2location.fusionSlotInfo[j].displayLabel,
                     psd2location.fusionSlotInfo[j].pt[0].x,
                     psd2location.fusionSlotInfo[j].pt[0].y,
                     psd2location.fusionSlotInfo[j].pt[1].x,
@@ -1583,20 +1594,23 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2perception.slotType = psd2planning.targetSlot.slotType;
             psd2perception.slotSource = psd2planning.targetSlot.slotSource;
             psd2perception.timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
+            //后视镜折叠状态
+            psd2perception.flag_valid = mirror_fold_flag;
         }
-        LOGD("[PSD2PERCEPTION] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
-        psd2perception.timeStamp,
-        apa_status,
-        psd2perception.slotType,
-        psd2perception.slotSource,
-        psd2perception.slotCorners.cornerA.x,
-        psd2perception.slotCorners.cornerA.y,
-        psd2perception.slotCorners.cornerB.x,
-        psd2perception.slotCorners.cornerB.y,
-        psd2perception.slotCorners.cornerC.x,
-        psd2perception.slotCorners.cornerC.y,
-        psd2perception.slotCorners.cornerD.x,
-        psd2perception.slotCorners.cornerD.y);
+        LOGD("[PSD2PERCEPTION] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, mirrorfold: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            psd2perception.timeStamp,
+            apa_status,
+            psd2perception.slotType,
+            psd2perception.slotSource,
+            psd2perception.flag_valid,
+            psd2perception.slotCorners.cornerA.x,
+            psd2perception.slotCorners.cornerA.y,
+            psd2perception.slotCorners.cornerB.x,
+            psd2perception.slotCorners.cornerB.y,
+            psd2perception.slotCorners.cornerC.x,
+            psd2perception.slotCorners.cornerC.y,
+            psd2perception.slotCorners.cornerD.x,
+            psd2perception.slotCorners.cornerD.y);
         EMC_psd_fusion_process_SetFieldSfusionSlots(psd2perception);
     }
     
