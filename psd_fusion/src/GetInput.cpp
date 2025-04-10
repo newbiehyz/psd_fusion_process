@@ -9,7 +9,7 @@ extern SaveFileToJson filetojson;
 extern int STILL_THRESHOLD;
 
 std::deque<DRPoseWithTime> dr_pose_buffer;
-const size_t MAX_BUFFER_SIZE = 20;
+const size_t MAX_BUFFER_SIZE = 30;
 const size_t MAX_RD_DR_ALLOWANCE = 200;
 
 // 更新DR缓存池
@@ -125,7 +125,7 @@ void GetInput::GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2em
         pose_globaldata.yaw = dr_pose.canAng;
 
         // 更新缓存池
-        UpdateDRPoseBuffer(dr_pose); 
+        // UpdateDRPoseBuffer(dr_pose); 
         // 打印缓存池
         int index = 0;
         for (const auto& dr_item : dr_pose_buffer) {

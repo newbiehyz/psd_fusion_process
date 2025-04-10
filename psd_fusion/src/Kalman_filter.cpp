@@ -631,7 +631,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
         this->occupies_.push(quad_info->occupy);
         occupy_sum_ += quad_info->occupy;
         // LOGD("[PSD_occupy]slot_id: %d, occupies_size: %d", this->GetSlotApaId(), occupies_.size());
-        if (occupies_.size() > occupy_window_size) {
+        if (occupies_.size() >= occupy_window_size) {
             occupy_sum_ -= occupies_.front();
             // LOGD("[PSD_occupy]occupy_sum_: %d", occupy_sum_);
             occupies_.pop();
