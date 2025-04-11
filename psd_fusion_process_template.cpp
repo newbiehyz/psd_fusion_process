@@ -527,7 +527,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04111346 emos901 LOGD(DBG), targetslot while GUIDANCE, On DRbuffer. ENABLE: mirrorfold. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 04111557 emos901 reset DBG slots, LOGD(DBG), targetslot while GUIDANCE, On DRbuffer. ENABLE: mirrorfold. DISABLE: psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1450,6 +1450,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     //***********************************PLANNING/HMI 发送车位列表
     //check psd output to planning(1 slot list)  
     //规划暂时不用车位列表，需等待预规划模块ready后。暂时用于HMI显示车位列表
+    memset(&psd2planning, 0, sizeof(Sfus::Sfsuion2DecPlan));
     int planning_slotnum = outputSlot_FUSED.slots_in_cur_frame.size();
     LOGD("slot list size:%d",planning_slotnum);
     int k = 0;
@@ -1727,7 +1728,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     // psd2control.apc_LimitBarX[0] = 11;
     // psd2control.apc_LimitBarY[0] = 12;
     // psd2control.apc_LimitBarX[1] = 21;
-    // psd2control.apc_LimitBarX[2] = 22;
+    // psd2control.apc_LimitBarY[1] = 22;
 
     // LOGD("[PSD2CONTROL]LimitBar for target slot: (%d, %d), (%d, %d)", 
     //    psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
