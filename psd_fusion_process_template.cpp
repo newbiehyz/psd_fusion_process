@@ -527,7 +527,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04111557 emos901 reset DBG slots, LOGD(DBG), targetslot while GUIDANCE, On DRbuffer. ENABLE: mirrorfold. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 04111744 emos901 fix psd2apahandle mirrorfold, reset DBG slots, LOGD(DBG), targetslot while GUIDANCE, On DRbuffer. ENABLE: mirrorfold. DISABLE: psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1405,7 +1405,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2location.fusionSlotInfo[j].pt[3].y = psd_m_output.rectInfo.pt[3].y;
 
             //后视镜折叠状态
-            if (psd_m_output.rectInfo.label == final_ID){
+            if (j == 0){
                 psd2location.fusionSlotInfo[j].displayLabel = mirror_fold_flag;
             }
             else{
