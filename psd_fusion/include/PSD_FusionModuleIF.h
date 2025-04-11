@@ -124,6 +124,7 @@ public:
 	void StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS);
     void removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED);
     void markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, double ABThreshold, double originDistThreshold);
+    void slotinframe2worldoutrect(apaSlotInfo& slot, const float& car_x, const float& car_y, const float& car_yaw_deg);
     void markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int final_ID);
     void restoreSelectedSlot(apaSlotListInfo& slot_list);
     bool isSameSlot(const apaSlotInfo& a, const apaSlotInfo& b);

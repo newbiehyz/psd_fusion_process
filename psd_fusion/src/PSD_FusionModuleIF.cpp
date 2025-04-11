@@ -583,7 +583,7 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                 if (outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.PStype == 0){ // 垂直
                     // 计算距离
                     float temp_dis1 = CalPointAndLineDistance(lock_dis, point_a, point_b);
-                    if (temp_dis1 >= 3000){
+                    if (temp_dis1 >= VEHICLE_LENGTH / 2.0){
                         outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot = 0;
                         outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 0;
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.LockInSlot = 0;
@@ -1003,6 +1003,23 @@ void PSD_FusionModuleIF::markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, 
     }
 }
 
+void PSD_FusionModuleIF::slotinframe2worldoutrect(apaSlotInfo& slot, const float& car_x, const float& car_y, const float& car_yaw_deg)
+{
+    float theta = car_yaw_deg * static_cast<float>(M_PI) / 180.0f; // 角度转弧度
+
+    for (int i = 0; i < RECTPointNum; ++i)
+    {
+        float local_x = static_cast<float>(slot.rectInfo.pt[i].x);
+        float local_y = static_cast<float>(slot.rectInfo.pt[i].y);
+
+        float global_x = local_x * cos(theta) + local_y * sin(theta) + car_x;
+        float global_y = local_y * cos(theta) - local_x * sin(theta) + car_y;
+
+        slot.rectInfo.pt[i].x = static_cast<int>(global_x);
+        slot.rectInfo.pt[i].y = static_cast<int>(global_y);
+    }
+}
+
 
 void PSD_FusionModuleIF::markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int final_ID)
 {
@@ -1044,6 +1061,8 @@ void PSD_FusionModuleIF::markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int f
         if (slot.rectInfo.label == final_ID)
         {
             slot.rectInfo.ParkInSlot = 1;
+            selected_slot_ = slot;// 更新为当前帧
+            slotinframe2worldoutrect(selected_slot_,m_vehicle_pose.coord.x,m_vehicle_pose.coord.y,m_vehicle_pose.yaw);
             has_selected_slot_ = true;
             LOGD("Marked ParkInSlot=1 in slots_in_cur_frame for label %d", final_ID);
             break;
@@ -1075,8 +1094,11 @@ bool PSD_FusionModuleIF::isSameSlot(const apaSlotInfo& a, const apaSlotInfo& b)
 void PSD_FusionModuleIF::restoreSelectedSlot(apaSlotListInfo& slot_list){
     if (!has_selected_slot_) return;
 
-    for (auto& slot : slot_list.WorldoutRect) {
-        if (isSameSlot(slot, selected_slot_)) {
+    for (auto& slot : slot_list.slots_in_cur_frame) {
+        apaSlotInfo temp_slot = slot;
+        slotinframe2worldoutrect(temp_slot,m_vehicle_pose.coord.x,m_vehicle_pose.coord.y,m_vehicle_pose.yaw);
+        
+        if (isSameSlot(temp_slot, selected_slot_)) {
             slot.rectInfo.ParkInSlot = 1;
             break;
         }

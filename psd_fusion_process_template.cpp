@@ -527,7 +527,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04101543 emos901 On DRbuffer ENABLE: mirrorfold, Calib OUTPUTFUSED. DISABLE: psd2control, selectedFlag, psd2vcu fixed");
+    LOGD("PSD Version: 04111346 emos901 LOGD(DBG), targetslot while GUIDANCE, On DRbuffer. ENABLE: mirrorfold. DISABLE: psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1503,9 +1503,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerD.x = psd_m_output.rectInfo.pt[3].x;
         psd2planning.SfusionSrchSlots[k].slotCorners.cornerD.y = psd_m_output.rectInfo.pt[3].y;
 
-
-
-
         LOGD("[PSD2PLANNING] TOTAL SLOT NUM: %d, Slot#%d, type: %d, source: %d, stopdis: %f (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f) (%.1f, %.1f)",
                 planning_slotnum,
                 psd2planning.SfusionSrchSlots[k].slotID,
@@ -1522,6 +1519,26 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 psd2planning.SfusionSrchSlots[k].slotCorners.cornerD.y);
         k++;
     }
+
+    //***********************************DBG(PLANNING) 车位列表check
+    LOGD("================ DBG SLOTS ================");
+
+    for (int i = 0; i < 50; ++i) {
+        const auto& slot = psd2planning.SfusionSrchSlots[i];
+        LOGD("Index: %d | SlotID: %d | Type: %d | Source: %d | StopperDis: %.2f | "
+            "A(%.1f, %.1f) B(%.1f, %.1f) C(%.1f, %.1f) D(%.1f, %.1f)",
+            i,
+            slot.slotID,
+            slot.slotType,
+            slot.slotSource,
+            slot.stopper_Dis,
+            slot.slotCorners.cornerA.x, slot.slotCorners.cornerA.y,
+            slot.slotCorners.cornerB.x, slot.slotCorners.cornerB.y,
+            slot.slotCorners.cornerC.x, slot.slotCorners.cornerC.y,
+            slot.slotCorners.cornerD.x, slot.slotCorners.cornerD.y);
+    }
+    LOGD("=============================================");
+
 
     //***********************************PLANNING 发送目标车位
     //check psd output to planning(2 target slot)
@@ -1555,10 +1572,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
                 }
                 else if (angleDegrees <= 80){
-                    psd2planning.SfusionSrchSlots[k].slotType = Sfus::SLOTTYP_RFOBL;
+                    psd2planning.targetSlot.slotType = Sfus::SLOTTYP_RFOBL;
                 }
                 else{
-                    psd2planning.SfusionSrchSlots[k].slotType = Sfus::SLOTTYP_OBL;
+                    psd2planning.targetSlot.slotType = Sfus::SLOTTYP_OBL;
                 }
                 //*******************
                 psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
