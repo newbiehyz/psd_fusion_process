@@ -330,7 +330,7 @@ void SlotTypeDetermine(apaSlotInfo &slot, int slot_type_AB_thr) {
 
 // 区分 水平 / 垂直斜列
 void PSD_FusionModuleIF::SlotTypeCorrect(apaSlotListInfo &outputSlotVIS) {
-    int slot_type_AB_thr = 3000 * 3000;
+    int slot_type_AB_thr = 4500 * 4500;
 
     for (size_t i = 0; i < outputSlotVIS.slots_in_cur_frame.size(); ++i) {
         SlotTypeDetermine(outputSlotVIS.slots_in_cur_frame[i], slot_type_AB_thr);

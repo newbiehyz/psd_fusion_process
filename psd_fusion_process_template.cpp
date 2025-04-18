@@ -290,9 +290,9 @@ int cpsd_fusion_process::IsParkOut(int apastatus)
 int cpsd_fusion_process::IsStill(const Loc::App2emap_DR drpose, Loc::App2emap_DR& previous_drpose)
 {
     static int no_change_count = 0;
-    float epsilon = 3.0; // 设置阈值，可以根据需要调整
+    float epsilon = 30.0; // 设置阈值，可以根据需要调整
     bool has_changed = false; // 比较 drpose 和 previous_drpose 是否变化
-    int still_threshold = 10; //静止阈值，连续多少次没有变化算静止
+    int still_threshold = 5; //静止阈值，连续多少次没有变化算静止
     LOGD("[STILL] dr: x:%f, y:%f, yaw: %f,previous: x:%f, y:%f, yaw:%f",
     drpose.x,
     drpose.y,
@@ -536,7 +536,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04171802 emos910 clear psd2statemachine,FARAWAYconfig,isNeed opti,DBGslots clear. ENABLE: mirrorfold. DISABLE: psd2vcu fixed");
+    LOGD("PSD Version: 04181334 emos910 isStill threshold,clear while !Still,isNeed opti,DBGslots clear. ENABLE: mirrorfold. DISABLE: psd2vcu fixed,FARAWAYconfig");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1097,6 +1097,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     }
                 }
                 memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
+                memset(&psd2planning.targetSlot, 0, sizeof(Sfus::SfusionSlots));
+
             }
 
             //final_ID 已记忆，每次清零全列表，并mark此车位。必须search时打标记
