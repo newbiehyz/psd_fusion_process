@@ -536,7 +536,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04181334 emos910 isStill threshold,clear while !Still,isNeed opti,DBGslots clear. ENABLE: mirrorfold. DISABLE: psd2vcu fixed,FARAWAYconfig");
+    LOGD("PSD Version: 04181603 emos910 isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: psd2vcu fixed,FARAWAYconfig");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -905,8 +905,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
                 // 车位的中心点是否在允许释放的区域
                 //限制范围（前后、左右）
+                LOGD("FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left-Right: [%f, %f]",
+                    FARAWAY_FILTER,FARAWAY_SLOTS_LEFT,FARAWAY_SLOTS_RIGHT,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT)
                 if (FARAWAY_FILTER){
-                    LOGD("Rear-Front: [%f, %f], Left-Right: [%f, %f]",FARAWAY_SLOTS_LEFT,FARAWAY_SLOTS_RIGHT,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT)
                     //车位中心点
                     float center_x = 0.0f;
                     float center_y = 0.0f;
