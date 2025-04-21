@@ -28,7 +28,7 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/psd_fusion/include)
 #------------------------------------------------
 # Final target
 #------------------------------------------------
-#add_executable(${PROJECT_NAME} ${SOURCES})
+# add_executable(${PROJECT_NAME} ${SOURCES})
 #add_library(${PROJECT_NAME} STATIC ${SOURCES})
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBRARIES})
