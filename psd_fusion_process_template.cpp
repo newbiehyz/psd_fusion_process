@@ -14,6 +14,7 @@
 #define VEHICLE_LENGTH 5259.9 
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7
 #define MM_TO_M 1000.0
+#define NARROWSLOT_THRESHOLD 3000.0
 
 // ***************************配置文件修改的参数(@TODO：从配置文件读取后转成const)
 bool DEBUG = false; //json功能开关
@@ -72,6 +73,7 @@ int final_select_ID = 0; //VCU和HMI最终统一的ID
 int final_ID = 0; //结合选择、推荐后的最终ID
 bool recommend_exist = false; //推荐车位是否已存在
 bool already_has_recommend_slot = false;
+bool isNarrow = false; // 是否为窄车位
 
 
 int parkout_flag = 0; //当前是否为泊出
@@ -1583,7 +1585,16 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
                 psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
                 psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
-                // *******************正逆鱼骨
+
+                // *******************判定是否狭窄车位*******************
+                
+                double dx = psd2planning.targetSlot.slotCorners.cornerB.x - psd2planning.targetSlot.slotCorners.cornerA.x;
+                double dy = psd2planning.targetSlot.slotCorners.cornerB.y - psd2planning.targetSlot.slotCorners.cornerA.y;
+                double AB_dist = sqrt(dx * dx + dy * dy);
+                if (AB_dist <= NARROWSLOT_THRESHOLD) {
+                    isNarrow = true;
+                }
+                // *******************正逆鱼骨*******************
                 double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
                 double ABy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
                 double ADx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
@@ -1606,7 +1617,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 else{
                     psd2planning.targetSlot.slotType = Sfus::SLOTTYP_OBL;
                 }
-                //*******************
+                //**************************************
                 psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
                 if (final_ID >= 1000 && final_ID < 10000){
                     psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
@@ -1703,7 +1714,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         else{
             psd2statemachine.aps_apaParkFusionType = 0;
         }
-        psd2statemachine.aps_apaNarrowSlot = 0; //@TODO 窄车位
+        psd2statemachine.aps_apaNarrowSlot = isNarrow; 
         if (slotlist_size > 0){
             psd2statemachine.aps_apaAvailableSlot = 1;
             psd2statemachine.aps_apaHighlightSlot = 1;
