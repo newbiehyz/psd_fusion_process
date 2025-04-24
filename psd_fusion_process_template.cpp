@@ -14,7 +14,6 @@
 #define VEHICLE_LENGTH 5259.9 
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7
 #define MM_TO_M 1000.0
-#define NARROWSLOT_THRESHOLD 3000.0
 
 // ***************************配置文件修改的参数(@TODO：从配置文件读取后转成const)
 bool DEBUG = false; //json功能开关
@@ -23,6 +22,7 @@ float FARAWAY_SLOTS_LEFT = -99999.0;
 float FARAWAY_SLOTS_RIGHT = 99999.0;
 float FARAWAY_SLOTS_REAR = -99999.0;
 float FARAWAY_SLOTS_FRONT = 99999.0;
+float NARROWSLOT_THRESHOLD = -99999.0;
 
 
 // // ***************************输入的全局变量，用于ON方式获取
@@ -161,6 +161,9 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
 
         //解析文件路径
         j.at("debug").at("save_to_json").get_to(DEBUG);
+
+        j.at("calib").at("NARROWSLOT_THRESHOLD").get_to(NARROWSLOT_THRESHOLD);
+
         j.at("calib").at("FARAWAY_FILTER").get_to(FARAWAY_FILTER);
         j.at("calib").at("FARAWAY_SLOTS_REAR").get_to(FARAWAY_SLOTS_REAR);
         j.at("calib").at("FARAWAY_SLOTS_FRONT").get_to(FARAWAY_SLOTS_FRONT);
@@ -540,7 +543,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04231736 emos10.0.0 isNarrow,isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: FARAWAYconfig,psd2vcu fixed");
+    LOGD("PSD Version: 04241353 emos10.0.0 isNarrow config but jump,isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: FARAWAYconfig,psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -907,36 +910,37 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
                 }
 
-                // // 车位的中心点是否在允许释放的区域
-                // //限制范围（前后、左右）
-                // LOGD("FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left-Right: [%f, %f]",
-                //     FARAWAY_FILTER,FARAWAY_SLOTS_LEFT,FARAWAY_SLOTS_RIGHT,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT)
-                // if (FARAWAY_FILTER){
-                //     //车位中心点
-                //     float center_x = 0.0f;
-                //     float center_y = 0.0f;
-                //     for (int j = 0; j < 4; ++j) {
-                //         center_x += psd2vcu.FusionSlotInfo[i].pt[j].x;
-                //         center_y += psd2vcu.FusionSlotInfo[i].pt[j].y;
-                //     }
-                //     center_x /= 4.0f;
-                //     center_y /= 4.0f;
-                //     //判断中心点是否在矩形范围内
-                //     if (center_x <= FARAWAY_SLOTS_REAR || center_x >= FARAWAY_SLOTS_FRONT ||
-                //         center_y <= FARAWAY_SLOTS_LEFT || center_y >= FARAWAY_SLOTS_RIGHT) {
-                //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;  // 被占用
-                //     } else {
-                //         if (psd_m_output.rectInfo.iSodType == 1) {
-                //             psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
-                //         } else {
-                //             psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
-                //         }
-                //     }
-                //     LOGD("[VCU occupied] slot.x: %f, RD occupied: %d, VCU occupied: %d",
-                //         psd2vcu.FusionSlotInfo[i].pt[0].x,
-                //         psd_m_output.rectInfo.iSodType,
-                //         psd2vcu.FusionSlotInfo[i].slotStatusType);
-                // }
+                // 车位的中心点是否在允许释放的区域
+                //限制范围（前后、左右）
+                LOGD("FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left-Right: [%f, %f]",
+                    FARAWAY_FILTER,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT,FARAWAY_SLOTS_LEFT,FARAWAY_SLOTS_RIGHT)
+                if (FARAWAY_FILTER){
+                    //车位中心点
+                    float center_x = 0.0f;
+                    float center_y = 0.0f;
+                    for (int j = 0; j < 4; ++j) {
+                        center_x += psd2vcu.FusionSlotInfo[i].pt[j].x;
+                        center_y += psd2vcu.FusionSlotInfo[i].pt[j].y;
+                    }
+                    center_x /= 4.0f;
+                    center_y /= 4.0f;
+                    //判断中心点是否在矩形范围内
+                    if (center_x <= FARAWAY_SLOTS_REAR || center_x >= FARAWAY_SLOTS_FRONT ||
+                        center_y <= FARAWAY_SLOTS_LEFT || center_y >= FARAWAY_SLOTS_RIGHT) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4;  // 被占用
+                    } else {
+                        if (psd_m_output.rectInfo.iSodType == 1) {
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                        } else {
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                        }
+                    }
+                    LOGD("[VCU occupied] center(%.1f,%.1f), RD occupied: %d, VCU occupied: %d",
+                        center_x,
+                        center_y,
+                        psd_m_output.rectInfo.iSodType,
+                        psd2vcu.FusionSlotInfo[i].slotStatusType);
+                }
                 
 
                 // 障碍物属性
@@ -1045,6 +1049,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                     }
                 }
+                memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
             }
 
             else if (final_select_ID != 0 && is_Still) { //状态3：当有点选车位且静止，使用点选ID
@@ -1591,8 +1596,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 double dx = psd2planning.targetSlot.slotCorners.cornerB.x - psd2planning.targetSlot.slotCorners.cornerA.x;
                 double dy = psd2planning.targetSlot.slotCorners.cornerB.y - psd2planning.targetSlot.slotCorners.cornerA.y;
                 double AB_dist = sqrt(dx * dx + dy * dy);
+                LOGD("isNarrow: %d, AB_dist: %f",isNarrow, AB_dist);
                 if (AB_dist <= NARROWSLOT_THRESHOLD) {
                     isNarrow = true;
+                }
+                else{
+                    isNarrow = false;
                 }
                 // *******************正逆鱼骨*******************
                 double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
