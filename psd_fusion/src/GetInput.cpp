@@ -9,7 +9,7 @@ extern SaveFileToJson filetojson;
 extern int STILL_THRESHOLD;
 
 std::deque<DRPoseWithTime> dr_pose_buffer;
-const size_t MAX_BUFFER_SIZE = 30;
+const size_t MAX_BUFFER_SIZE = 60;
 const size_t MAX_RD_DR_ALLOWANCE = 200;
 
 // 更新DR缓存池
