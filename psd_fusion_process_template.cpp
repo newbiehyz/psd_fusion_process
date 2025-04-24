@@ -22,6 +22,7 @@ float FARAWAY_SLOTS_LEFT = -99999.0;
 float FARAWAY_SLOTS_RIGHT = 99999.0;
 float FARAWAY_SLOTS_REAR = -99999.0;
 float FARAWAY_SLOTS_FRONT = 99999.0;
+float NARROWSLOT_THRESHOLD = -99999.0;
 
 
 // // ***************************输入的全局变量，用于ON方式获取
@@ -72,6 +73,7 @@ int final_select_ID = 0; //VCU和HMI最终统一的ID
 int final_ID = 0; //结合选择、推荐后的最终ID
 bool recommend_exist = false; //推荐车位是否已存在
 bool already_has_recommend_slot = false;
+bool isNarrow = false; // 是否为窄车位
 
 
 int parkout_flag = 0; //当前是否为泊出
@@ -148,7 +150,8 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
     std::ifstream inFile(filename);
     if(!inFile.is_open()){
         DEBUG = false;
-        LOGD("无法打开配置文件: %s, DEBUG: %d", filename.c_str(), DEBUG);
+        FARAWAY_FILTER = false;
+        LOGD("无法打开配置文件: %s, DEBUG: %d, FARAWAY_FILTER: %d", filename.c_str(), DEBUG,FARAWAY_FILTER);
         return false;
     }
 
@@ -158,6 +161,10 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
 
         //解析文件路径
         j.at("debug").at("save_to_json").get_to(DEBUG);
+
+        j.at("calib").at("NARROWSLOT_THRESHOLD").get_to(NARROWSLOT_THRESHOLD);
+
+        j.at("calib").at("FARAWAY_FILTER").get_to(FARAWAY_FILTER);
         j.at("calib").at("FARAWAY_SLOTS_REAR").get_to(FARAWAY_SLOTS_REAR);
         j.at("calib").at("FARAWAY_SLOTS_FRONT").get_to(FARAWAY_SLOTS_FRONT);
         j.at("calib").at("FARAWAY_SLOTS_LEFT").get_to(FARAWAY_SLOTS_LEFT);
@@ -536,7 +543,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04181603 emos910 isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: psd2vcu fixed,FARAWAYconfig");
+    LOGD("PSD Version: 04241346 emos910 isNarrow jump,isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: psd2vcu fixed,FARAWAYconfig");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -906,7 +913,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 // 车位的中心点是否在允许释放的区域
                 //限制范围（前后、左右）
                 LOGD("FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left-Right: [%f, %f]",
-                    FARAWAY_FILTER,FARAWAY_SLOTS_LEFT,FARAWAY_SLOTS_RIGHT,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT)
+                    FARAWAY_FILTER,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT,FARAWAY_SLOTS_LEFT,FARAWAY_SLOTS_RIGHT)
                 if (FARAWAY_FILTER){
                     //车位中心点
                     float center_x = 0.0f;
@@ -928,8 +935,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                         }
                     }
-                    LOGD("[VCU occupied] slot.x: %f, RD occupied: %d, VCU occupied: %d",
-                        psd2vcu.FusionSlotInfo[i].pt[0].x,
+                    LOGD("[VCU occupied] center(%.1f,%.1f), RD occupied: %d, VCU occupied: %d",
+                        center_x,
+                        center_y,
                         psd_m_output.rectInfo.iSodType,
                         psd2vcu.FusionSlotInfo[i].slotStatusType);
                 }
@@ -1041,6 +1049,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                     }
                 }
+                memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
             }
 
             else if (final_select_ID != 0 && is_Still) { //状态3：当有点选车位且静止，使用点选ID
@@ -1581,7 +1590,20 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
                 psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
                 psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
-                // *******************正逆鱼骨
+
+                // *******************判定是否狭窄车位*******************
+                
+                double dx = psd2planning.targetSlot.slotCorners.cornerB.x - psd2planning.targetSlot.slotCorners.cornerA.x;
+                double dy = psd2planning.targetSlot.slotCorners.cornerB.y - psd2planning.targetSlot.slotCorners.cornerA.y;
+                double AB_dist = sqrt(dx * dx + dy * dy);
+                LOGD("isNarrow: %d, AB_dist: %f",isNarrow, AB_dist);
+                if (AB_dist <= NARROWSLOT_THRESHOLD) {
+                    isNarrow = true;
+                }
+                else{
+                    isNarrow = false;
+                }
+                // *******************正逆鱼骨*******************
                 double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
                 double ABy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
                 double ADx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
@@ -1604,7 +1626,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 else{
                     psd2planning.targetSlot.slotType = Sfus::SLOTTYP_OBL;
                 }
-                //*******************
+                //**************************************
                 psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
                 if (final_ID >= 1000 && final_ID < 10000){
                     psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
@@ -1701,7 +1723,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         else{
             psd2statemachine.aps_apaParkFusionType = 0;
         }
-        psd2statemachine.aps_apaNarrowSlot = 0; //@TODO 窄车位
+        psd2statemachine.aps_apaNarrowSlot = isNarrow; 
         if (slotlist_size > 0){
             psd2statemachine.aps_apaAvailableSlot = 1;
             psd2statemachine.aps_apaHighlightSlot = 1;
