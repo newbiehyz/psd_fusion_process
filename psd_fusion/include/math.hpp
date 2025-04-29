@@ -106,9 +106,9 @@ namespace math{
         return closest_spots;
     }
 
-    POINT_I coordConvert_car_center(const POINT_I& slot)
+    POINT_F coordConvert_car_center(const POINT_F& slot)
     {
-        POINT_I grand;
+        POINT_F grand;
 
         float REAR_AXEL_TO_CENTER = (VEHICLE_LENGTH / 2) - REAR_AXLE_CENTER_VEHICLE_REAR;
 
@@ -121,6 +121,22 @@ namespace math{
         return grand;
     }
 
+    // // 0428 origin
+    // POINT_I coordConvert_car_center(const POINT_I& slot)
+    // {
+    //     POINT_I grand;
+
+    //     float REAR_AXEL_TO_CENTER = (VEHICLE_LENGTH / 2) - REAR_AXLE_CENTER_VEHICLE_REAR;
+
+    //     float x = slot.x - BIRD_VIEW_HEIGHT/2;
+    //     float y = BIRD_VIEW_HEIGHT/2 - slot.y + (REAR_AXEL_TO_CENTER / LR_BIRD_PIXECL_2_WORLD);
+
+    //     grand.x = x * LR_BIRD_PIXECL_2_WORLD;
+    //     grand.y = y * LR_BIRD_PIXECL_2_WORLD;
+
+    //     return grand;
+    // }
+
     apaSlotListInfo ConvertSingeleframe2Local(const std::vector<padVisionSlotCoord> &singleframeslot){
         apaSlotListInfo local_slots;
         apaSlotInfo rect_local;
@@ -129,7 +145,9 @@ namespace math{
 
         for(int icnt = 0; icnt < singleframeslot.size(); icnt++){
             
-            POINT_I slot_a_pt, slot_b_pt, slot_c_pt, slot_d_pt;
+            POINT_F slot_a_pt, slot_b_pt, slot_c_pt, slot_d_pt;
+            // //0428 origin
+            // POINT_I slot_a_pt, slot_b_pt, slot_c_pt, slot_d_pt;
 
             slot_a_pt.x = singleframeslot[icnt].a.x;
             slot_a_pt.y = singleframeslot[icnt].a.y;
@@ -148,6 +166,15 @@ namespace math{
             rect_local.rectInfo.pt[2].y = coordConvert_car_center(slot_c_pt).y;
             rect_local.rectInfo.pt[3].x = coordConvert_car_center(slot_d_pt).x;
             rect_local.rectInfo.pt[3].y = coordConvert_car_center(slot_d_pt).y;
+            // // 0428 origin
+            // rect_local.rectInfo.pt[0].x = coordConvert_car_center(slot_a_pt).x;
+            // rect_local.rectInfo.pt[0].y = coordConvert_car_center(slot_a_pt).y;
+            // rect_local.rectInfo.pt[1].x = coordConvert_car_center(slot_b_pt).x;
+            // rect_local.rectInfo.pt[1].y = coordConvert_car_center(slot_b_pt).y;
+            // rect_local.rectInfo.pt[2].x = coordConvert_car_center(slot_c_pt).x;
+            // rect_local.rectInfo.pt[2].y = coordConvert_car_center(slot_c_pt).y;
+            // rect_local.rectInfo.pt[3].x = coordConvert_car_center(slot_d_pt).x;
+            // rect_local.rectInfo.pt[3].y = coordConvert_car_center(slot_d_pt).y;
 
             rect_local.rectInfo.PStype = singleframeslot[icnt].bayType;
 

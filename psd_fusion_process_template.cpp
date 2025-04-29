@@ -543,7 +543,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04241826 emos910 enlarget DR buffer size,isNarrow jump,isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: psd2vcu fixed,FARAWAYconfig");
+    LOGD("PSD Version: 04291044 emos910 convert int-float,typecorrect fusionslots,enlarge DR buffer size,isNarrow jump,isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: psd2vcu fixed,FARAWAYconfig");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -779,6 +779,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     if (is_Still == 0){
         g_singleframe_locked_slots.clear();
     }
+
+    // outputSlot_FUSED优化：类型修正
+    LOGD("Without SlotTypeCorrect FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSD_FusionModuleIFrunable.SlotTypeCorrect(outputSlot_FUSED);
+    LOGD("After SlotTypeCorrect FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
     //------------------------------------------
     // outputSlot_FUSED优化：去除内部重叠车位
