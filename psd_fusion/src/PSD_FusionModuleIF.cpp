@@ -320,7 +320,7 @@ void SlotTypeDetermine(apaSlotInfo &slot, int slot_type_AB_thr) {
         int AD_dx = Ax - Dx;
         int AD_dy = Ay - Dy;
         float angle = GetAngleBetweenVectors(AB_dx, AB_dy, AD_dx, AD_dy);
-        if (angle >= 110.0f || angle <= 70.0f) {
+        if (angle >= 92.0f || angle <= 88.0f) {
             slot.rectInfo.PStype = 2; // 斜列车位
         } else {
             slot.rectInfo.PStype = 0; // 垂直车位
