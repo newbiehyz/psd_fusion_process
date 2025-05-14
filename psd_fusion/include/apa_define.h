@@ -142,7 +142,9 @@ static inline bool FloatNumEqual(float l, float r) {
 struct QuadInfo {
     Eigen::Matrix<float, 3, 4> quads;  // 模型给出的4个顶点的坐标
     Eigen::Matrix<float, 3, 4> corners_ego;    // 转移到自车系的坐标
+    Eigen::Matrix<float, 3, 4> corners_ego_FY;    // 转移到自车系的坐标
     Eigen::Matrix<float, 3, 4> corners_world;  // 转移到世界系的坐标
+    Eigen::Matrix<float, 3, 4> corners_world_FY;  // 转移到世界系的坐标
     Eigen::Matrix<float, 3, 4> corners_extended;  // 补全并转移到世界系的坐标
 
     std::array<Eigen::Matrix2f, 4> cov_ego;       // 自车系的协方差
@@ -152,7 +154,9 @@ struct QuadInfo {
 
     Eigen::Vector3f center_pixel = Eigen::Vector3f::Zero();
     Eigen::Vector3f center_ego = Eigen::Vector3f::Zero();
+    Eigen::Vector3f center_ego_FY = Eigen::Vector3f::Zero();
     Eigen::Vector3f center_world = Eigen::Vector3f::Zero();
+    Eigen::Vector3f center_world_FY = Eigen::Vector3f::Zero();
 
     Eigen::Vector2f long_dir_pixel = Eigen::Vector2f::Zero();
     Eigen::Vector2f long_dir_world = Eigen::Vector2f::Zero();
@@ -167,7 +171,7 @@ struct QuadInfo {
 typedef std::shared_ptr<QuadInfo> QuadInfoPtr;
 
 struct IPMParameters {
-    float focal_length = 29.8f;
+    float focal_length = 44.8f;
     // float focal_length = 44.8f;
     float ipm_width = 896.0f;
     float ipm_height = 896.0f;
@@ -199,12 +203,12 @@ struct IPMParameters {
     // float max_v = 219.f;
     // float cam_v = 120.f;
 
-    // 20m 896x896 (9,11) (7.5,12.5)
-    float min_u = 403.f;  // width dir
-    float max_u = 494.f;
-    float min_v = 336.f;  // height dir
-    float max_v = 561.f;
-    float cam_v = 120.f;
+
+    float min_u = 388.f;  // width dir
+    float max_u = 507.f;
+    float min_v = 329.f;  // height dir
+    float max_v = 566.f;
+    float cam_v = 405.f;
 };
 
 struct ParkingSlotManagerParameters {
@@ -214,13 +218,13 @@ struct ParkingSlotManagerParameters {
     float sigma_1_ratio = 0.05f;
     float sigma_2_ratio = 0.02f;
     // 超出此范围的像素，sigma增加
-    float pixel_dist_thr = 100.f;
+    float pixel_dist_thr = 140.f;
     float sigma_enlarge_coeff = 50.0f;
     // 保留车位的范围
     // float neighborhood_range = 10000.0f;
-    float neighborhood_range = 9000.0f;
+    float neighborhood_range = 20.0f;
     // 检查同一车位的范围
-    float check_same_slot_range = 3000.0f;
+    float check_same_slot_range = 3.0f;
 };
 static IPMParameters ipmp_;
 static ParkingSlotManagerParameters psmp_;
@@ -335,11 +339,11 @@ struct ParkingSlotRange {
 struct ParkingSlotSizeController {
         // *******10m
         // std::vector<std::pair<float, float>> vp_slot_sizes = {
-        //     {70, 175}, {82, 180}, {86, 184}, {90, 188}};
-        // std::vector<std::pair<float, float>> v_slot_sizes = {
-        //     {70, 175}, {82, 180}, {86, 184}, {90, 188}};
+        //     {70, 175}, {82, 180}, {86, 184}, {90, 188}}; 
+        // std::vector<std::pair<float, ipm2baselink_pixel_ratiofloat>> v_slot_sizes = {
+        //     {70, 175}, {82, 180}, {86, 184}, {90, 188}};    //(1.98,4.97) (2.3288,5.112) (2.4424,5.2256)(2.556,5.3392)
         // std::vector<std::pair<float, float>> p_slot_sizes = {
-        //     {82, 210}, {86, 220}, {95, 246}};
+        //     {82, 210}, {86, 220}, {95, 246}};               //(2.3288,5.964) (2.4424,6.248) (2.698,6.9864)
         // *******15m
         // std::vector<std::pair<float, float>> vp_slot_sizes = {
         //     {59, 148}, {69, 152}, {72, 156}, {76, 159}};
@@ -353,9 +357,9 @@ struct ParkingSlotSizeController {
         std::vector<std::pair<float, float>> v_slot_sizes = {
             {88, 223}, {104, 230}, {108, 235}, {113, 240}};
         std::vector<std::pair<float, float>> p_slot_sizes = {
-            {103, 268}, {108, 280}, {119, 314}};
-        std::vector<std::pair<float, float>> slant_slot_size = {{92, 230},
-                                                                {110, 240}};
+            {104, 268}, {108, 280}, {119, 314}};
+        std::vector<std::pair<float, float>> slant_slot_size = {{117, 292},
+                                                                {140, 305}};
         bool Adjust(float &length,
                     float &width,
                     bool base_on_length,
@@ -370,19 +374,19 @@ struct ParkingSlotParam {
         float corner_dis_threshold = 1000;
         float iou_threshold = 0.3;
         uint32_t input_w = 896, input_h = 896;
-        uint32_t image_w = 600, image_h = 600;
+        uint32_t image_w = 896, image_h = 896;
         // 20m & 896*896 1pixel = 0.02232m
         // 15m & 448*448 1pixel = 0.03348m
         // 10m & 352*352 1pixel = 0.0284m
         // *******20m
-        ParkingSlotRange ps_score_range{0.58, 0.9397};
-        ParkingSlotRange ps_length_range{200, 405};
-        ParkingSlotRange ps_width_range{75, 140};
+        ParkingSlotRange ps_score_range{0.342, 0.9397};
+        ParkingSlotRange ps_length_range{210, 405};
+        ParkingSlotRange ps_width_range{78, 137};
         ParkingSlotRange ps_width_slant_range{110, 200};
-        ParkingSlotRange ps_length_complete_range{230, 408};
+        ParkingSlotRange ps_length_complete_range{234, 408};
         ParkingSlotRange ps_length_slant_complete_range{240, 408};
         ParkingSlotRange ps_length_2_range{200, 240};
-        ParkingSlotRange ps_length_slant_2_range{200, 290};
+        ParkingSlotRange ps_length_slant_2_range{200, 280};
         // *******15m
         // ParkingSlotRange ps_score_range{0.58, 0.9397};
         // ParkingSlotRange ps_length_range{136, 271};
@@ -449,11 +453,23 @@ struct ParkingSlotParam {
         // std::vector<Eigen::Vector2f> car_contour = {
         //     {140.F, 88.F}, {213.F, 88.F}, {213.F, 264.F}, {140.F, 264.F}};
         // *******20m
-        ParkingSlotRange car_length_range = {110.F, 338.F}; //{2.5m, 7.5m}
-        ParkingSlotRange car_width_range = {178.F, 270.F}; //{4m, 6m}
+        // // 10m 352x352 (4,6) (2.5,7.5)
+        // float min_u = 141.f;  // width dir
+        // float max_u = 210.f;
+        // float min_v = 87.f;  // height dir
+        // float max_v = 264.f;
+        // float cam_v = 120.f;
+        // 20m 896x896 (9,11) (7.5,12.5)
+        // float min_u = 389.f;  // width dir
+        // float max_u = 507.f;
+        // float min_v = 330.f;  // height dir
+        // float max_v = 566.f;
+        // float cam_v = 120.f;
+        ParkingSlotRange car_length_range = {389.F, 507.F}; //{2.5m, 7.5m}
+        ParkingSlotRange car_width_range = {330.F, 566.F}; //{4m, 6m}
         float point_border_dis_thres_for_score_modify = 2.F;
-        std::vector<Eigen::Vector2f> car_contour = {
-            {178.F, 110.F}, {270.F, 110.F}, {270.F, 338.F}, {178.F, 338.F}};
+        // std::vector<Eigen::Vector2f> car_contour = {
+        //     {330.F, 389.F}, {566.F, 389.F}, {566.F, 507.F}, {330.F, 507.F}};
 
         bool post_output_parking_slot = true;
     };
@@ -501,8 +517,8 @@ class PSMask {
 typedef PSMask<uint8_t> PSMaskU8;
 
 #include <stdint.h>
-#define IMG_RAW_HEIGHT 480
-#define IMG_RAW_WIDTH 640
+#define IMG_RAW_HEIGHT 896
+#define IMG_RAW_WIDTH 896
 
 // #define VISION_OD_HEIGHT 300
 // #define VISION_OD_WIDTH 300

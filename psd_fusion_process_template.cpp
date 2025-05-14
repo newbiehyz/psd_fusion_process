@@ -354,6 +354,28 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
 {
+    LOGD("[CANData] WhlDistEdgeCntrLRHigFreq: %d, WhlDistEdgeCntrRRHigFreq: %d, WhlDistEdgeCntrRFHigFreq: %d, WhlDistEdgeCntrLFHigFreq: %d",
+            userData.WhlDistEdgeCntrLRHigFreq,
+            userData.WhlDistEdgeCntrRRHigFreq,
+            userData.WhlDistEdgeCntrRFHigFreq,
+            userData.WhlDistEdgeCntrLFHigFreq);
+    LOGD("[CANData] WhlAngVelRFrtAuth: %f, WhlAngVelLFrtAuth: %f, WhlAngVelRRrAuth: %f, WhlAngVelLRrAuth: %f",
+            userData.WhlAngVelRFrtAuth,
+            userData.WhlAngVelLFrtAuth,
+            userData.WhlAngVelRRrAuth,
+            userData.WhlAngVelLRrAuth);
+    LOGD("[CANData] IMULonAccPri: %f, IMULonAccSec: %f, IMULatAccPrim: %f, IMULatACCSec: %f",
+            userData.IMULonAccPri,
+            userData.IMULonAccSec,
+            userData.IMULatAccPrim,
+            userData.IMULatACCSec);
+    LOGD("[CANData] IMUYawRtPri: %f, IMUYawRtSec: %f, StrWhAng: %f, VehSpdAvgNDrvn: %f",
+            userData.IMUYawRtPri,
+            userData.IMUYawRtSec,
+            userData.StrWhAng,
+            userData.VehSpdAvgNDrvn);
+    LOGD("[CANData] TARS_TransActRng: %d", userData.TARS_TransActRng);
+
     RETURN_NOERROR;
 }
 
@@ -543,7 +565,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 04291044 emos910 convert int-float,typecorrect fusionslots,enlarge DR buffer size,isNarrow jump,isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: psd2vcu fixed,FARAWAYconfig");
+    LOGD("PSD Version: 05141348 emos910 KFenable,convert int-float,typecorrect fusionslots,enlarge DR buffer size,isNarrow jump,isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: psd2vcu fixed,FARAWAYconfig");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -759,8 +781,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
                     // 添加到锁定列表中
                     bool already_locked = false;
-                    for (const auto & s : g_singleframe_locked_slots) {
+                    for (auto & s : g_singleframe_locked_slots) {
                         if (s.rectInfo.label == slot.rectInfo.label) {
+                            s = slot;
                             already_locked = true;
                             break;
                         }
@@ -1161,12 +1184,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2vcu.FusionSlotInfo[icnt].pt[3].y,
             psd2vcu.FusionSlotInfo[icnt].timeStamp);
         }
-        // // 固定点选车位
-        // for (int i = 0; i < slotlist_size; i++) {
-        //     if (psd2vcu.FusionSlotInfo[i].slotLabel == final_select_ID) {
-        //         psd2vcu.FusionSlotInfo[i].fusionSlotType = 1; //@TODO 作为点选flag，下个版本有新接口后更换
-        //     } 
-        // }
+
         if (apa_status != 1){
             LOGD("[RECOMMENDSELECTID] HMI %d, VCU %d, final select %d, recommend: %d, final_ID %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID,RECOMMEND_ID,final_ID);
 
@@ -1413,8 +1431,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
     //***********************************APAHANDLE 发送车位列表
-
-
     psd2location.slotNum = slotlist_size;
     if (psd2location.slotNum > 0){
         int j = 0;
@@ -1747,17 +1763,21 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     S2S_MCore_Bridge_SetSigStatusDecFusionInput(&psd2statemachine);
 
+
+
     //***********************************USS 发送目标车位ID
     short targetUssSlotID = 0;
 
     if (final_ID >= 10000) {
-        if (final_ID > SHRT_MAX) {  // SHRT_MAX 来自 <limits.h>
+        if (final_ID > SHRT_MAX) {
             LOGD("Error: final_ID exceeds short range!\n");
         } else {
             targetUssSlotID = (short) final_ID;
             S2S_MCore_Bridge_SetSigtargetUssSlotLabel(&targetUssSlotID);
         }
     }
+
+
 
     //***********************************Control 发送限位块信息
     memset(&psd2control, 0, sizeof(APAControlBumpInput));
@@ -1777,19 +1797,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     S2S_MCore_Bridge_SetSigAPAControlBumpInput(&psd2control);
 
-
-    // //***********************************Control MOCK test
-    // memset(&psd2control, 0, sizeof(APAControlBumpInput));
-    // psd2control.apc_LimitBarX[0] = 11;
-    // psd2control.apc_LimitBarY[0] = 12;
-    // psd2control.apc_LimitBarX[1] = 21;
-    // psd2control.apc_LimitBarY[1] = 22;
-
-    // LOGD("[PSD2CONTROL]LimitBar for target slot: (%d, %d), (%d, %d)", 
-    //    psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
-    //    psd2control.apc_LimitBarX[1], psd2control.apc_LimitBarY[1]);
-
-    // S2S_MCore_Bridge_SetSigAPAControlBumpInput(&psd2control);
 
 
 

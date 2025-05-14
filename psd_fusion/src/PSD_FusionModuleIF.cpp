@@ -43,7 +43,7 @@
 
 
 #define PI 3.1415926
-#define VEHICLE_WIDTH 2000
+#define VEHICLE_WIDTH 2023
 #define VEHICLE_LENGTH 5259.9 //458:5245.0
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1130 //e2sb:1100,458:1130
 #define FRONT_SONAR_PITCH_HEAD 400
@@ -64,7 +64,7 @@
 #define EFFECTIVE_SLOT_Y_2 335
 
 using namespace IOU;
-#define wheel_base 3.16
+#define wheel_base 3
 #define VERTICAL 0
 #define PARALLEL 1
 #define SLANT 2
@@ -727,20 +727,33 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             quad->material = slot.material;
             quad->quads.bottomRows<1>().setOnes();
 
-            // 原始检测角点信息，乱序的
             Eigen::Vector2f tl, tr, bl, br;
+            std::cout<<std::endl;
+            std::cout<<"RDinput_tltrbrbl: " << slot.a.x <<" " << slot.a.y << "  " << slot.b.x <<" " << slot.b.y <<"  "<< slot.c.x <<" " << slot.c.y <<"  "<< slot.d.x <<" " << slot.d.y <<std::endl;
+
+
             tl<<slot.a.x, slot.a.y;
             tr<<slot.b.x, slot.b.y;
             br<<slot.c.x, slot.c.y;
             bl<<slot.d.x, slot.d.y;
+
             quad->quads.col(0).head<2>() = tl;
             quad->quads.col(1).head<2>() = tr;
             quad->quads.col(2).head<2>() = br;
             quad->quads.col(3).head<2>() = bl;
-            transform2world(m_vehicle_pose,quad);
-            LOGD("center:(%f,%f)",quad->center_world.x(),quad->center_world.y());
+            padVehiclePose m_vehicle_pose_JY;
+            m_vehicle_pose_JY.coord.x = m_vehicle_pose.coord.y/1000.0f;
+            m_vehicle_pose_JY.coord.y = - m_vehicle_pose.coord.x/1000.0f;
+            m_vehicle_pose_JY.yaw = - m_vehicle_pose.yaw  * PI/180;
+
+            transform2world(m_vehicle_pose_JY,quad);
+
+
+            
+            // LOGD("center:(%f,%f)",quad->center_world.x(),quad->center_world.y());
             
             auto slot_existance = check_slot_existance(quad);
+            
             if (slot_existance != nullptr) { //找到存在的车位
                 Eigen::Vector3d pose{m_vehicle_pose.coord.x, m_vehicle_pose.coord.y, m_vehicle_pose.yaw};
                 Eigen::Vector3f diff = pose.cast<float>() - slot_existance->GetSlotCenter();
@@ -757,7 +770,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                 // }
                 // 已经存在与之对应的车位，用角点信息进行更新
                 slot_existance->SetLatestFrameId(static_cast<uint32_t>(frameid));
-                slot_existance->Update(quad,m_vehicle_pose);
+                slot_existance->Update(quad,m_vehicle_pose_JY);
                 
             } else {
                 auto result = std::make_shared<ParkingSlotResult>();
@@ -768,7 +781,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
                     }
                 }
                 if (ProcessParkingSlotResult(*mParkingLineMask_ptr, slot, result)) {
-                    transform2world(m_vehicle_pose, result, quad);
+                    transform2world(m_vehicle_pose_JY, result, quad);
                     if (check_slot_existance(quad) != nullptr) {
                         continue;
                     }
@@ -780,33 +793,30 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             }
             
         }else{
-            apaSlotInfo rect;
-            apaSlotInfo rect_car_center;
-            rect.rectInfo.iRectType = 0; // 0为视觉检测结果 
-            rect.rectInfo.iSodType = 0;  // 0为没有障碍物，1为有障碍物，-1为未知情况（reset,或车停下来）
-            // rect.rectInfo.iMinOtherSideDist = -1;
-            rect.rectInfo.level=2; //跟踪值还是检测值 2为检测值，1为跟踪值
-            rect.rectInfo.PStype = slot.bayType;
-            rect.detect_frame_count = 1; 
+            // apaSlotInfo rect;
+            // apaSlotInfo rect_car_center;
+            // rect.rectInfo.iRectType = 0; // 0为视觉检测结果 
+            // rect.rectInfo.iSodType = 0;  // 0为没有障碍物，1为有障碍物，-1为未知情况（reset,或车停下来）
+            // // rect.rectInfo.iMinOtherSideDist = -1;
+            // rect.rectInfo.level=2; //跟踪值还是检测值 2为检测值，1为跟踪值
+            // rect.rectInfo.PStype = slot.bayType;
+            // rect.detect_frame_count = 1; 
 
-            if (m_select_slot_label_id > 0) { 
-                if(m_select_slot_label_id == rect.rectInfo.label) { 
-                    // *it = rect;
-                }
-            }
-            else {
-                // *it = rect;
-            } 
+            // if (m_select_slot_label_id > 0) { 
+            //     if(m_select_slot_label_id == rect.rectInfo.label) { 
+            //         // *it = rect;
+            //     }
+            // }
 
-            if(rect.is_reliable == 1) {
-                // rect_car_center = *it;
-                rect_car_center.rectInfo.pt[0] = coordConvert_car_center(slot.a);
-                rect_car_center.rectInfo.pt[1] = coordConvert_car_center(slot.b);
-                rect_car_center.rectInfo.pt[2] = coordConvert_car_center(slot.c);
-                rect_car_center.rectInfo.pt[3] = coordConvert_car_center(slot.d); 
+            // if(rect.is_reliable == 1) {
+            //     // rect_car_center = *it;
+            //     rect_car_center.rectInfo.pt[0] = coordConvert_car_center(slot.a);
+            //     rect_car_center.rectInfo.pt[1] = coordConvert_car_center(slot.b);
+            //     rect_car_center.rectInfo.pt[2] = coordConvert_car_center(slot.c);
+            //     rect_car_center.rectInfo.pt[3] = coordConvert_car_center(slot.d); 
                 
-                m_output_slot.slots_in_cur_frame.push_back(rect_car_center);
-            }
+            //     m_output_slot.slots_in_cur_frame.push_back(rect_car_center);
+            // }
         }
     }
     delete_invalid_slots();
@@ -826,8 +836,11 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
     apaSlotInfo rect_local, rect_world, rect_world_shrink;
     int slot_id = 1000;
     for (const auto &slot : slots_map_){
-        auto corner_world = slot.second.get()->GetCornersWorld();
-    
+
+        // if (slot.second->IsConfiremd()){
+
+        auto corner_world    = slot.second.get()->GetCornersWorld();
+        auto corner_world_FY = slot.second.get()->GetCornersWorld();
         rect_local.rectInfo.label = slot_id;
         rect_local.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
         rect_local.rectInfo.iSodType = slot.second.get()->GetOccupy();
@@ -845,23 +858,35 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
         rect_world.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
         rect_world.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
         rect_world.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
-
-
+        
         for(int i = 0; i < 4; i++){
             if(corner_world[i].hasNaN()){
                 continue;    
             }else{
+                corner_world_FY[i].head<2>().x() = -1000.f * corner_world[i].head<2>().y();
+                corner_world_FY[i].head<2>().y() =  1000.f * corner_world[i].head<2>().x();
+                 }
+            }
+
+        for(int i = 0; i < 4; i++){
+            if(corner_world_FY[i].hasNaN()){
+                continue;    
+            }else{
                 Eigen::Vector3f pt;
-                pt << corner_world[i].head<2>().x(), corner_world[i].head<2>().y(), 0.0;
+                pt << corner_world_FY[i].head<2>().x(), corner_world_FY[i].head<2>().y(), 0.0;
                 world2car(pt);
                 // local
-                rect_local.rectInfo.pt[i].x = pt.x();
-                rect_local.rectInfo.pt[i].y = pt.y();
+                rect_local.rectInfo.pt[i].x = pt.x() ;
+                rect_local.rectInfo.pt[i].y = pt.y() ;
                 // world
-                rect_world.rectInfo.pt[i].x = corner_world[i].head<2>().x();
-                rect_world.rectInfo.pt[i].y = corner_world[i].head<2>().y();
+                rect_world.rectInfo.pt[i].x =  corner_world_FY[i].head<2>().x();
+                rect_world.rectInfo.pt[i].y =  corner_world_FY[i].head<2>().y();
+                 }
             }
-        }
+
+
+
+
         // 快乐内缩
         // LOGD("[SHRINK] before shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
         //                                                            rect_local.rectInfo.pt[0].y,
@@ -873,10 +898,10 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
         //                                                            rect_local.rectInfo.pt[3].y)
         shrink_quad(rect_local); 
         // LOGD("[SHRINK] after shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
-        //                                                           rect_local.rectInfo.pt[0].y,
+        //                                                            rect_local.rectInfo.pt[0].y,
         //                                                           rect_local.rectInfo.pt[1].x,
         //                                                           rect_local.rectInfo.pt[1].y,
-        //                                                           rect_local.rectInfo.pt[2].x,
+        //                                                            rect_local.rectInfo.pt[2].x,
         //                                                           rect_local.rectInfo.pt[2].y,
         //                                                           rect_local.rectInfo.pt[3].x,
         //                                                           rect_local.rectInfo.pt[3].y)
@@ -890,6 +915,7 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
         slot_res.slots_in_cur_frame.push_back(rect_local);
         slot_res.WorldoutRect.push_back(rect_world);
         slot_id++;
+        // }
     } 
 }
 
@@ -900,6 +926,40 @@ bool PSD_FusionModuleIF::isLeftOfOrigin(const apaSlotInfo rect)
     centerX = (rect.rectInfo.pt[0].x + rect.rectInfo.pt[1].x + rect.rectInfo.pt[2].x + rect.rectInfo.pt[3].x) / 4.0;
     return centerX < 0;
 }
+
+
+
+
+
+void PSD_FusionModuleIF::adjustRectOrder_KF(bool isleft, std::array<Eigen::Vector3f, 4> cornerswolrd)
+{
+    // 按照 x 轴排序，先排左边的两个点，再排右边的两个点
+    std::sort(cornerswolrd.begin(), cornerswolrd.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+        return a.x() < b.x();
+    });
+
+    // 左侧两个点 (left1, left2)，右侧两个点 (right1, right2)
+    std::array<Eigen::Vector3f, 2> left = {cornerswolrd[0], cornerswolrd[1]};
+    std::array<Eigen::Vector3f, 2> right = {cornerswolrd[2], cornerswolrd[3]};
+
+    // 按 y 轴排序，确保 top 和 bottom
+    std::sort(left.begin(), left.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+        return a.y() > b.y();  // y 值大的在前
+    });
+
+    std::sort(right.begin(), right.end(), [](const Eigen::Vector3f& a, const Eigen::Vector3f& b) {
+        return a.y() > b.y();  // y 值大的在前
+    });
+
+    if (isleft) {
+        // 当长方形位于原点左侧
+        cornerswolrd = {right[1], right[0], left[0], left[1]}; // A, B, C, D
+    } else {
+        // 当长方形位于原点右侧
+        cornerswolrd = {left[1], left[0], right[0], right[1]}; // A, B, C, D
+    }
+}
+
 
 void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
 {
@@ -937,6 +997,12 @@ void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
 
 void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED) {
     auto &slots = outputSlotFUSED.slots_in_cur_frame;
+
+    float min_u = 388.f;  // width dir
+    float max_u = 507.f;
+    float min_v = 329.f;  // height dir
+    float max_v = 566.f;
+    float cam_v = 405.f;
     auto &worldRects = outputSlotFUSED.WorldoutRect;
     std::vector<bool> toDelete(slots.size(), false);
     
@@ -1112,7 +1178,7 @@ void PSD_FusionModuleIF::world2car(Eigen::Vector3f &pt){
     const auto& yaw = m_output_slot.padRealTimeLocation.yaw;
     // const auto& yaw = m_vehicle_pose.yaw * M_PI / 180;
 
-    std::cout<<"Algoyaw is:"<< yaw << std::endl;
+    // std::cout<<"Algoyaw is:"<< yaw << std::endl;
     float cos_yaw = std::cos(yaw);
     float sin_yaw = std::sin(yaw);
     // 全局坐标中的点 pt (pt.x(), pt.y())
@@ -1147,8 +1213,12 @@ void PSD_FusionModuleIF::delete_invalid_slots() {
     // delete faraway slots
     if (slots_map_.size() < 2) return;
     auto tracking_indexes = slots_tree_->neighborhood_indices(
-        point_t{static_cast<double>(m_vehicle_pose.coord.x), static_cast<double>(m_vehicle_pose.coord.y)}, 
+        point_t{static_cast<double>(m_vehicle_pose.coord.y/1000.0), static_cast<double>(-m_vehicle_pose.coord.x/1000.0)}, 
         static_cast<double>(psmp_.neighborhood_range));
+ //TODO
+    // auto tracking_indexes = slots_tree_->neighborhood_indices(
+    //     point_t{static_cast<double>(m_vehicle_pose.coord.x), static_cast<double>(m_vehicle_pose.coord.y)}, 
+    //     static_cast<double>(psmp_.neighborhood_range));
 
     // auto tracking_indexes = slots_tree_->neighborhood_indices(
     //     point_t{m_vehicle_pose.coord.x, m_vehicle_pose.coord.y}, psmp_.neighborhood_range);
@@ -1236,21 +1306,22 @@ void PSD_FusionModuleIF::transform2world(
     quad_info->center_pixel.setOnes();
     quad_info->center_pixel.head<2>() = post_result->center;
     float x = quad_info->center_pixel.x() - BIRD_VIEW_HEIGHT / 2;
-    float y = BIRD_VIEW_HEIGHT/2.0 - quad_info->center_pixel.y();
+    float y = BIRD_VIEW_HEIGHT/2.0 + (wheel_base/2.0)* ipmp_.focal_length - quad_info->center_pixel.y();
  
     float temp_x = x * LR_BIRD_PIXECL_2_WORLD;
     float temp_y = y * LR_BIRD_PIXECL_2_WORLD;
-    quad_info->center_ego << temp_x,temp_y, 0.0;
-    // quad_info->center_ego = intrinsic_ipm2car_ * quad_info->center_pixel;
-    // quad_info->long_dir_pixel = post_result->long_direction;
-    // quad_info->wide_dir_pixel = post_result->wide_direction;
-    if (post_result->type == 1){
-        quad_info->long_dir_pixel = post_result->wide_direction;
-        quad_info->wide_dir_pixel = post_result->long_direction;
-    }else{
-        quad_info->long_dir_pixel = post_result->long_direction;
-        quad_info->wide_dir_pixel = post_result->wide_direction;
-    }
+    //TODO:
+    quad_info->center_ego_FY << temp_x,temp_y, 1.0;
+    quad_info->center_ego = intrinsic_ipm2car_ * quad_info->center_pixel;
+    quad_info->long_dir_pixel = post_result->long_direction;
+    quad_info->wide_dir_pixel = post_result->wide_direction;
+    // if (post_result->type == 1){
+    //     quad_info->long_dir_pixel = post_result->wide_direction;
+    //     quad_info->wide_dir_pixel = post_result->long_direction;
+    // }else{
+    //     quad_info->long_dir_pixel = post_result->long_direction;
+    //     quad_info->wide_dir_pixel = post_result->wide_direction;
+    // }
     quad_info->length_world = post_result->length * std::fabs(intrinsic_ipm2car_(0, 1));
     quad_info->width_world = post_result->width * std::fabs(intrinsic_ipm2car_(1, 0));
 
@@ -1298,12 +1369,11 @@ void PSD_FusionModuleIF::transform2world(const padVehiclePose& loc_pose,
         Eigen::Vector2f v_2 = {v_1_pixel.x(),
                                -v_1_pixel.y()};  // {-v_1(1), v_1(0)}
         float sigma_1 = std::max(psmp_.sigma_1_ratio * pixel_dist,
-                                 psmp_.sigma_1_ratio * 10.0f) *
+                                 psmp_.sigma_1_ratio * 20.0f) *
                         intrinsic_ipm2car_(0, 1);
         float sigma_2 = std::max(psmp_.sigma_2_ratio * pixel_dist,
-                                 psmp_.sigma_2_ratio * 10.0f) *
+                                 psmp_.sigma_2_ratio * 20.0f) *
                         intrinsic_ipm2car_(0, 1);
-
        
         if (quad_info->near_edge.at(i) || pixel_dist > psmp_.pixel_dist_thr) {
             sigma_1 *= pixel_dist / psmp_.sigma_enlarge_coeff;
@@ -1319,41 +1389,50 @@ void PSD_FusionModuleIF::transform2world(const padVehiclePose& loc_pose,
         
     }
 
+    //TODO
     // 转换坐标系
+    auto x = quad_info->quads(0) - BIRD_VIEW_HEIGHT / 2.0;
+    auto y = BIRD_VIEW_HEIGHT/2.0 + (wheel_base/2.0)* ipmp_.focal_length - quad_info->quads(1);
+ 
+    auto temp_x = x * LR_BIRD_PIXECL_2_WORLD;
+    auto temp_y = y * LR_BIRD_PIXECL_2_WORLD;
+    //TODO:
     quad_info->corners_ego = intrinsic_ipm2car_ * quad_info->quads;
-    const auto& yaw = - loc_pose.yaw * PI / 180.0;
+    const auto& yaw = loc_pose.yaw;
     float cos_yaw = std::cos(yaw);
     float sin_yaw = std::sin(yaw);
     Eigen::Matrix3f trans_matrix;
     trans_matrix << cos_yaw, -sin_yaw, loc_pose.coord.x, sin_yaw, cos_yaw,
         loc_pose.coord.y, 0, 0, 1;
-    // quad_info->corners_world = trans_matrix * quad_info->corners_ego;
-    // 协方差转换到世界坐标系
+    //TODO:
+    quad_info->corners_world = trans_matrix * quad_info->corners_ego;
     Eigen::Matrix2f Rotation = trans_matrix.topLeftCorner<2, 2>();
     for (size_t i = 0; i < quad_info->quads.cols(); ++i) {
         quad_info->cov_world.at(i) =
             Rotation * quad_info->cov_ego.at(i) * Rotation.transpose();
        
     };
-
-    float global_x, global_y, local_x, local_y;
-    for (int i = 0; i < quad_info->quads.cols(); ++i) {
-        const auto& quad = quad_info->quads.col(i);
-        float x = (quad.x() - BIRD_VIEW_HEIGHT / 2) * LR_BIRD_PIXECL_2_WORLD;
-        float y = (BIRD_VIEW_HEIGHT/2.0 + (VEHICLE_LENGTH/2.0-REAR_AXLE_CENTER_VEHICLE_REAR)/LR_BIRD_PIXECL_2_WORLD - quad.y()) * LR_BIRD_PIXECL_2_WORLD;
-        float yaw = loc_pose.yaw * PI / 180.0;   
+    //TODO:
+    
+    // float global_x, global_y, local_x, local_y;
+    // for (int i = 0; i < quad_info->quads.cols(); ++i) {
+    //     const auto& quad = quad_info->quads.col(i);
+    //     float x = (quad.x() - BIRD_VIEW_HEIGHT / 2) * LR_BIRD_PIXECL_2_WORLD;
+    //     float y = (BIRD_VIEW_HEIGHT/2.0 + (VEHICLE_LENGTH/2.0-REAR_AXLE_CENTER_VEHICLE_REAR)/LR_BIRD_PIXECL_2_WORLD - quad.y()) * LR_BIRD_PIXECL_2_WORLD;
+    //     float yaw = loc_pose.yaw * PI / 180.0;   
         
-        global_x = x * cos(yaw) + y * sin(yaw) + loc_pose.coord.x;
-        global_y = y * cos(yaw) - x * sin(yaw) + loc_pose.coord.y;
+    //     global_x = x * cos(yaw) + y * sin(yaw) + loc_pose.coord.x;
+    //     global_y = y * cos(yaw) - x * sin(yaw) + loc_pose.coord.y;
 
-        quad_info->corners_world.col(i)<<global_x, global_y, 0.0;
-    }
+    //     quad_info->corners_world.col(i)<<global_x, global_y, 0.0;
+    // }
     
     if (quad_info->center_ego != Eigen::Vector3f::Zero()) {
-        Eigen::Vector3f center_sum = quad_info->corners_world.rowwise().sum(); // 对每一行（即 x、y、z 坐标）进行求和，得到总和向量
-        Eigen::Vector3f center = center_sum / quad_info->corners_world.cols(); // 将总和向量除以列数（角点数量），得到中心点的坐标 center
-        quad_info->center_world = center;
-        // quad_info->center_world = trans_matrix * quad_info->center_ego;
+        // Eigen::Vector3f center_sum = quad_info->corners_world.rowwise().sum(); // 对每一行（即 x、y、z 坐标）进行求和，得到总和向量
+        // Eigen::Vector3f center = center_sum / quad_info->corners_world.cols(); // 将总和向量除以列数（角点数量），得到中心点的坐标 center
+        // quad_info->center_world_FY = center;
+        //TODO：
+        quad_info->center_world = trans_matrix * quad_info->center_ego;
         quad_info->long_dir_world = trans_matrix.topLeftCorner<2, 2>() *
                                     (intrinsic_ipm2car_.topLeftCorner<2, 2>() *
                                      quad_info->long_dir_pixel)
@@ -1889,8 +1968,14 @@ void PSD_FusionModuleIF::CompleteBoxWithArrowFix(ParkingSlotQuad &quad) {
 }
 
 void PSD_FusionModuleIF::ModifyDirIn(ParkingSlotQuad &quad) {
+
+    // TODO： 水平车位变更长宽及方向
     if (quad.map_slot_type == PARALLEL ||
         (quad.map_slot_type == -1 && quad.slot_type == PARALLEL)) {
+        // Eigen::Vector2f tmp = quad.dir_length;
+        // quad.dir_length = quad.dir_length;
+        // quad.dir_width = quad.dir_width;        
+        // TODO: original
         Eigen::Vector2f tmp = quad.dir_length;
         quad.dir_length = quad.dir_width;
         quad.dir_width = tmp;
@@ -2421,16 +2506,21 @@ bool PSD_FusionModuleIF::CalibrateSingleSlot(const padVisionSlotCoord &quad,
     // parking_bboxes topic上的tl已经被补全的车位覆盖了，需要重新拿回来。
     approx_quad.tl << quad.a.x, quad.a.y;
     approx_quad.tr << quad.b.x, quad.b.y;
-    approx_quad.br << quad.c.x, quad.c.y; //TODO
+    approx_quad.br << quad.c.x, quad.c.y; ////TODO
     approx_quad.bl << quad.d.x, quad.d.y;
 
     // 对角线顶点x差值最大值和对角线顶点y差值最大值来判断是否为小矩形以及宽高比来过滤车位
     float Filtering_small_boxes_threshold = 0.025;
     float Filtering_small_boxes_threshold_wh = 4;
-    float height = std::max(abs(approx_quad.tl(1) - approx_quad.tr(1)),
-                            abs(approx_quad.br(1) - approx_quad.bl(1)));
-    float width = std::max(abs(approx_quad.tl(0) - approx_quad.bl(0)),
-                           abs(approx_quad.tr(0) - approx_quad.br(0)));
+    float height = std::max(abs(approx_quad.tl(1) - approx_quad.br(1)),
+                            abs(approx_quad.tr(1) - approx_quad.bl(1)));
+    float width = std::max(abs(approx_quad.tl(0) - approx_quad.br(0)),
+                           abs(approx_quad.tr(0) - approx_quad.bl(0)));
+    // TODO:orign
+    // float height = std::max(abs(approx_quad.tl(1) - approx_quad.tr(1)),
+    //                         abs(approx_quad.br(1) - approx_quad.bl(1)));
+    // float width = std::max(abs(approx_quad.tl(0) - approx_quad.bl(0)),
+    //                        abs(approx_quad.tr(0) - approx_quad.br(0)));
     float min_w = 0.1;
     // width = std::max(width, min_w);
     if (width < min_w) {

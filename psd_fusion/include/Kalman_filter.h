@@ -79,21 +79,21 @@ class Kalman_filter{
         float loose_angle_coeff = 4e-6f;
         float loose_length_coeff = 4e-4f;
 
-        float same_point_thr = 500;  // 旋转点时候判断是同一个点的阈值
+        float same_point_thr = 0.5f;  // 旋转点时候判断是同一个点的阈值
 
         // float valid_measure_thr = 200;  // 判定是有效测量的阈值
-        float valid_measure_thr = 200;  // 判定是有效测量的阈值
+        float valid_measure_thr = 0.8f;  // 判定是有效测量的阈值
 
         // 判定无效测量点的协方差放大倍率
         // float invalid_measure_enlarge_ratio = 9.0f;
-        float invalid_measure_enlarge_ratio = 9.0f;
+        float invalid_measure_enlarge_ratio = 10.0f;
 
         // float invalid_innovation_thr = 1.0f;  // 偏差过大阈值
-        float invalid_innovation_thr = 1.0f;  // 偏差过大阈值
+        float invalid_innovation_thr = 5.0f;  // 偏差过大阈值
 
         uint32_t confirm_age = 2;  // 确认车位输出所需的帧数
-        uint32_t delete_age = 2;   // 确认车位删除所需的帧数
-        uint32_t delta_frame_thr = 200;  // 判断车位长时间没有被观测的阈值
+        uint32_t delete_age = 4;   // 确认车位删除所需的帧数
+        uint32_t delta_frame_thr = 100;  // 判断车位长时间没有被观测的阈值
     };
  
     InnerSlotParameters isp_;
@@ -175,7 +175,7 @@ class Kalman_filter{
     }
 
 
-    bool point_in_slot(const Eigen::Vector3f& point, float ratio_thr = 0.5) const;
+    bool point_in_slot(const Eigen::Vector3f& point, float ratio_thr = 1) const;
     bool point_in_rect(const Eigen::Vector3f& point) const;
     void Update(const QuadInfoPtr& quad_info, const padVehiclePose& m_vehicle_pose);
     void adjustRectOrder(bool isleft, std::array<Eigen::Vector3f, 4> cornerswolrd);

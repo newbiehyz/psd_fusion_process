@@ -1,6 +1,8 @@
 #include "Kalman_filter.h"
 #include "Eigen/Dense"
 #include "c_sdk.h"
+#include <iomanip>
+
 
 uint32_t Kalman_filter::id_generator_ = std::atomic<uint32_t>(1000);
 uint64_t Kalman_filter::max_rot_idx_ = 4UL;
@@ -91,9 +93,9 @@ void Kalman_filter::creat_initial_covariance(const QuadInfoPtr& quad_info) {
         case SLOT_TYPE::PARALLELSLOT:  // 平行：wide准
         case SLOT_TYPE::VERTICALSLOT:  // 垂直和默认：wide准
         default:
-            this->Q_(SLOT_ALPHA, SLOT_ALPHA) *= isp_.loose_angle_coeff;
+            this->Q_(SLOT_ALPHA, SLOT_ALPHA) *= isp_.tight_angle_coeff;
             this->Q_(SLOT_BETA, SLOT_BETA) *= isp_.tight_angle_coeff;
-            this->Q_(SLOT_LENGTH, SLOT_LENGTH) *= isp_.loose_length_coeff;
+            this->Q_(SLOT_LENGTH, SLOT_LENGTH) *= isp_.tight_length_coeff;
             this->Q_(SLOT_WIDTH, SLOT_WIDTH) *= isp_.tight_length_coeff;
             break;
     }
@@ -118,14 +120,23 @@ void Kalman_filter::creat_initial_covariance(const QuadInfoPtr& quad_info) {
     J(SLOT_CENTER_X, BOTTOM_LEFT_X) = 0.25f;
     J(SLOT_CENTER_Y, BOTTOM_LEFT_Y) = 0.25f;
 
-    const auto& x1 = (this->corners_world_.at(0).x())/1000;
-    const auto& y1 = (this->corners_world_.at(0).y())/1000;
-    const auto& x2 = (this->corners_world_.at(1).x())/1000;
-    const auto& y2 = (this->corners_world_.at(1).y())/1000;
-    const auto& x3 = (this->corners_world_.at(2).x())/1000;
-    const auto& y3 = (this->corners_world_.at(2).y())/1000;
-    const auto& x4 = (this->corners_world_.at(3).x())/1000;
-    const auto& y4 = (this->corners_world_.at(3).y())/1000;
+    //TODO
+        const auto& x1 = (this->corners_world_.at(0).x());
+    const auto& y1 = (this->corners_world_.at(0).y());
+    const auto& x2 = (this->corners_world_.at(1).x());
+    const auto& y2 = (this->corners_world_.at(1).y());
+    const auto& x3 = (this->corners_world_.at(2).x());
+    const auto& y3 = (this->corners_world_.at(2).y());
+    const auto& x4 = (this->corners_world_.at(3).x());
+    const auto& y4 = (this->corners_world_.at(3).y());
+    // const auto& x1 = (this->corners_world_.at(0).x())/1000;
+    // const auto& y1 = (this->corners_world_.at(0).y())/1000;
+    // const auto& x2 = (this->corners_world_.at(1).x())/1000;
+    // const auto& y2 = (this->corners_world_.at(1).y())/1000;
+    // const auto& x3 = (this->corners_world_.at(2).x())/1000;
+    // const auto& y3 = (this->corners_world_.at(2).y())/1000;
+    // const auto& x4 = (this->corners_world_.at(3).x())/1000;
+    // const auto& y4 = (this->corners_world_.at(3).y())/1000;
 
     // 求alpha对四个角点的偏导数
     float t = y1 + y2 - y3 - y4;  // top 分子
@@ -209,7 +220,10 @@ void Kalman_filter::extend_line(const QuadInfoPtr& quad_info,
 
     const auto& valid_point = quad_info->corners_world.col(valid);
     const auto& edge_point = quad_info->corners_world.col(edge);
-    float len = ((valid_point - edge_point).head<2>().norm())/1000;
+    //TODO
+    float len = ((valid_point - edge_point).head<2>().norm());
+
+    // float len = ((valid_point - edge_point).head<2>().norm())/1000;
     float extend_ratio;
     if (std::fabs((valid_point - edge_point)
                       .head<2>()
@@ -217,21 +231,24 @@ void Kalman_filter::extend_line(const QuadInfoPtr& quad_info,
         std::fabs((valid_point - edge_point)
                       .head<2>()
                       .dot(this->GetSlotWideDir().head<2>()))) {
-        extend_ratio = this->GetSlotLength() / len;
-    } else {
         extend_ratio = this->GetSlotWidth() / len;
+    } else {
+        extend_ratio = this->GetSlotLength() / len;
     }
     quad_info->corners_extended.col(edge) =
         valid_point + (edge_point - valid_point) * extend_ratio;
     quad_info->cov_extended.at(edge) =
         quad_info->cov_world.at(edge) * (extend_ratio * extend_ratio);
-    
+
 };
 
 
 bool Kalman_filter::point_in_slot(const Eigen::Vector3f& point,
                               float ratio_thr) const {
-    Eigen::Vector3f vec = (point - GetSlotCenter())/1000;
+    //TODO:
+    // Eigen::Vector3f vec = (point - GetSlotCenter())/1000;
+    Eigen::Vector3f vec = (point - GetSlotCenter());
+
     float length_ratio =
         std::fabs(vec.head<2>().dot(GetSlotLongDir().head<2>())) /
         GetSlotLength() * 2.f;
@@ -267,118 +284,6 @@ bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const {
     return (projAB >= 0.0f && projAB <= 1.0f && projAD >= 0.0f && projAD <= 1.0f);
 }
 
-// //0313 替代算法1
-// bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const {
-//     // 矩形中心
-//     Eigen::Vector3f center(slot_state_[0], slot_state_[1], 0.0);
-    
-//     // 确定长宽方向
-//     Eigen::Vector3f primary_dir, secondary_dir;
-//     float half_primary, half_secondary;
-    
-//     if (this->type_ == SLOT_TYPE::VERTICALSLOT) {
-//         primary_dir = long_dir_.normalized();
-//         secondary_dir = wide_dir_.normalized();
-//         half_primary = (slot_state_[SLOT_LENGTH] / 2.0f) * 1000;
-//         half_secondary = (slot_state_[SLOT_WIDTH] / 2.0f) * 1000;
-//     } else {
-//         primary_dir = wide_dir_.normalized();
-//         secondary_dir = long_dir_.normalized();
-//         half_primary = (slot_state_[SLOT_WIDTH] / 2.0f) * 1000;
-//         half_secondary = (slot_state_[SLOT_LENGTH] / 2.0f) * 1000;
-//     }
-    
-//     LOGD("[POINTINRECT] center: %f,%f", center.x(), center.y());
-    
-//     // 计算点到中心点的相对位置
-//     Eigen::Vector3f rel_point = point - center;
-    
-//     // 计算在主方向和次方向上的投影长度
-//     float proj_primary = rel_point.dot(primary_dir);
-//     float proj_secondary = rel_point.dot(secondary_dir);
-    
-//     LOGD("[POINTINRECT] proj_primary: %f, proj_secondary: %f", proj_primary, proj_secondary);
-//     LOGD("[POINTINRECT] half_primary: %f, half_secondary: %f", half_primary, half_secondary);
-    
-//     // 判断是否在矩形范围内
-//     return (std::abs(proj_primary) <= half_primary && std::abs(proj_secondary) <= half_secondary);
-// }
-
-
-
-// // 0313 根据类型改变长方向短方向 
-// bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const{
-//     if (this->type_ == SLOT_TYPE::VERTICALSLOT){
-//         // 创建旋转矩阵（将长方向对齐到 x 轴）
-//         Eigen::Matrix3f rotation;
-//         rotation.col(0) = long_dir_.normalized();  // 长方向单位向量
-//         rotation.col(1) = wide_dir_.normalized();  // 宽方向单位向量
-//         // 逆旋转矩阵
-//         Eigen::Matrix3f rotation_inv = rotation.transpose(); // 旋转矩阵是正交矩阵，其逆等于转置
-//         Eigen::Vector3f center;
-//         center<<slot_state_[0],slot_state_[1], 0.0;
-//         LOGD("[POINTINRECT]VERTICALSLOT center: %f,%f",center.x(),center.y());
-//         // 将点转换到矩形的局部坐标系
-//         Eigen::Vector3f local_point = (rotation_inv * (point - center));
-//         LOGD("[POINTINRECT]VERTICALSLOT local_point: (%f,%f)",local_point.x(),local_point.y());
-//         // 检查点是否在矩形的范围内
-//         float half_length = slot_state_[SLOT_LENGTH] / 2.0f * 1000;
-//         float half_width = slot_state_[SLOT_WIDTH] / 2.0f * 1000;
-//         LOGD("[POINTINRECT]VERTICALSLOT length: %f, width: %f",half_length*2, half_width*2);
-
-//         return (local_point.x() >= -half_width && local_point.x() <= half_width &&
-//                 local_point.y() >= -half_length  && local_point.y() <= half_length);
-//     }else{
-//         // 创建旋转矩阵（将长方向对齐到 x 轴）
-//         Eigen::Matrix3f rotation;
-//         rotation.col(0) = wide_dir_.normalized();  // 长方向单位向量
-//         rotation.col(1) = long_dir_.normalized();  // 宽方向单位向量
-//         // 逆旋转矩阵
-//         Eigen::Matrix3f rotation_inv = rotation.transpose(); // 旋转矩阵是正交矩阵，其逆等于转置
-//         Eigen::Vector3f center;
-//         center<<slot_state_[0],slot_state_[1], 0.0;
-//         LOGD("[POINTINRECT]PARALLELSLOT center: %f,%f",center.x(),center.y());
-//         // 将点转换到矩形的局部坐标系
-//         Eigen::Vector3f local_point = (rotation_inv * (point - center));
-//         LOGD("[POINTINRECT]PARALLELSLOT local_point: (%f,%f)",local_point.x(),local_point.y());
-//         // 检查点是否在矩形的范围内
-//         float half_length = slot_state_[SLOT_LENGTH] / 2.0f * 1000;
-//         float half_width = slot_state_[SLOT_WIDTH] / 2.0f * 1000;
-//         std::swap(half_length, half_width);
-//         LOGD("[POINTINRECT]PARALLELSLOT length: %f, width: %f",half_length*2, half_width*2);
-
-//         return (local_point.x() >= -half_width && local_point.x() <= half_width &&
-//                 local_point.y() >= -half_length  && local_point.y() <= half_length);
-//     }
-// }
-
-
-// // 0312 原始判断
-// bool Kalman_filter::point_in_rect(const Eigen::Vector3f &point) const{
-//     // 创建旋转矩阵（将长方向对齐到 x 轴）
-//     Eigen::Matrix3f rotation;
-//     rotation.col(0) = long_dir_.normalized();  // 长方向单位向量
-//     rotation.col(1) = wide_dir_.normalized();  // 宽方向单位向量
-    
-//     // 逆旋转矩阵
-//     Eigen::Matrix3f rotation_inv = rotation.transpose(); // 旋转矩阵是正交矩阵，其逆等于转置
-    
-//     Eigen::Vector3f center;
-//     center<<slot_state_[0],slot_state_[1], 0.0;
-//     // 将点转换到矩形的局部坐标系
-//     Eigen::Vector3f local_point = (rotation_inv * (point - center));
-    
-//     // 检查点是否在矩形的范围内
-//     float half_length = slot_state_[SLOT_LENGTH] / 2.0f * 1000;
-//     float half_width = slot_state_[SLOT_WIDTH] / 2.0f * 1000;
-
-//     if (this->type_ == SLOT_TYPE::PARALLELSLOT){
-//         std::swap(half_length, half_width);
-//     }
-
-//     return (local_point.x() >= -half_width && local_point.x() <= half_width &&
-//             local_point.y() >= -half_length  && local_point.y() <= half_length);
-// }
 
 bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
 
@@ -388,6 +293,7 @@ bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
         if (!near) ++valid_quad_cnt_;
     }
     if (valid_quad_cnt_ < 2) {
+        LOGD("[Pre_update] near edge point too small");
         return false;
     }
 
@@ -424,7 +330,7 @@ bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
     for (size_t i = 0; i < quad_info->near_edge.size(); ++i) {
         size_t j = (i + 1) % max_rot_idx_;
 
-        //如果相邻两个角点都不在边缘不被截断，直接拿corners_world
+        //如果相邻两个角点都不在边缘不被截断，直接拿corners_world 此处corners——world是FY坐标系
         if (!quad_info->near_edge.at(i) && !quad_info->near_edge.at(j)) {
             quad_info->corners_extended.col(i) =
                 quad_info->corners_world.col(i);
@@ -444,14 +350,17 @@ bool Kalman_filter::pre_update(const QuadInfoPtr& quad_info) {
 int prev_slot_side = 0;
 
 void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& vehicle_pose) {
-    std::cout<<"Kalman_filter update!"<<std::endl;
+
+    std::cout<<std::endl;
+    std::cout<<"Kalman_filter update!"<<"******  "<< apa_id_ <<"   *****"<<std::endl;
+    std::cout<<"Kalman_filter update!"<<"******  "<< id_generator_ <<"   *****"<<std::endl;
     //补全角点
     if (!this->pre_update(quad_info)) {
         return;
     }
     
-    Eigen::Vector2f temp_center;
-    temp_center << this->slot_state_(SLOT_CENTER_X), this->slot_state_(SLOT_CENTER_Y);
+    // Eigen::Vector2f temp_center;
+    // temp_center << this->slot_state_(SLOT_CENTER_X), this->slot_state_(SLOT_CENTER_Y);
     // 更新预测矩阵，状态量不变，P需要调整
     P_ = F_ * P_ * F_.transpose() + Q_ * fmax(1.0, delta_frame_cnt_ / 10.0);
 
@@ -473,7 +382,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
 
     // 更新测量噪声矩阵
     R_.setIdentity();
-    const float valid_measure_thr = 200;  // unit: mm. //车位检测抖动大，角点跳动，增大。粘滞，真实车位变化响应慢，减小。
+    // const float valid_measure_thr = 0.3;  // unit: m. //车位检测抖动大，角点跳动，增大。粘滞，真实车位变化响应慢，减小。
     for (size_t i = 0UL; i < 4UL; ++i) {
         size_t cur = (i + rot_idx_) % max_rot_idx_;
         const auto& q = quad_info->corners_extended.col(cur);
@@ -508,18 +417,24 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     measure_prediction(BOTTOM_RIGHT_Y) = corners_world_.at(2).y();
     measure_prediction(BOTTOM_LEFT_X) = corners_world_.at(3).x();
     measure_prediction(BOTTOM_LEFT_Y) = corners_world_.at(3).y();
+
     Eigen::Matrix<float, SLOT_MEASURE_SIZE, SLOT_MEASURE_SIZE> S;
     S = H_ * P_ * H_.transpose() + R_;
     Eigen::Matrix<float, SLOT_STATE_SIZE, SLOT_MEASURE_SIZE> kalman_gain;
     kalman_gain = P_ * H_.transpose() * S.inverse();
     Eigen::Matrix<float, SLOT_MEASURE_SIZE, 1> innovation;
     // innovation = (measure - measure_prediction) / 1000.0;   //跳变大（误差大），增大。跟踪慢（误差小），减小
-    innovation = (measure - measure_prediction) / 1000.0;   //跳变大（误差大），增大。跟踪慢（误差小），减小
+    innovation = (measure - measure_prediction);   //跳变大（误差大），增大。跟踪慢（误差小），减小
+    std::cout<<std::endl;
+    
+    std::cout <<"Measure:            "<< measure.transpose()<<std::endl;
+    std::cout <<"Measure_Prediction: "<< measure_prediction.transpose()<<std::endl;
+    // std::cout <<"Innovation_before:  " << innovation.transpose() << std::endl;
 
-    if (innovation.norm() > isp_.invalid_innovation_thr &&
-        delta_frame_cnt_ < isp_.delta_frame_thr) {
-        return;
-    }
+    // if (innovation.norm() > isp_.invalid_innovation_thr &&
+    //     delta_frame_cnt_ < isp_.delta_frame_thr) {
+    //     return;
+    // }
 
     auto normalize_angle = [](const double& ang) {
         double angle = ang;
@@ -547,16 +462,31 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
 
     innovation(SLOT_ALPHA) = normalize_angle(innovation(SLOT_ALPHA));
     innovation(SLOT_ALPHA) = align_angle(innovation(SLOT_ALPHA));
-
+ 
     innovation(SLOT_BETA) = normalize_angle(innovation(SLOT_BETA));
     innovation(SLOT_BETA) = align_angle(innovation(SLOT_BETA));
-
+    
+    // // 更新状态量和矩阵
+    // auto original_length = this->GetSlotLength();
+    Eigen::Matrix<float, SLOT_STATE_SIZE, 1> change,change_print;
+    auto test = kalman_gain * innovation;
+    change_print<< test[0], test[1], test[2], test[3], test[4], test[5];
+    change << test[0], test[1], 0, 0, 0,0;
+    // this->slot_state_ = this->slot_state_ + change;
     // 更新状态量和矩阵
     auto original_length = this->GetSlotLength();
-    Eigen::Matrix<float, SLOT_STATE_SIZE, 1> change;
-    auto test = kalman_gain * innovation;
-    change << test[0], test[1], 0.0, 0.0, 0.0, 0.0;
-    this->slot_state_ = this->slot_state_ + change;
+    this->slot_state_ = this->slot_state_ + kalman_gain * innovation;
+
+
+    std::cout << "Innovation norm: " << innovation.norm() << std::endl;
+    std::cout << "Innovation:      " << innovation.transpose() << std::endl;
+    std::cout << "Kalman gain:\n" << kalman_gain << std::endl;
+    std::cout << "Change to state: " << change_print.transpose() << std::endl;
+    std::cout<<std::endl;
+    std::cout << "Slot center:     " << slot_state_[SLOT_CENTER_X] << ",   " << slot_state_[SLOT_CENTER_Y] << std::endl;
+    std::cout << "Slot angles:     " << slot_state_[SLOT_ALPHA] << ",   " << slot_state_[SLOT_BETA] << std::endl;
+    std::cout << "Slot size:       " << slot_state_[SLOT_LENGTH] << "  x  " << slot_state_[SLOT_WIDTH] << "  =   "<<slot_state_[SLOT_LENGTH] * slot_state_[SLOT_WIDTH]<<std::endl;
+
 
     if (valid_quad_cnt_ < 3) {
         this->slot_state_(SLOT_LENGTH) = original_length;
@@ -568,59 +498,168 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
 
     // 更新车位角点信息
     auto center = GetSlotCenter();
-    auto len_cur = GetSlotLength() * 666;
-    auto wid_cur = GetSlotWidth() * 666;
- 
+    auto len_cur = GetSlotLength() ;
+    auto wid_cur = GetSlotWidth() ;
+    LOGD("len_cur: %f , wid_cur: %f", len_cur,wid_cur);
+    // LOGD("Alpha: %f , Beta: %f",,wid_cur);
     long_dir_ << std::cos(GetSlotLongAngle()), std::sin(GetSlotLongAngle()),0.0;
     wide_dir_ << std::cos(GetSlotWideAngle()), std::sin(GetSlotWideAngle()),0.0;
+    LOGD("Long_dir : %f  %f, Wide_dir : %f  %f", long_dir_[0],long_dir_[1],wide_dir_[0],wide_dir_[1]);
 
 
-    if (type_ == SLOT_TYPE::VERTICALSLOT){
-        if(this->slot_state_(SLOT_CENTER_X) > 0){
-             corners_world_.at(0) =
-                center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-            corners_world_.at(1) =
-                center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-            corners_world_.at(2) =
-                center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-            corners_world_.at(3) =
-                center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-        }else{
-            corners_world_.at(0) =
-                center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-            corners_world_.at(1) =
-                center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-            corners_world_.at(2) =
-                center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-            corners_world_.at(3) =
-                center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-        }
+    // *********************************************
+    
+    // std::array<Eigen::Vector3f, 4> predicted_corners;
+
+    // if (type_ == SLOT_TYPE::VERTICALSLOT){
+    //     predicted_corners[0] = center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //     predicted_corners[1] = center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //     predicted_corners[2] = center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //     predicted_corners[3] = center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    // } else {
+    //     predicted_corners[0] = center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //     predicted_corners[1] = center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //     predicted_corners[2] = center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //     predicted_corners[3] = center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    // }
+
+    // // 将预测角点写入 measure_prediction
+    // measure_prediction << predicted_corners[0].x(), predicted_corners[0].y(),
+    //                     predicted_corners[1].x(), predicted_corners[1].y(),
+    //                     predicted_corners[2].x(), predicted_corners[2].y(),
+    //                     predicted_corners[3].x(), predicted_corners[3].y();
+
+    // if(quad_info->center_ego(1)>0){
+    // corners_world_.at(0) =
+    //     center + 0.5 * len_cur * long_dir_ + 0.5 * wid_cur * wide_dir_;
+    // corners_world_.at(1) =
+    //     center + 0.5 * len_cur * long_dir_ - 0.5 * wid_cur * wide_dir_;
+    // corners_world_.at(2) =
+    //     center - 0.5 * len_cur * long_dir_ - 0.5 * wid_cur * wide_dir_;
+    // corners_world_.at(3) =
+    //     center - 0.5 * len_cur * long_dir_ + 0.5 * wid_cur * wide_dir_;
+
+    // }
+    // else{    
+    // corners_world_.at(0) =
+    //     center + 0.5 * len_cur * long_dir_ + 0.5 * wid_cur * wide_dir_;
+    // corners_world_.at(1) =
+    //     center + 0.5 * len_cur * long_dir_ - 0.5 * wid_cur * wide_dir_;
+    // corners_world_.at(2) =
+    //     center - 0.5 * len_cur * long_dir_ - 0.5 * wid_cur * wide_dir_;
+    // corners_world_.at(3) =
+    //     center - 0.5 * len_cur * long_dir_ + 0.5 * wid_cur * wide_dir_;
+    //     }
+    
+
+
+
+
+
+
+
+    corners_world_.at(0) =
+        center + 0.5 * len_cur * long_dir_ + 0.5 * wid_cur * wide_dir_;
+    corners_world_.at(1) =
+        center + 0.5 * len_cur * long_dir_ - 0.5 * wid_cur * wide_dir_;
+    corners_world_.at(2) =
+        center - 0.5 * len_cur * long_dir_ - 0.5 * wid_cur * wide_dir_;
+    corners_world_.at(3) =
+        center - 0.5 * len_cur * long_dir_ + 0.5 * wid_cur * wide_dir_;
+
+
+
+        
+    ////TODO
+    // if (type_ == SLOT_TYPE::VERTICALSLOT){
+    //     if(this->slot_state_(SLOT_CENTER_Y) < 0){
+    //          corners_world_.at(0) =
+    //             center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //     }else{
+    //         corners_world_.at(0) =
+    //             center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //     }
             
-    }else if (type_ == SLOT_TYPE::PARALLELSLOT) {
-    // 在平行车位中，长边是车位的宽度方向，宽边是车位的长度方向
-        if(this->slot_state_(SLOT_CENTER_X) > 0){
-            corners_world_.at(0) =
-                center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
-            corners_world_.at(1) =
-                center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
-            corners_world_.at(2) =
-                center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
-            corners_world_.at(3) =
-                center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
-        }else{
-            corners_world_.at(0) =
-                center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
-            corners_world_.at(1) =
-                center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
-            corners_world_.at(2) =
-                center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
-            corners_world_.at(3) =
-                center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
-        }
-    }
+    // }else if (type_ == SLOT_TYPE::PARALLELSLOT) {
+    // // 在平行车位中，长边是车位的宽度方向，宽边是车位的长度方向
+    //     if(this->slot_state_(SLOT_CENTER_Y) < 0){
+    //         corners_world_.at(0) =
+    //             center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //     }else{
+    //         corners_world_.at(0) =
+    //             center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //     }
+    // }
+    // if (type_ == SLOT_TYPE::VERTICALSLOT){
+    //     if(this->slot_state_(SLOT_CENTER_X) > 0){
+    //          corners_world_.at(0) =
+    //             center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //     }else{
+    //         corners_world_.at(0) =
+    //             center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
+    //     }
+            
+    // }else if (type_ == SLOT_TYPE::PARALLELSLOT) {
+    // // 在平行车位中，长边是车位的宽度方向，宽边是车位的长度方向
+    //     if(this->slot_state_(SLOT_CENTER_X) > 0){
+    //         corners_world_.at(0) =
+    //             center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //     }else{
+    //         corners_world_.at(0) =
+    //             center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(1) =
+    //             center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(2) =
+    //             center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //         corners_world_.at(3) =
+    //             center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
+    //     }
+    // }
 
-    bool leftSide = (this->slot_state_(SLOT_CENTER_X) < 0);
-    adjustRectOrder(leftSide, corners_world_);
+    // bool leftSide = (this->slot_state_(SLOT_CENTER_X) < 0);
+    // adjustRectOrder(leftSide, corners_world_);
 
     // 更新车位占用
     bool occupy_filter = false;
@@ -649,135 +688,6 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
         this->occupy_ = quad_info->occupy;
     }
 
-
-    // // 更新车位类型
-    // switch (quad_info->slot_type)
-    // {
-    // case 0x00:
-    //     type_ = SLOT_TYPE::VERTICALSLOT;
-    //     break;
-    // case 0x01:
-    //     type_ = SLOT_TYPE::PARALLELSLOT;
-    //     break;
-    // case 0x02:
-    //     type_ = SLOT_TYPE::SLANTSLOT;
-    // default:
-    //     break;
-    // }
-
-
-    // //***************************************左右判断调整顺序
-    // Eigen::Vector2f vehicle_pos = {vehicle_pose.coord.x/1000,vehicle_pose.coord.y/1000};  // 获取车辆当前位置
-    // Eigen::Vector2f slot_center = GetSlotCenter().head<2>();  // 获取车位中心 
-    // printf("Vehicle Position: (%.2f, %.2f)\n", vehicle_pos.x(), vehicle_pos.y());
-    // printf("Slot Center Position: (%.2f, %.2f)\n", slot_center.x(), slot_center.y());
-    // // 计算车位相对于车辆的方向
-    // Eigen::Vector2f relative_pos = slot_center - vehicle_pos;
-    // printf("Relative Position to Vehicle: (%.2f, %.2f)\n", relative_pos.x(), relative_pos.y());
-    // // 获取车辆的横向方向向量（车身垂直方向）
-    // Eigen::Vector2f vehicle_right;
-    // float vehicle_yaw = - vehicle_pose.yaw * M_PI / 180.0;
-    // vehicle_right << std::cos(vehicle_yaw + M_PI_2), std::sin(vehicle_yaw + M_PI_2);
-    // printf("Vehicle Yaw: %.4f\n", vehicle_yaw);
-    // printf("Vehicle Right Direction: (%.4f, %.4f)\n", vehicle_right.x(), vehicle_right.y());
-    // // 计算点积，判断车位在车辆的左侧还是右侧
-    // float dot_product = relative_pos.dot(vehicle_right);
-    // // 判断车位相对于车辆的位置
-    // int slot_side = (dot_product < 0) ? -1 : 1;
-    // printf("Dot Product: %.4f\n", dot_product);
-    // printf("Slot Side: %d (Previous: %d)\n", slot_side, prev_slot_side);
-    // // 角点顺序调整
-    // if (slot_side != prev_slot_side) {
-    //     printf("Slot side changed! Swapping corner points...\n");
-    //     std::swap(corners_world_.at(0), corners_world_.at(1));
-    //     std::swap(corners_world_.at(2), corners_world_.at(3));
-    // }
-    // prev_slot_side = slot_side;
-    // // 打印调整后的角点
-    // for (size_t i = 0; i < corners_world_.size(); ++i) {
-    //     printf("Corner[%zu]: (%.2f, %.2f)\n", i, corners_world_.at(i).x(), corners_world_.at(i).y());
-    // }
-    // //***************************************
-
-
-
-    // // 20250306没做左右判断
-    // if (type_ == SLOT_TYPE::VERTICALSLOT){
-    //     if(this->slot_state_(SLOT_CENTER_X) > 0){
-    //          corners_world_.at(0) =
-    //             center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-    //         corners_world_.at(1) =
-    //             center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-    //         corners_world_.at(2) =
-    //             center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-    //         corners_world_.at(3) =
-    //             center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-    //     }else{
-    //         corners_world_.at(0) =
-    //             center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-    //         corners_world_.at(1) =
-    //             center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-    //         corners_world_.at(2) =
-    //             center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-    //         corners_world_.at(3) =
-    //             center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-    //     }
-    // }else if (type_ == SLOT_TYPE::PARALLELSLOT) {
-    // // 在平行车位中，长边是车位的宽度方向，宽边是车位的长度方向
-    //     if(this->slot_state_(SLOT_CENTER_X) > 0){
-    //         corners_world_.at(0) =
-    //             center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
-    //         corners_world_.at(1) =
-    //             center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
-    //         corners_world_.at(2) =
-    //             center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
-    //         corners_world_.at(3) =
-    //             center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
-    //     }else{
-    //         corners_world_.at(0) =
-    //             center + 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
-    //         corners_world_.at(1) =
-    //             center - 0.5 * wid_cur * wide_dir_ + 0.5 * len_cur * long_dir_;
-    //         corners_world_.at(2) =
-    //             center - 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
-    //         corners_world_.at(3) =
-    //             center + 0.5 * wid_cur * wide_dir_ - 0.5 * len_cur * long_dir_;
-    //     }
-    // }
-    
-    
-    
-    
-    
-
-    
-    
-    // 20250228之前的水平车位计算公式
-    
-    // else if(type_ == SLOT_TYPE::PARALLELSLOT){
-    //     // if (this->slot_state_(SLOT_CENTER_X) > 0){
-    //         corners_world_.at(0) =
-    //             center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-    //         corners_world_.at(1) =
-    //             center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-    //         corners_world_.at(2) =
-    //             center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-    //         corners_world_.at(3) =
-    //             center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-    //     // }else{
-    //     //     corners_world_.at(0) =
-    //     //         center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-    //     //     corners_world_.at(1) =
-    //     //         center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-    //     //     corners_world_.at(2) =
-    //     //         center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-    //     //     corners_world_.at(3) =
-    //     //         center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-    //     // }
-        
-    // }  
-
-    // 更新车位状态信息
 
     this->age_++;
     if (SLOT_STATUS::TENTATIVE == this->status_ &&
@@ -838,189 +748,3 @@ void Kalman_filter::adjustRectOrder(bool isleft, std::array<Eigen::Vector3f, 4> 
 
 
 
-
-
-
-
-// // Origin 448 Update
-// void Kalman_filter::Update(const QuadInfoPtr& quad_info) {
-//     std::cout<<"Kalman_filter update!"<<std::endl;
-//     if (!this->pre_update(quad_info)) {
-//         return;
-//     }
-//     Eigen::Vector2f temp_center;
-//     temp_center << this->slot_state_(SLOT_CENTER_X), this->slot_state_(SLOT_CENTER_Y);
-//     // 更新预测矩阵，状态量不变，P需要调整
-//     P_ = F_ * P_ * F_.transpose() + Q_ * fmax(1.0, delta_frame_cnt_ / 10.0);
-
-//     // 更新观测矩阵
-//     float hsa = 0.5 * std::sin(GetSlotLongAngle());
-//     float hca = 0.5 * std::cos(GetSlotLongAngle());
-//     float hsb = 0.5 * std::sin(GetSlotWideAngle());
-//     float hcb = 0.5 * std::cos(GetSlotWideAngle());
-//     float length = GetSlotLength();
-//     float width = GetSlotWidth();
-//     H_.row(TOP_LEFT_X) << 1, 0, -length * hsa, -width * hsb, hca, hcb;
-//     H_.row(TOP_LEFT_Y) << 0, 1, length * hca, width * hcb, hsa, hsb;
-//     H_.row(TOP_RIGHT_X) << 1, 0, -length * hsa, width * hsb, hca, -hcb;
-//     H_.row(TOP_RIGHT_Y) << 0, 1, length * hca, -width * hcb, hsa, -hsb;
-//     H_.row(BOTTOM_RIGHT_X) << 1, 0, length * hsa, width * hsb, -hca, -hcb;
-//     H_.row(BOTTOM_RIGHT_Y) << 0, 1, -length * hca, -width * hcb, -hsa, -hsb;
-//     H_.row(BOTTOM_LEFT_X) << 1, 0, length * hsa, -width * hsb, -hca, hcb;
-//     H_.row(BOTTOM_LEFT_Y) << 0, 1, -length * hca, width * hcb, -hsa, hsb;
-
-//     // 更新测量噪声矩阵
-//     R_.setIdentity();
-//     const float valid_measure_thr = 200;  // unit: mm
-//     for (size_t i = 0UL; i < 4UL; ++i) {
-//         size_t cur = (i + rot_idx_) % max_rot_idx_;
-//         const auto& q = quad_info->corners_extended.col(cur);
-//         const auto& c = this->corners_world_.at(i);
-//         float dist = (q.head<2>() - c.head<2>()).norm();
-
-//         Eigen::Index idx = 2 * i;
-//         R_.block<2, 2>(idx, idx) = quad_info->cov_extended.at(cur);
-//         if (dist > isp_.valid_measure_thr) {
-//             R_.block<2, 2>(idx, idx) *= isp_.invalid_measure_enlarge_ratio;
-//         }
-//     }
-
-//     Eigen::Matrix<float, SLOT_MEASURE_SIZE, 1> measure;
-//     const auto& m = quad_info->corners_extended;
-//     measure << m.col(0UL + rot_idx_).x(), m.col(0UL + rot_idx_).y(),
-//         m.col((1UL + rot_idx_) % max_rot_idx_).x(),
-//         m.col((1UL + rot_idx_) % max_rot_idx_).y(),
-//         m.col((2UL + rot_idx_) % max_rot_idx_).x(),
-//         m.col((2UL + rot_idx_) % max_rot_idx_).y(),
-//         m.col((3UL + rot_idx_) % max_rot_idx_).x(),
-//         m.col((3UL + rot_idx_) % max_rot_idx_).y();
-
-//     // 将Predict()得到的估计值，转换到测量坐标系
-//     Eigen::Matrix<float, SLOT_MEASURE_SIZE, 1> measure_prediction;
-//     measure_prediction(TOP_LEFT_X) = corners_world_.at(0).x();
-//     measure_prediction(TOP_LEFT_Y) = corners_world_.at(0).y();
-//     measure_prediction(TOP_RIGHT_X) = corners_world_.at(1).x();
-//     measure_prediction(TOP_RIGHT_Y) = corners_world_.at(1).y();
-//     measure_prediction(BOTTOM_RIGHT_X) = corners_world_.at(2).x();
-//     measure_prediction(BOTTOM_RIGHT_Y) = corners_world_.at(2).y();
-//     measure_prediction(BOTTOM_LEFT_X) = corners_world_.at(3).x();
-//     measure_prediction(BOTTOM_LEFT_Y) = corners_world_.at(3).y();
-//     Eigen::Matrix<float, SLOT_MEASURE_SIZE, SLOT_MEASURE_SIZE> S;
-//     S = H_ * P_ * H_.transpose() + R_;
-//     Eigen::Matrix<float, SLOT_STATE_SIZE, SLOT_MEASURE_SIZE> kalman_gain;
-//     kalman_gain = P_ * H_.transpose() * S.inverse();
-//     Eigen::Matrix<float, SLOT_MEASURE_SIZE, 1> innovation;
-//     innovation = (measure - measure_prediction)/1000;
-
-//     if (innovation.norm() > isp_.invalid_innovation_thr &&
-//         delta_frame_cnt_ < isp_.delta_frame_thr) {
-//         return;
-//     }
-
-//     auto normalize_angle = [](const double& ang) {
-//         double angle = ang;
-//         if (angle >= M_PI) {
-//             while (angle > M_PI) {
-//                 angle -= 2 * M_PI;
-//             }
-//         } else if (angle < -M_PI) {
-//             while (angle < -M_PI) {
-//                 angle += 2 * M_PI;
-//             }
-//         }
-//         return angle;
-//     };
-
-//     auto align_angle = [](const double& ang_diff) {
-//         double angle = ang_diff;
-//         if (angle < -M_PI_2) {
-//             angle += M_PI;
-//         } else if (angle >= M_PI_2) {
-//             angle -= M_PI;
-//         }
-//         return angle;
-//     };
-
-//     innovation(SLOT_ALPHA) = normalize_angle(innovation(SLOT_ALPHA));
-//     innovation(SLOT_ALPHA) = align_angle(innovation(SLOT_ALPHA));
-
-//     innovation(SLOT_BETA) = normalize_angle(innovation(SLOT_BETA));
-//     innovation(SLOT_BETA) = align_angle(innovation(SLOT_BETA));
-
-//     // 更新状态量和矩阵
-//     auto original_length = this->GetSlotLength();
-//     Eigen::Matrix<float, SLOT_STATE_SIZE, 1> change;
-//     auto test = kalman_gain * innovation;
-//     change << test[0], test[1], 0.0, 0.0, 0.0, 0.0;
-//     this->slot_state_ = this->slot_state_ + change;
-
-//     if (valid_quad_cnt_ < 3) {
-//         this->slot_state_(SLOT_LENGTH) = original_length;
-//     }
-//     P_ = P_ - kalman_gain * H_ * P_;
-
-//     this->slot_state_(SLOT_ALPHA) = normalize_angle(slot_state_(SLOT_ALPHA));
-//     this->slot_state_(SLOT_BETA) = normalize_angle(slot_state_(SLOT_BETA));
-
-//     // 更新车位角点信息
-//     auto center = GetSlotCenter();
-//     auto len_cur = GetSlotLength() * 1000;
-//     auto wid_cur = GetSlotWidth() * 1000;
- 
-//     long_dir_ << std::cos(GetSlotLongAngle()), std::sin(GetSlotLongAngle()),0.0;
-//     wide_dir_ << std::cos(GetSlotWideAngle()), std::sin(GetSlotWideAngle()),0.0;
-
-//     if (type_ == SLOT_TYPE::VERTICALSLOT){
-//         // if(this->slot_state_(SLOT_CENTER_X) > 0){
-//              corners_world_.at(0) =
-//                 center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-//             corners_world_.at(1) =
-//                 center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-//             corners_world_.at(2) =
-//                 center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-//             corners_world_.at(3) =
-//                 center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-//         // }else{
-//         //     corners_world_.at(0) =
-//         //         center + 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-//         //     corners_world_.at(1) =
-//         //         center + 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-//         //     corners_world_.at(2) =
-//         //         center - 0.5 * len_cur * wide_dir_ - 0.5 * wid_cur * long_dir_;
-//         //     corners_world_.at(3) =
-//         //         center - 0.5 * len_cur * wide_dir_ + 0.5 * wid_cur * long_dir_;
-//         // }
-       
-        
-            
-//     }else if(type_ == SLOT_TYPE::PARALLELSLOT){
-//         // if (this->slot_state_(SLOT_CENTER_X) > 0){
-//             corners_world_.at(0) =
-//                 center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-//             corners_world_.at(1) =
-//                 center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-//             corners_world_.at(2) =
-//                 center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-//             corners_world_.at(3) =
-//                 center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-//         // }else{
-//         //     corners_world_.at(0) =
-//         //         center + 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-//         //     corners_world_.at(1) =
-//         //         center - 0.5 * wid_cur * long_dir_ + 0.5 * len_cur * wide_dir_;
-//         //     corners_world_.at(2) =
-//         //         center - 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-//         //     corners_world_.at(3) =
-//         //         center + 0.5 * wid_cur * long_dir_ - 0.5 * len_cur * wide_dir_;
-//         // }
-        
-//     }  
-
-//     // 更新车位状态信息
-//     this->age_++;
-//     if (SLOT_STATUS::TENTATIVE == this->status_ &&
-//         this->age_ > isp_.confirm_age) {
-//         this->status_ = SLOT_STATUS::CONFIRMED;
-//     }
-//     if (this->missing_time_ > 0) --this->missing_time_;
-// };

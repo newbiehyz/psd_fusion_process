@@ -113,6 +113,7 @@ public:
     bool point_in_rect(const Eigen::Vector3f &point, const apaSlotInfo &slot);
     bool isLeftOfOrigin(const apaSlotInfo rect);
     void adjustRectOrder(apaSlotInfo &rect);
+    void adjustRectOrder_KF(bool isleft, std::array<Eigen::Vector3f, 4> cornerswolrd);
 	void obs_transform2world(const padVehiclePose& loc_pose,Eigen::Vector3f& obs_point3f);
 
     void UpdateVechiclePose(const padVehiclePose& pose_global);
