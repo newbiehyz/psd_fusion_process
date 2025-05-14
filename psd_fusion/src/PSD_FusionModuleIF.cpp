@@ -755,7 +755,7 @@ void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisi
             auto slot_existance = check_slot_existance(quad);
             
             if (slot_existance != nullptr) { //找到存在的车位
-                Eigen::Vector3d pose{m_vehicle_pose.coord.x, m_vehicle_pose.coord.y, m_vehicle_pose.yaw};
+                Eigen::Vector3d pose{m_vehicle_pose_JY.coord.x, m_vehicle_pose_JY.coord.y, m_vehicle_pose_JY.yaw};
                 Eigen::Vector3f diff = pose.cast<float>() - slot_existance->GetSlotCenter();
                 float dist = diff.head<2>().norm();
 
@@ -998,11 +998,6 @@ void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
 void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED) {
     auto &slots = outputSlotFUSED.slots_in_cur_frame;
 
-    float min_u = 388.f;  // width dir
-    float max_u = 507.f;
-    float min_v = 329.f;  // height dir
-    float max_v = 566.f;
-    float cam_v = 405.f;
     auto &worldRects = outputSlotFUSED.WorldoutRect;
     std::vector<bool> toDelete(slots.size(), false);
     

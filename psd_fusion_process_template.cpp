@@ -565,7 +565,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 05141348 emos910 KFenable,convert int-float,typecorrect fusionslots,enlarge DR buffer size,isNarrow jump,isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: psd2vcu fixed,FARAWAYconfig");
+    LOGD("PSD Version: 05141716 emos910 CHENWEI_KFenable,convert int-float,typecorrect fusionslots,enlarge DR buffer size,isNarrow jump,isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: psd2vcu fixed,FARAWAYconfig");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -816,15 +816,15 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
     //------------------------------------------
-    // // outputSlot_FUSED优化：标记入口边过窄的车位，用于不释放
-    // double AB_threshold = 2000.0;
-    // double faraway_threshold = 9500.0;
+    // outputSlot_FUSED优化：标记入口边过窄的车位，用于不释放
+    double AB_threshold = 2100.0;
+    double faraway_threshold = 9500.0;
 
-    // LOGD("Without markNotToReleaseSlot FUSIONSLOTS:")
-    // LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
-    // PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_FUSED,AB_threshold,faraway_threshold);
-    // LOGD("After markNotToReleaseSlot FUSIONSLOTS:")
-    // LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    LOGD("Without markNotToReleaseSlot FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_FUSED,AB_threshold,faraway_threshold);
+    LOGD("After markNotToReleaseSlot FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
 
     //------------------------------------------

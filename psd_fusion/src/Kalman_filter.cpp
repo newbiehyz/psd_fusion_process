@@ -93,9 +93,9 @@ void Kalman_filter::creat_initial_covariance(const QuadInfoPtr& quad_info) {
         case SLOT_TYPE::PARALLELSLOT:  // 平行：wide准
         case SLOT_TYPE::VERTICALSLOT:  // 垂直和默认：wide准
         default:
-            this->Q_(SLOT_ALPHA, SLOT_ALPHA) *= isp_.tight_angle_coeff;
-            this->Q_(SLOT_BETA, SLOT_BETA) *= isp_.tight_angle_coeff;
-            this->Q_(SLOT_LENGTH, SLOT_LENGTH) *= isp_.tight_length_coeff;
+            this->Q_(SLOT_ALPHA, SLOT_ALPHA) *= isp_.loose_angle_coeff;
+            this->Q_(SLOT_BETA, SLOT_BETA) *= isp_.loose_angle_coeff;
+            this->Q_(SLOT_LENGTH, SLOT_LENGTH) *= isp_.loose_length_coeff;
             this->Q_(SLOT_WIDTH, SLOT_WIDTH) *= isp_.tight_length_coeff;
             break;
     }

@@ -60,8 +60,8 @@ typedef struct
 // 真实坐标系下的坐标点
 typedef struct
 {
-    int x; //mm
-	int y;
+    float x; //mm
+	float y;
     // float x; //mm
 	// float y;
 
