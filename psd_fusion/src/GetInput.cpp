@@ -75,33 +75,18 @@ void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigne
 
             padVisionSlotCoord oneslot;
             oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : (parkingSlot.slotType == 2) ? 0x02 : 0xFF;
-            
-            //左右判断,按规划/定位ABCD顺序输出车位角点
-            if (parkingSlot.tl.x < 448 && parkingSlot.tr.x < 448) {
-                oneslot.slotSide = 0x01; //x小于图像中心，判断为左
-                oneslot.a.x = int(parkingSlot.tr.x);
-                oneslot.a.y = int(parkingSlot.tr.y);
-                oneslot.b.x = int(parkingSlot.tl.x);
-                oneslot.b.y = int(parkingSlot.tl.y);
-                oneslot.c.x = int(parkingSlot.bl.x);
-                oneslot.c.y = int(parkingSlot.bl.y);
-                oneslot.d.x = int(parkingSlot.br.x);
-                oneslot.d.y = int(parkingSlot.br.y);
-                oneslot.occupy = parkingSlot.filtered;
-                oneslot.material = parkingSlot.label;
-            } else {
-                oneslot.slotSide = 0x00;
-                oneslot.a.x = int(parkingSlot.tl.x);
-                oneslot.a.y = int(parkingSlot.tl.y);
-                oneslot.b.x = int(parkingSlot.tr.x);
-                oneslot.b.y = int(parkingSlot.tr.y);
-                oneslot.c.x = int(parkingSlot.br.x);
-                oneslot.c.y = int(parkingSlot.br.y);
-                oneslot.d.x = int(parkingSlot.bl.x);
-                oneslot.d.y = int(parkingSlot.bl.y);
-                oneslot.occupy = parkingSlot.filtered;
-                oneslot.material = parkingSlot.label;
-            }
+        
+            oneslot.a.x = int(parkingSlot.tl.x);
+            oneslot.a.y = int(parkingSlot.tl.y);
+            oneslot.b.x = int(parkingSlot.tr.x);
+            oneslot.b.y = int(parkingSlot.tr.y);
+            oneslot.c.x = int(parkingSlot.br.x);
+            oneslot.c.y = int(parkingSlot.br.y);
+            oneslot.d.x = int(parkingSlot.bl.x);
+            oneslot.d.y = int(parkingSlot.bl.y);
+            oneslot.occupy = parkingSlot.filtered;
+            oneslot.material = parkingSlot.label;
+
             if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7) {
                 memset(&oneslot, 0, sizeof(padVisionSlotCoord));
             }
