@@ -591,7 +591,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 05150929 emos910 CHENWEI_KFenable,convert int-float,typecorrect fusionslots,enlarge DR buffer size,isNarrow jump,isStill threshold,clear while !Still,isNeed opti,DBGslots clear. DISABLE: psd2vcu fixed,FARAWAYconfig");
+    LOGD("PSD Version: 05161617 emos910 KFenable DISABLE: psd2vcu fixed,FARAWAYconfig");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
