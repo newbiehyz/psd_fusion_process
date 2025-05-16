@@ -354,27 +354,53 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
 {
-    LOGD("[CANData] WhlDistEdgeCntrLRHigFreq: %d, WhlDistEdgeCntrRRHigFreq: %d, WhlDistEdgeCntrRFHigFreq: %d, WhlDistEdgeCntrLFHigFreq: %d",
+    auto CANcurrent = std::chrono::system_clock::now(); 
+    auto CANcurrent1970 = CANcurrent.time_since_epoch();
+    auto CANcurrent1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(CANcurrent1970).count(); //用于J5时间同步
+    LOGD("[CANData] timestamp: %llu, WhlDistEdgeCntrLRHigFreq: %d, WhlDistEdgeCntrRRHigFreq: %d, WhlDistEdgeCntrRFHigFreq: %d, WhlDistEdgeCntrLFHigFreq: %d, WhlAngVelRFrtAuth: %f, WhlAngVelLFrtAuth: %f, WhlAngVelRRrAuth: %f, WhlAngVelLRrAuth: %f, IMULonAccPri: %f, IMULonAccSec: %f, IMULatAccPrim: %f, IMULatACCSec: %f, IMUYawRtPri: %f, IMUYawRtSec: %f, StrWhAng: %f, VehSpdAvgNDrvn: %f, TARS_TransActRng: %d",
+            static_cast<uint64_t>(CANcurrent1970_ms),
             userData.WhlDistEdgeCntrLRHigFreq,
             userData.WhlDistEdgeCntrRRHigFreq,
             userData.WhlDistEdgeCntrRFHigFreq,
-            userData.WhlDistEdgeCntrLFHigFreq);
-    LOGD("[CANData] WhlAngVelRFrtAuth: %f, WhlAngVelLFrtAuth: %f, WhlAngVelRRrAuth: %f, WhlAngVelLRrAuth: %f",
+            userData.WhlDistEdgeCntrLFHigFreq,
             userData.WhlAngVelRFrtAuth,
             userData.WhlAngVelLFrtAuth,
             userData.WhlAngVelRRrAuth,
-            userData.WhlAngVelLRrAuth);
-    LOGD("[CANData] IMULonAccPri: %f, IMULonAccSec: %f, IMULatAccPrim: %f, IMULatACCSec: %f",
+            userData.WhlAngVelLRrAuth,
+            userData.WhlAngVelRFrtAuth,
+            userData.WhlAngVelLFrtAuth,
+            userData.WhlAngVelRRrAuth,
+            userData.WhlAngVelLRrAuth,
             userData.IMULonAccPri,
             userData.IMULonAccSec,
             userData.IMULatAccPrim,
-            userData.IMULatACCSec);
-    LOGD("[CANData] IMUYawRtPri: %f, IMUYawRtSec: %f, StrWhAng: %f, VehSpdAvgNDrvn: %f",
+            userData.IMULatACCSec,
             userData.IMUYawRtPri,
             userData.IMUYawRtSec,
             userData.StrWhAng,
-            userData.VehSpdAvgNDrvn);
-    LOGD("[CANData] TARS_TransActRng: %d", userData.TARS_TransActRng);
+            userData.VehSpdAvgNDrvn,
+            userData.TARS_TransActRng);
+
+    // // 上面重复打了两个变量。下个版本用这段：
+    // LOGD("[CANData] timestamp: %llu, WhlDistEdgeCntrLRHigFreq: %d, WhlDistEdgeCntrRRHigFreq: %d, WhlDistEdgeCntrRFHigFreq: %d, WhlDistEdgeCntrLFHigFreq: %d, WhlAngVelRFrtAuth: %f, WhlAngVelLFrtAuth: %f, WhlAngVelRRrAuth: %f, WhlAngVelLRrAuth: %f, IMULonAccPri: %f, IMULonAccSec: %f, IMULatAccPrim: %f, IMULatACCSec: %f, IMUYawRtPri: %f, IMUYawRtSec: %f, StrWhAng: %f, VehSpdAvgNDrvn: %f, TARS_TransActRng: %d",
+    //     static_cast<uint64_t>(CANcurrent1970_ms),
+    //     userData.WhlDistEdgeCntrLRHigFreq,
+    //     userData.WhlDistEdgeCntrRRHigFreq,
+    //     userData.WhlDistEdgeCntrRFHigFreq,
+    //     userData.WhlDistEdgeCntrLFHigFreq,
+    //     userData.WhlAngVelRFrtAuth,
+    //     userData.WhlAngVelLFrtAuth,
+    //     userData.WhlAngVelRRrAuth,
+    //     userData.WhlAngVelLRrAuth,
+    //     userData.IMULonAccPri,
+    //     userData.IMULonAccSec,
+    //     userData.IMULatAccPrim,
+    //     userData.IMULatACCSec,
+    //     userData.IMUYawRtPri,
+    //     userData.IMUYawRtSec,
+    //     userData.StrWhAng,
+    //     userData.VehSpdAvgNDrvn,
+    //     userData.TARS_TransActRng);
 
     RETURN_NOERROR;
 }
