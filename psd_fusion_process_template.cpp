@@ -354,28 +354,29 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
 {
-    LOGD("[CANData] WhlDistEdgeCntrLRHigFreq: %d, WhlDistEdgeCntrRRHigFreq: %d, WhlDistEdgeCntrRFHigFreq: %d, WhlDistEdgeCntrLFHigFreq: %d",
-            userData.WhlDistEdgeCntrLRHigFreq,
-            userData.WhlDistEdgeCntrRRHigFreq,
-            userData.WhlDistEdgeCntrRFHigFreq,
-            userData.WhlDistEdgeCntrLFHigFreq);
-    LOGD("[CANData] WhlAngVelRFrtAuth: %f, WhlAngVelLFrtAuth: %f, WhlAngVelRRrAuth: %f, WhlAngVelLRrAuth: %f",
-            userData.WhlAngVelRFrtAuth,
-            userData.WhlAngVelLFrtAuth,
-            userData.WhlAngVelRRrAuth,
-            userData.WhlAngVelLRrAuth);
-    LOGD("[CANData] IMULonAccPri: %f, IMULonAccSec: %f, IMULatAccPrim: %f, IMULatACCSec: %f",
-            userData.IMULonAccPri,
-            userData.IMULonAccSec,
-            userData.IMULatAccPrim,
-            userData.IMULatACCSec);
-    LOGD("[CANData] IMUYawRtPri: %f, IMUYawRtSec: %f, StrWhAng: %f, VehSpdAvgNDrvn: %f",
-            userData.IMUYawRtPri,
-            userData.IMUYawRtSec,
-            userData.StrWhAng,
-            userData.VehSpdAvgNDrvn);
-    LOGD("[CANData] TARS_TransActRng: %d", userData.TARS_TransActRng);
-
+    auto CANcurrent = std::chrono::system_clock::now(); 
+    auto CANcurrent1970 = CANcurrent.time_since_epoch();
+    auto CANcurrent1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(CANcurrent1970).count(); //用于J5时间同步
+    LOGD("[CANData] timestamp: %llu, WhlDistEdgeCntrLRHigFreq: %d, WhlDistEdgeCntrRRHigFreq: %d, WhlDistEdgeCntrRFHigFreq: %d, WhlDistEdgeCntrLFHigFreq: %d, WhlAngVelRFrtAuth: %f, WhlAngVelLFrtAuth: %f, WhlAngVelRRrAuth: %f, WhlAngVelLRrAuth: %f, IMULonAccPri: %f, IMULonAccSec: %f, IMULatAccPrim: %f, IMULatACCSec: %f, IMUYawRtPri: %f, IMUYawRtSec: %f, StrWhAng: %f, VehSpdAvgNDrvn: %f, TARS_TransActRng: %d",
+        static_cast<uint64_t>(CANcurrent1970_ms),
+        userData.WhlDistEdgeCntrLRHigFreq,
+        userData.WhlDistEdgeCntrRRHigFreq,
+        userData.WhlDistEdgeCntrRFHigFreq,
+        userData.WhlDistEdgeCntrLFHigFreq,
+        userData.WhlAngVelRFrtAuth,
+        userData.WhlAngVelLFrtAuth,
+        userData.WhlAngVelRRrAuth,
+        userData.WhlAngVelLRrAuth,
+        userData.IMULonAccPri,
+        userData.IMULonAccSec,
+        userData.IMULatAccPrim,
+        userData.IMULatACCSec,
+        userData.IMUYawRtPri,
+        userData.IMUYawRtSec,
+        userData.StrWhAng,
+        userData.VehSpdAvgNDrvn,
+        userData.TARS_TransActRng);
+        
     RETURN_NOERROR;
 }
 
@@ -565,7 +566,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 05151425 emos10.0.1 KFenable,FARAWAYconfig. DISABLE:psd2vcu fixed");
+    LOGD("PSD Version: 05152050 emos10.0.1 toosmall,KFenable,FARAWAYconfig. DISABLE:psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -970,6 +971,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         center_y,
                         psd_m_output.rectInfo.iSodType,
                         psd2vcu.FusionSlotInfo[i].slotStatusType);
+                }
+
+
+                // 车位入口边宽度小于THRESHOLD 不释放
+                float toosmall = sqrt(pow(psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x, 2) +
+                                  pow(psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y, 2));
+                if (toosmall <= 2.5) {
+                    psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                 }
                 
 
