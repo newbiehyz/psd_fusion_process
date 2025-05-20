@@ -66,10 +66,11 @@ void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigne
     if (!rd_info.quadParkingSlotList.empty()) {
         LOGD("[INPUT rd_info singleframeslots] J5 SEND RD output slots size: %d",rd_info.quadParkingSlotList.size());
         for (const auto& parkingSlot : rd_info.quadParkingSlotList) {
-            LOGD("[INPUT rd_info singleframeslots] J5 SEND slottype(chuizhi0shuiping1xiexiang2): %d, filtered(0unccupied): %d, label(0qita1caozhuan2jixie): %d, tl:(%f,%f), bl:(%f,%f), tr:(%f,%f), br:(%f,%f)",
+            LOGD("[INPUT rd_info singleframeslots] J5 SEND slottype(chuizhi0shuiping1xiexiang2): %d, filtered(0unccupied): %d, label(0qita1caozhuan2jixie): %d, confidence: %f, tl:(%f,%f), bl:(%f,%f), tr:(%f,%f), br:(%f,%f)",
             parkingSlot.slotType,
             parkingSlot.filtered,
             parkingSlot.label,
+            parkingSlot.confidence,
             parkingSlot.tl.x,parkingSlot.tl.y,parkingSlot.bl.x,parkingSlot.bl.y,
             parkingSlot.tr.x,parkingSlot.tr.y,parkingSlot.br.x,parkingSlot.br.y);
 
