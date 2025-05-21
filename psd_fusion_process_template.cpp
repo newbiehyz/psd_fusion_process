@@ -23,6 +23,7 @@ float FARAWAY_SLOTS_RIGHT = 99999.0;
 float FARAWAY_SLOTS_REAR = -99999.0;
 float FARAWAY_SLOTS_FRONT = 99999.0;
 float NARROWSLOT_THRESHOLD = -99999.0;
+float VCU_TOO_SMALL = -99999.0;
 
 
 // // ***************************输入的全局变量，用于ON方式获取
@@ -169,6 +170,8 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
         j.at("calib").at("FARAWAY_SLOTS_FRONT").get_to(FARAWAY_SLOTS_FRONT);
         j.at("calib").at("FARAWAY_SLOTS_LEFT").get_to(FARAWAY_SLOTS_LEFT);
         j.at("calib").at("FARAWAY_SLOTS_RIGHT").get_to(FARAWAY_SLOTS_RIGHT);
+
+        j.at("calib").at("VCU_TOO_SMALL").get_to(VCU_TOO_SMALL);
     }
     catch (json::exception& e) {
         LOGD("配置文件解析错误: %s", e.what());
@@ -376,7 +379,7 @@ tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
         userData.StrWhAng,
         userData.VehSpdAvgNDrvn,
         userData.TARS_TransActRng);
-
+        
     RETURN_NOERROR;
 }
 
@@ -566,7 +569,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 05161648 emos10.0.2 KFenable,FARAWAYconfig. DISABLE:psd2vcu fixed");
+    LOGD("PSD Version: 05201015 emos10.0.2 add RDconfidence,toosmall,KFenable,FARAWAYconfig. DISABLE:psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -966,12 +969,26 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                         }
                     }
-                    LOGD("[VCU occupied] center(%.1f,%.1f), RD occupied: %d, VCU occupied: %d",
+                    LOGD("[VCU occupied] ID: %d, center(%.1f,%.1f), RD occupied: %d, VCU occupied: %d",
+                        psd2vcu.FusionSlotInfo[i].slotLabel,
                         center_x,
                         center_y,
                         psd_m_output.rectInfo.iSodType,
                         psd2vcu.FusionSlotInfo[i].slotStatusType);
                 }
+
+
+                // 车位入口边宽度小于THRESHOLD 不释放
+                float VCU_AB = sqrt(pow(psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x, 2) +
+                                  pow(psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y, 2));
+                if (VCU_AB <= VCU_TOO_SMALL) {
+                    psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                }
+                LOGD("[VCU TOO SMALL] ID: %d, Threshold: %.3f, VCU_AB: %.3f, VCU occupied: %d",
+                    psd2vcu.FusionSlotInfo[i].slotLabel,
+                    VCU_TOO_SMALL,
+                    VCU_AB,
+                    psd2vcu.FusionSlotInfo[i].slotStatusType);
                 
 
                 // 障碍物属性
