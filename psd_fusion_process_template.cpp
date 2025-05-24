@@ -23,6 +23,7 @@ float FARAWAY_SLOTS_RIGHT = 99999.0;
 float FARAWAY_SLOTS_REAR = -99999.0;
 float FARAWAY_SLOTS_FRONT = 99999.0;
 float NARROWSLOT_THRESHOLD = -99999.0;
+float VCU_TOO_SMALL = -99999.0;
 
 
 // // ***************************输入的全局变量，用于ON方式获取
@@ -169,6 +170,8 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
         j.at("calib").at("FARAWAY_SLOTS_FRONT").get_to(FARAWAY_SLOTS_FRONT);
         j.at("calib").at("FARAWAY_SLOTS_LEFT").get_to(FARAWAY_SLOTS_LEFT);
         j.at("calib").at("FARAWAY_SLOTS_RIGHT").get_to(FARAWAY_SLOTS_RIGHT);
+
+        j.at("calib").at("VCU_TOO_SMALL").get_to(VCU_TOO_SMALL);
     }
     catch (json::exception& e) {
         LOGD("配置文件解析错误: %s", e.what());
@@ -376,7 +379,7 @@ tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
         userData.StrWhAng,
         userData.VehSpdAvgNDrvn,
         userData.TARS_TransActRng);
-
+        
     RETURN_NOERROR;
 }
 
@@ -553,6 +556,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     // ============================================================Part0 行泊切换
 	static kbd::sm::StateClient state_client;
     if (state_client.parking_stop()){
+        // 行泊切换清零，输出发送空值
+        PSD_FusionModuleIFrunable.ClearSlotsMap();
+        g_singleframe_locked_slots.clear();
+
         LOGW("NOT IN PARKING STATE");
         RETURN_NOERROR;
     }
@@ -566,7 +573,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 05161617 emos910 KFenable DISABLE: psd2vcu fixed,FARAWAYconfig");
+    LOGD("PSD Version: 05241336 emos910 add clear while NOTINPARK,psd2per.fusionSlotType RDconfidence,toosmall,KFenable DISABLE: psd2vcu fixed,FARAWAYconfig");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -817,15 +824,15 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
     //------------------------------------------
-    // outputSlot_FUSED优化：标记入口边过窄的车位，用于不释放
-    double AB_threshold = 2100.0;
-    double faraway_threshold = 9500.0;
+    // // outputSlot_FUSED优化：标记入口边过窄的车位，用于不释放
+    // double AB_threshold = 2000.0;
+    // double faraway_threshold = 9500.0;
 
-    LOGD("Without markNotToReleaseSlot FUSIONSLOTS:")
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
-    PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_FUSED,AB_threshold,faraway_threshold);
-    LOGD("After markNotToReleaseSlot FUSIONSLOTS:")
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    // LOGD("Without markNotToReleaseSlot FUSIONSLOTS:")
+    // LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    // PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_FUSED,AB_threshold,faraway_threshold);
+    // LOGD("After markNotToReleaseSlot FUSIONSLOTS:")
+    // LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
 
     //------------------------------------------
@@ -966,12 +973,26 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
                         }
                     }
-                    LOGD("[VCU occupied] center(%.1f,%.1f), RD occupied: %d, VCU occupied: %d",
+                    LOGD("[VCU occupied] ID: %d, center(%.1f,%.1f), RD occupied: %d, VCU occupied: %d",
+                        psd2vcu.FusionSlotInfo[i].slotLabel,
                         center_x,
                         center_y,
                         psd_m_output.rectInfo.iSodType,
                         psd2vcu.FusionSlotInfo[i].slotStatusType);
                 }
+
+
+                // 车位入口边宽度小于THRESHOLD 不释放
+                float VCU_AB = sqrt(pow(psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x, 2) +
+                                  pow(psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y, 2));
+                if (VCU_AB <= VCU_TOO_SMALL) {
+                    psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                }
+                LOGD("[VCU TOO SMALL] ID: %d, Threshold: %.3f, VCU_AB: %.3f, VCU occupied: %d",
+                    psd2vcu.FusionSlotInfo[i].slotLabel,
+                    VCU_TOO_SMALL,
+                    VCU_AB,
+                    psd2vcu.FusionSlotInfo[i].slotStatusType);
                 
 
                 // 障碍物属性
@@ -1603,6 +1624,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     //***********************************PLANNING 发送目标车位
     //check psd output to planning(2 target slot)
     //拿到目标车位ID后，发送目标车位信息给planning
+    int target_slot_fusionSlotType = 0;
     if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
         for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
             if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){
@@ -1661,6 +1683,18 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 else{
                     psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
                 }
+                //*****************无车位材质接口，借用，0视觉1超声波3草砖*********************
+                if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.iMaterial == 1){
+                    target_slot_fusionSlotType = 3; // 
+                }
+                else{
+                    if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label >= 1000 && outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label < 10000){
+                        target_slot_fusionSlotType = 0;
+                    }
+                    else{
+                        target_slot_fusionSlotType = 1;
+                    }
+                }
             }
         }
     }
@@ -1684,6 +1718,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2planning.targetSlot.slotCorners.cornerC.y,
             psd2planning.targetSlot.slotCorners.cornerD.x,
             psd2planning.targetSlot.slotCorners.cornerD.y);
+            LOGD("[PSD2PLANNING] target_slot_fusionSlotType: %d",target_slot_fusionSlotType);
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
         }
     }
@@ -1705,15 +1740,34 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2perception.slotCorners.cornerD.x = psd2planning.targetSlot.slotCorners.cornerD.x;
             psd2perception.slotCorners.cornerD.y = psd2planning.targetSlot.slotCorners.cornerD.y;
             psd2perception.slotType = psd2planning.targetSlot.slotType;
+
+            //*****************无车位材质接口，借用，0视觉1超声波3草砖*********************
+            switch (target_slot_fusionSlotType) {
+                case 0:
+                    psd2perception.targetPosType = Sfus::POSHEADING_NULL;
+                    break;
+                case 1:
+                    psd2perception.targetPosType = Sfus::POSHEADING_AB;
+                    break;
+                case 3:
+                    psd2perception.targetPosType = Sfus::POSHEADING_CD;
+                    break;
+                default:
+                    psd2perception.targetPosType = Sfus::POSHEADING_NULL; // fallback or handle invalid case
+                    break;
+            }
+
             psd2perception.slotSource = psd2planning.targetSlot.slotSource;
             psd2perception.timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
             //后视镜折叠状态
             psd2perception.flag_valid = mirror_fold_flag;
         }
-        LOGD("[PSD2PERCEPTION] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, mirrorfold: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+
+        LOGD("[PSD2PERCEPTION] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, targetPosType: %d, source: %d, mirrorfold: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
             psd2perception.timeStamp,
             apa_status,
             psd2perception.slotType,
+            psd2perception.targetPosType,
             psd2perception.slotSource,
             psd2perception.flag_valid,
             psd2perception.slotCorners.cornerA.x,
