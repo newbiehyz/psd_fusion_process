@@ -556,6 +556,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     // ============================================================Part0 行泊切换
 	static kbd::sm::StateClient state_client;
     if (state_client.parking_stop()){
+        // 行泊切换清零，输出发送空值
+        PSD_FusionModuleIFrunable.ClearSlotsMap();
+        g_singleframe_locked_slots.clear();
+
         LOGW("NOT IN PARKING STATE");
         RETURN_NOERROR;
     }
@@ -569,7 +573,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 05211015 emos10.0.2 add RDconfidence,toosmall,KFenable,FARAWAYconfig. DISABLE:psd2vcu fixed");
+    LOGD("PSD Version: 05241334 emos10.0.2 add clear while NOTINPARK,psd2per.fusionSlotType,RDconfidence,toosmall,KFenable,FARAWAYconfig. DISABLE:psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1620,6 +1624,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     //***********************************PLANNING 发送目标车位
     //check psd output to planning(2 target slot)
     //拿到目标车位ID后，发送目标车位信息给planning
+    int target_slot_fusionSlotType = 0;
     if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
         for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
             if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){
@@ -1678,6 +1683,18 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 else{
                     psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
                 }
+                //*****************无车位材质接口，借用，0视觉1超声波3草砖*********************
+                if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.iMaterial == 1){
+                    target_slot_fusionSlotType = 3; // 
+                }
+                else{
+                    if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label >= 1000 && outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label < 10000){
+                        target_slot_fusionSlotType = 0;
+                    }
+                    else{
+                        target_slot_fusionSlotType = 1;
+                    }
+                }
             }
         }
     }
@@ -1701,6 +1718,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2planning.targetSlot.slotCorners.cornerC.y,
             psd2planning.targetSlot.slotCorners.cornerD.x,
             psd2planning.targetSlot.slotCorners.cornerD.y);
+            LOGD("[PSD2PLANNING] target_slot_fusionSlotType: %d",target_slot_fusionSlotType);
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
         }
     }
@@ -1722,15 +1740,34 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2perception.slotCorners.cornerD.x = psd2planning.targetSlot.slotCorners.cornerD.x;
             psd2perception.slotCorners.cornerD.y = psd2planning.targetSlot.slotCorners.cornerD.y;
             psd2perception.slotType = psd2planning.targetSlot.slotType;
+
+            //*****************无车位材质接口，借用，0视觉1超声波3草砖*********************
+            switch (target_slot_fusionSlotType) {
+                case 0:
+                    psd2perception.targetPosType = Sfus::POSHEADING_NULL;
+                    break;
+                case 1:
+                    psd2perception.targetPosType = Sfus::POSHEADING_AB;
+                    break;
+                case 3:
+                    psd2perception.targetPosType = Sfus::POSHEADING_CD;
+                    break;
+                default:
+                    psd2perception.targetPosType = Sfus::POSHEADING_NULL; // fallback or handle invalid case
+                    break;
+            }
+
             psd2perception.slotSource = psd2planning.targetSlot.slotSource;
             psd2perception.timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
             //后视镜折叠状态
             psd2perception.flag_valid = mirror_fold_flag;
         }
-        LOGD("[PSD2PERCEPTION] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, mirrorfold: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+
+        LOGD("[PSD2PERCEPTION] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, targetPosType: %d, source: %d, mirrorfold: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
             psd2perception.timeStamp,
             apa_status,
             psd2perception.slotType,
+            psd2perception.targetPosType,
             psd2perception.slotSource,
             psd2perception.flag_valid,
             psd2perception.slotCorners.cornerA.x,
