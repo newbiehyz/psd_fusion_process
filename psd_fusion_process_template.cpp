@@ -559,10 +559,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         // 行泊切换清零，输出发送空值
         PSD_FusionModuleIFrunable.ClearSlotsMap();
         g_singleframe_locked_slots.clear();
-        memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
-        EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
-        memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
-        S2S_MCore_Bridge_SetSigStatusDecFusionInput(&psd2statemachine);
 
         LOGW("NOT IN PARKING STATE");
         RETURN_NOERROR;
@@ -577,7 +573,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 05231650 emos10.0.1 add clear while NOTINPARK,psd2per.fusionSlotType RDconfidence,toosmall,KFenable,FARAWAYconfig. DISABLE:psd2vcu fixed");
+    LOGD("PSD Version: 05241334 emos10.0.1 add clear while NOTINPARK,psd2per.fusionSlotType RDconfidence,toosmall,KFenable,FARAWAYconfig. DISABLE:psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
