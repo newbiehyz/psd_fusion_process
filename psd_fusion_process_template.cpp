@@ -80,6 +80,8 @@ bool isNarrow = false; // 是否为窄车位
 int parkout_flag = 0; //当前是否为泊出
 int mirror_fold_flag_ahead = 0; // 从planning拿的原始折叠flag（存在提前）
 int mirror_fold_flag = 0; //后视镜是否被折叠（准确值）
+static bool target_slot_already_updated_once = false; //目标车位已经被更新过一次
+bool target_slot_in_range = false; //目标车位是否在矩形范围内
 
 CDT_PSD_FUSION_PROCESS_TEMPLATE(cpsd_fusion_process)
 
@@ -247,6 +249,16 @@ void cpsd_fusion_process::Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x
     slot.targetSlot.slotCorners.cornerD.x = slot_Dpt_temp_x;
     slot.targetSlot.slotCorners.cornerD.y = slot_Dpt_temp_y;
 }
+
+POINT_I Local2Global(const POINT_I& pt_local, const float& x, const float& y, const float& yaw)
+{
+    float theta = yaw * acos(-1) / 180.0;
+    POINT_I pt_global;
+    pt_global.x = pt_local.x * cos(theta) + pt_local.y * sin(theta) + x;
+    pt_global.y = pt_local.y * cos(theta) - pt_local.x * sin(theta) + y;
+    return pt_global;
+}
+
 
 int cpsd_fusion_process::HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select)
 {
@@ -559,6 +571,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         // 行泊切换清零，输出发送空值
         PSD_FusionModuleIFrunable.ClearSlotsMap();
         g_singleframe_locked_slots.clear();
+        target_slot_already_updated_once = false;
 
         LOGW("NOT IN PARKING STATE");
         RETURN_NOERROR;
@@ -573,7 +586,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 05241334 emos10.0.1 add clear while NOTINPARK,psd2per.fusionSlotType RDconfidence,toosmall,KFenable,FARAWAYconfig. DISABLE:psd2vcu fixed");
+    LOGD("PSD Version: 05271652 emos10.0.1 update while 5,CLOSE SINGLE CALI,fusionSlotType,toosmall,FARAWAYconfig. DISABLE:psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -633,6 +646,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
         S2S_MCore_Bridge_SetSigStatusDecFusionInput(&psd2statemachine);
         has_cleared_for_SEARCH_once = true;
+        target_slot_already_updated_once = false;
     }
 
     parkout_flag = IsParkOut(apa_status);
@@ -718,26 +732,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     PSD_FusionModuleIFrunable.SlotTypeCorrect(outputSlot_VIS);
     LOGD("After SlotTypeCorrect VISSLOTSLIST:")
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-    
-
-    //------------------------------------------
-    // outputSlot_VIS优化：标记入口边过窄的车位，用于不释放
-    // double AB_threshold = 2000.0;
-    // double faraway_threshold = 9500.0;
-
-    // LOGD("Without markNotToReleaseSlot VISSLOTS:")
-    // LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-    // PSD_FusionModuleIFrunable.markNotToReleaseSlot(outputSlot_VIS,AB_threshold,faraway_threshold);
-    // LOGD("After markNotToReleaseSlot VISSLOTS:")
-    // LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-
-
-    //------------------------------------------
-    // outputSlot_VIS优化：标记进入GUIDANCE时的目标车位
-    // PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_VIS,final_ID);
-    // LOGD("After markParkInSlot VISSLOTS:")
-    // LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
-    // //******************************
 
     if (DEBUG == true){
         filetojson.SaveapaSlotListInfoToJson(outputSlot_VIS,"/userdata/psd/VISapaSlotListInfo.json");
@@ -750,7 +744,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     //------------------------------------------
     // get USS
-
     S2S_MCore_Bridge_GetSigUssIf_stPLVOutputInfo(&uss_info);
     if (DEBUG == true){
         filetojson.SaveUssInfoToJson(uss_info,"/userdata/psd/USSapaSlotListInfo.json");
@@ -761,55 +754,55 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
 
 
-    //------------------------------------------
-    // outputSlot_FUSED优化：静止时以单帧结果校准
-    // 第一步：强制还原锁定车位
-    for (auto & slot : outputSlot_FUSED.slots_in_cur_frame) {
-        for (const auto & locked_slot : g_singleframe_locked_slots) {
-            if (slot.rectInfo.label == locked_slot.rectInfo.label) {
-                slot.rectInfo = locked_slot.rectInfo;
-                break;
-            }
-        }
-    }
+    // //------------------------------------------
+    // // outputSlot_FUSED优化：静止时以单帧结果校准
+    // // 第一步：强制还原锁定车位
+    // for (auto & slot : outputSlot_FUSED.slots_in_cur_frame) {
+    //     for (const auto & locked_slot : g_singleframe_locked_slots) {
+    //         if (slot.rectInfo.label == locked_slot.rectInfo.label) {
+    //             slot.rectInfo = locked_slot.rectInfo;
+    //             break;
+    //         }
+    //     }
+    // }
 
-    // 第二步：进行单帧校准
-    if (is_Still == 1){
-        apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
-        math::adjustOutputSlotRectOrder(singleframe_local_slots);
+    // // 第二步：进行单帧校准
+    // if (is_Still == 1){
+    //     apaSlotListInfo singleframe_local_slots = math::ConvertSingeleframe2Local(singleframeslots);
+    //     math::adjustOutputSlotRectOrder(singleframe_local_slots);
 
-        for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
-            for (auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
-                if (math::isNeedSingleframe2Update(slot, single_frame_slot)){
-                    PSD_FusionModuleIFrunable.shrink_quad(single_frame_slot);
-                    for (int icnt = 0; icnt < 4; ++icnt){
-                        slot.rectInfo.pt[icnt] = single_frame_slot.rectInfo.pt[icnt];
-                    }
-                    slot.rectInfo.is_singleframe_calibrated = true;
+    //     for (auto & slot : outputSlot_FUSED.slots_in_cur_frame){
+    //         for (auto& single_frame_slot : singleframe_local_slots.slots_in_cur_frame){
+    //             if (math::isNeedSingleframe2Update(slot, single_frame_slot)){
+    //                 PSD_FusionModuleIFrunable.shrink_quad(single_frame_slot);
+    //                 for (int icnt = 0; icnt < 4; ++icnt){
+    //                     slot.rectInfo.pt[icnt] = single_frame_slot.rectInfo.pt[icnt];
+    //                 }
+    //                 slot.rectInfo.is_singleframe_calibrated = true;
 
-                    // 添加到锁定列表中
-                    bool already_locked = false;
-                    for (auto & s : g_singleframe_locked_slots) {
-                        if (s.rectInfo.label == slot.rectInfo.label) {
-                            s = slot;
-                            already_locked = true;
-                            break;
-                        }
-                    }
-                    if (!already_locked) {
-                        g_singleframe_locked_slots.push_back(slot);
-                    }
+    //                 // 添加到锁定列表中
+    //                 bool already_locked = false;
+    //                 for (auto & s : g_singleframe_locked_slots) {
+    //                     if (s.rectInfo.label == slot.rectInfo.label) {
+    //                         s = slot;
+    //                         already_locked = true;
+    //                         break;
+    //                     }
+    //                 }
+    //                 if (!already_locked) {
+    //                     g_singleframe_locked_slots.push_back(slot);
+    //                 }
 
-                    break;
-                }
-            }
-        }
-    }
+    //                 break;
+    //             }
+    //         }
+    //     }
+    // }
 
-    // 第三步：车移动时清除锁定
-    if (is_Still == 0){
-        g_singleframe_locked_slots.clear();
-    }
+    // // 第三步：车移动时清除锁定
+    // if (is_Still == 0){
+    //     g_singleframe_locked_slots.clear();
+    // }
 
     // outputSlot_FUSED优化：类型修正
     LOGD("Without SlotTypeCorrect FUSIONSLOTS:")
@@ -1625,9 +1618,30 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     //check psd output to planning(2 target slot)
     //拿到目标车位ID后，发送目标车位信息给planning
     int target_slot_fusionSlotType = 0;
-    if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
+    // if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
+    if (final_ID > 0 && parkout_flag != 1 && (apa_status != 5 || (apa_status == 5 && !target_slot_already_updated_once))){  //进入guidance后只更新一次目标车位
         for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
-            if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){
+            if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){ // 找到目标车位
+
+                // *******************检查四个角点是否在范围内*******************
+                target_slot_in_range = true;
+                for(int j = 0; j < 4; j++) {
+                    float x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[j].x;
+                    float y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[j].y;
+                    // 左侧：(-10000,4124) (-10000,-1136) (-1500,4124) (-1500,-1136)
+                    bool in_rect1 = (x >= -10000 && x <= -1500) && (y >= -1136 && y <= 4124);
+                    // 右侧：(1500,4124) (1500,-1136) (10000,4124) (10000,-1136)
+                    bool in_rect2 = (x >= 1500 && x <= 10000) && (y >= -1136 && y <= 4124);
+
+                    if(!in_rect1 && !in_rect2) {
+                        target_slot_in_range = false;
+                        break;
+                    }
+                }
+                // 如果apa_status==5且不在范围内，则跳过更新
+                if(apa_status == 5 && !target_slot_in_range) {
+                    continue;
+                }
                 psd2planning.targetSlot.slotCorners.cornerA.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x; 
                 psd2planning.targetSlot.slotCorners.cornerA.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
                 psd2planning.targetSlot.slotCorners.cornerB.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x;
@@ -1636,9 +1650,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
                 psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
                 psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
+                // 标记在apa_status==5时已更新
+                if(apa_status == 5) {
+                    target_slot_already_updated_once = true;
+                }
 
                 // *******************判定是否狭窄车位*******************
-                
                 double dx = psd2planning.targetSlot.slotCorners.cornerB.x - psd2planning.targetSlot.slotCorners.cornerA.x;
                 double dy = psd2planning.targetSlot.slotCorners.cornerB.y - psd2planning.targetSlot.slotCorners.cornerA.y;
                 double AB_dist = sqrt(dx * dx + dy * dy);
@@ -1698,13 +1715,16 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
         }
     }
+
     if (parkout_flag != 1){
         if (apa_status == 1 || apa_status == 6 || apa_status == 7 || apa_status == 0){
+            target_slot_already_updated_once = false; // 重置标志位
             memset(&psd2planning, 0, sizeof(Sfus::Sfsuion2DecPlan));
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
         }
         else{
-            LOGD("[PSD2PLANNING] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            LOGD("[PSD2PLANNING] UPDATED: %d, TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            target_slot_already_updated_once,
             psd2planning.timeStamp,
             apa_status,
             psd2planning.targetSlot.slotType,
@@ -1720,6 +1740,20 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2planning.targetSlot.slotCorners.cornerD.y);
             LOGD("[PSD2PLANNING] target_slot_fusionSlotType: %d",target_slot_fusionSlotType);
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
+
+            POINT_I ptA = {psd2planning.targetSlot.slotCorners.cornerA.x,psd2planning.targetSlot.slotCorners.cornerA.y};
+            POINT_I ptB = {psd2planning.targetSlot.slotCorners.cornerB.x,psd2planning.targetSlot.slotCorners.cornerB.y};
+            POINT_I ptC = {psd2planning.targetSlot.slotCorners.cornerC.x,psd2planning.targetSlot.slotCorners.cornerC.y};
+            POINT_I ptD = {psd2planning.targetSlot.slotCorners.cornerD.x,psd2planning.targetSlot.slotCorners.cornerD.y};
+            POINT_I A_world = Local2Global(ptA, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            POINT_I B_world = Local2Global(ptB, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            POINT_I C_world = Local2Global(ptC, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            POINT_I D_world = Local2Global(ptD, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            LOGD("[PSD2PLANNING] TARGET_SLOT_WORLD A(%d,%d), B(%d,%d), C(%d,%d), D(%d,%d)",
+                A_world.x, A_world.y,
+                B_world.x, B_world.y,
+                C_world.x, C_world.y,
+                D_world.x, D_world.y);
         }
     }
     
@@ -1753,14 +1787,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2perception.targetPosType = Sfus::POSHEADING_CD;
                     break;
                 default:
-                    psd2perception.targetPosType = Sfus::POSHEADING_NULL; // fallback or handle invalid case
+                    psd2perception.targetPosType = Sfus::POSHEADING_NULL;
                     break;
             }
 
             psd2perception.slotSource = psd2planning.targetSlot.slotSource;
             psd2perception.timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
-            //后视镜折叠状态
-            psd2perception.flag_valid = mirror_fold_flag;
+            psd2perception.flag_valid = mirror_fold_flag;//后视镜折叠状态
         }
 
         LOGD("[PSD2PERCEPTION] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, targetPosType: %d, source: %d, mirrorfold: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
