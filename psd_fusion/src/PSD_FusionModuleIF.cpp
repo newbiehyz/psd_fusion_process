@@ -837,85 +837,85 @@ void PSD_FusionModuleIF::collect_confirmed_slots(apaSlotListInfo &slot_res){
     int slot_id = 1000;
     for (const auto &slot : slots_map_){
 
-        // if (slot.second->IsConfiremd()){
+        if (slot.second->IsConfiremd()){
+            
+            auto corner_world    = slot.second.get()->GetCornersWorld();
+            auto corner_world_FY = slot.second.get()->GetCornersWorld();
+            rect_local.rectInfo.label = slot_id;
+            rect_local.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
+            rect_local.rectInfo.iSodType = slot.second.get()->GetOccupy();
+            rect_local.rectInfo.iMaterial = slot.second.get()->GetMaterial();
+            rect_local.rectInfo.StopperDistance = (float)slot.second.get()->stopper_distance_;
+            rect_local.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
+            rect_local.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
+            rect_local.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
 
-        auto corner_world    = slot.second.get()->GetCornersWorld();
-        auto corner_world_FY = slot.second.get()->GetCornersWorld();
-        rect_local.rectInfo.label = slot_id;
-        rect_local.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
-        rect_local.rectInfo.iSodType = slot.second.get()->GetOccupy();
-        rect_local.rectInfo.iMaterial = slot.second.get()->GetMaterial();
-        rect_local.rectInfo.StopperDistance = (float)slot.second.get()->stopper_distance_;
-        rect_local.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
-        rect_local.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
-        rect_local.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
+            rect_world.rectInfo.label = slot_id;
+            rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
+            rect_world.rectInfo.iSodType = slot.second.get()->GetOccupy();
+            rect_world.rectInfo.iMaterial = slot.second.get()->GetMaterial();
+            rect_world.rectInfo.StopperDistance = (float)slot.second.get()->stopper_distance_;
+            rect_world.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
+            rect_world.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
+            rect_world.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
+            
+            for(int i = 0; i < 4; i++){
+                if(corner_world[i].hasNaN()){
+                    continue;    
+                }else{
+                    corner_world_FY[i].head<2>().x() = -1000.f * corner_world[i].head<2>().y();
+                    corner_world_FY[i].head<2>().y() =  1000.f * corner_world[i].head<2>().x();
+                    }
+                }
 
-        rect_world.rectInfo.label = slot_id;
-        rect_world.rectInfo.PStype = (int)slot.second.get()->GetSlotType();
-        rect_world.rectInfo.iSodType = slot.second.get()->GetOccupy();
-        rect_world.rectInfo.iMaterial = slot.second.get()->GetMaterial();
-        rect_world.rectInfo.StopperDistance = (float)slot.second.get()->stopper_distance_;
-        rect_world.rectInfo.StopperLocation = slot.second.get()->stopper_location_;
-        rect_world.rectInfo.LockInSlot = slot.second.get()->lock_in_slot_;
-        rect_world.rectInfo.OBSInSlot = slot.second.get()->obs_in_slot_;
-        
-        for(int i = 0; i < 4; i++){
-            if(corner_world[i].hasNaN()){
-                continue;    
-            }else{
-                corner_world_FY[i].head<2>().x() = -1000.f * corner_world[i].head<2>().y();
-                corner_world_FY[i].head<2>().y() =  1000.f * corner_world[i].head<2>().x();
-                 }
-            }
-
-        for(int i = 0; i < 4; i++){
-            if(corner_world_FY[i].hasNaN()){
-                continue;    
-            }else{
-                Eigen::Vector3f pt;
-                pt << corner_world_FY[i].head<2>().x(), corner_world_FY[i].head<2>().y(), 0.0;
-                world2car(pt);
-                // local
-                rect_local.rectInfo.pt[i].x = pt.x() ;
-                rect_local.rectInfo.pt[i].y = pt.y() ;
-                // world
-                rect_world.rectInfo.pt[i].x =  corner_world_FY[i].head<2>().x();
-                rect_world.rectInfo.pt[i].y =  corner_world_FY[i].head<2>().y();
-                 }
-            }
-
-
+            for(int i = 0; i < 4; i++){
+                if(corner_world_FY[i].hasNaN()){
+                    continue;    
+                }else{
+                    Eigen::Vector3f pt;
+                    pt << corner_world_FY[i].head<2>().x(), corner_world_FY[i].head<2>().y(), 0.0;
+                    world2car(pt);
+                    // local
+                    rect_local.rectInfo.pt[i].x = pt.x() ;
+                    rect_local.rectInfo.pt[i].y = pt.y() ;
+                    // world
+                    rect_world.rectInfo.pt[i].x =  corner_world_FY[i].head<2>().x();
+                    rect_world.rectInfo.pt[i].y =  corner_world_FY[i].head<2>().y();
+                    }
+                }
 
 
-        // 快乐内缩
-        // LOGD("[SHRINK] before shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
-        //                                                            rect_local.rectInfo.pt[0].y,
-        //                                                            rect_local.rectInfo.pt[1].x,
-        //                                                            rect_local.rectInfo.pt[1].y,
-        //                                                            rect_local.rectInfo.pt[2].x,
-        //                                                            rect_local.rectInfo.pt[2].y,
-        //                                                            rect_local.rectInfo.pt[3].x,
-        //                                                            rect_local.rectInfo.pt[3].y)
-        shrink_quad(rect_local); 
-        // LOGD("[SHRINK] after shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
-        //                                                            rect_local.rectInfo.pt[0].y,
-        //                                                           rect_local.rectInfo.pt[1].x,
-        //                                                           rect_local.rectInfo.pt[1].y,
-        //                                                            rect_local.rectInfo.pt[2].x,
-        //                                                           rect_local.rectInfo.pt[2].y,
-        //                                                           rect_local.rectInfo.pt[3].x,
-        //                                                           rect_local.rectInfo.pt[3].y)
-        // rect_world = shrink_quad(rect_world);
 
-        // 快乐排序
-        adjustRectOrder(rect_local);
-        adjustRectOrder(rect_world);
 
-        
-        slot_res.slots_in_cur_frame.push_back(rect_local);
-        slot_res.WorldoutRect.push_back(rect_world);
-        slot_id++;
-        // }
+            // 快乐内缩
+            // LOGD("[SHRINK] before shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
+            //                                                            rect_local.rectInfo.pt[0].y,
+            //                                                            rect_local.rectInfo.pt[1].x,
+            //                                                            rect_local.rectInfo.pt[1].y,
+            //                                                            rect_local.rectInfo.pt[2].x,
+            //                                                            rect_local.rectInfo.pt[2].y,
+            //                                                            rect_local.rectInfo.pt[3].x,
+            //                                                            rect_local.rectInfo.pt[3].y)
+            shrink_quad(rect_local); 
+            // LOGD("[SHRINK] after shrink: (%d,%d), (%d,%d), (%d, %d), (%d, %d)",rect_local.rectInfo.pt[0].x,
+            //                                                            rect_local.rectInfo.pt[0].y,
+            //                                                           rect_local.rectInfo.pt[1].x,
+            //                                                           rect_local.rectInfo.pt[1].y,
+            //                                                            rect_local.rectInfo.pt[2].x,
+            //                                                           rect_local.rectInfo.pt[2].y,
+            //                                                           rect_local.rectInfo.pt[3].x,
+            //                                                           rect_local.rectInfo.pt[3].y)
+            shrink_quad(rect_world);
+
+            // 快乐排序
+            adjustRectOrder(rect_local);
+            adjustRectOrder(rect_world);
+
+            
+            slot_res.slots_in_cur_frame.push_back(rect_local);
+            slot_res.WorldoutRect.push_back(rect_world);
+            slot_id++;
+        }
     } 
 }
 
@@ -2553,11 +2553,11 @@ bool PSD_FusionModuleIF::CalibrateSingleSlot(const padVisionSlotCoord &quad,
 
 void PSD_FusionModuleIF::shrink_quad(apaSlotInfo &original_rect){
     if (original_rect.rectInfo.PStype == 0){//垂直车位
-        int shrink_amount = 120;
+        int shrink_amount = 150;
+
         POINT_F AB_unit = unit_vector(original_rect.rectInfo.pt[0],original_rect.rectInfo.pt[1]);
         POINT_F CD_unit = unit_vector(original_rect.rectInfo.pt[2],original_rect.rectInfo.pt[3]);
         
-
         original_rect.rectInfo.pt[0] = shrink(original_rect.rectInfo.pt[0],AB_unit,shrink_amount);
         original_rect.rectInfo.pt[1] = shrink(original_rect.rectInfo.pt[1],AB_unit,-shrink_amount);
         original_rect.rectInfo.pt[2] = shrink(original_rect.rectInfo.pt[2],CD_unit,shrink_amount);

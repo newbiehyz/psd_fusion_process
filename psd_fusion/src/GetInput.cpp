@@ -96,6 +96,70 @@ void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigne
     } else {
         LOGD("[INPUT rd_info singleframeslots] S32G RECEIVE NO SLOTS! frameTimeStampNs: %llu", rd_info.frameTimeStampNs);
     }
+
+    // 工具函数：计算角度（单位：度）
+    auto compute_angle_deg = [](const padVisionSlotCoord& slot) {
+        float dx = slot.b.x - slot.a.x;
+        float dy = slot.b.y - slot.a.y;
+        return std::atan2(dy, dx) * 180.0f / M_PI;
+    };
+
+    // Step 1: 分左右
+    std::vector<padVisionSlotCoord> left_slots, right_slots;
+    std::vector<float> left_angles, right_angles;
+
+    for (const auto& slot : singleframeslots) {
+        float ax = slot.a.x;
+        float bx = slot.b.x;
+        float angle = compute_angle_deg(slot);
+        if (ax < 448 && bx < 448) {
+            left_slots.push_back(slot);
+            left_angles.push_back(angle);
+        } else if (ax >= 448 && bx >= 448) {
+            right_slots.push_back(slot);
+            right_angles.push_back(angle);
+        }
+    }
+
+    // 工具函数：计算中位角度
+    auto median_angle = [](std::vector<float>& angles) {
+        if (angles.empty()) return 0.0f;
+        std::sort(angles.begin(), angles.end());
+        size_t n = angles.size();
+        return (n % 2 == 1) ? angles[n / 2]
+                        : (angles[n / 2 - 1] + angles[n / 2]) / 2.0f;
+    };
+
+    // 中位角
+    float left_median = median_angle(left_angles);
+    float right_median = median_angle(right_angles);
+
+    // 清空原列表
+    singleframeslots.clear();
+
+    // Step 2: 保留角度接近中位角的车位（阈值为4度）
+    for (size_t i = 0; i < left_slots.size(); ++i) {
+        if (std::abs(left_angles[i] - left_median) < 4.0f) {
+            singleframeslots.push_back(left_slots[i]);
+        }
+    }
+    for (size_t i = 0; i < right_slots.size(); ++i) {
+        if (std::abs(right_angles[i] - right_median) < 4.0f) {
+            singleframeslots.push_back(right_slots[i]);
+        }
+    }
+    LOGD("[INPUT rd_info filtered singleframeslots] size: %zu", singleframeslots.size());
+    for (const auto& slot : singleframeslots) {
+        LOGD("[INPUT rd_info filtered slot] bayType: %d, occupy: %d, material: %d, "
+            "tl:(%d,%d), bl:(%d,%d), tr:(%d,%d), br:(%d,%d)",
+            slot.bayType,
+            slot.occupy,
+            slot.material,
+            slot.a.x, slot.a.y,
+            slot.d.x, slot.d.y,
+            slot.b.x, slot.b.y,
+            slot.c.x, slot.c.y);
+    }
 }
 
 void GetInput::GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2emap_DR& previous_dr_pose, padVehiclePose& pose_globaldata, bool& is_Still, int& still_count) {

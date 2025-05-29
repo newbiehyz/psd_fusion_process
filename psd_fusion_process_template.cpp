@@ -18,12 +18,17 @@
 // ***************************配置文件修改的参数(@TODO：从配置文件读取后转成const)
 bool DEBUG = false; //json功能开关
 bool FARAWAY_FILTER = false; //距离范围限制车位释放功能开关
-float FARAWAY_SLOTS_LEFT = -99999.0; 
-float FARAWAY_SLOTS_RIGHT = 99999.0;
+float FARAWAY_SLOTS_LEFT[2] = {-99999.0,0}; 
+float FARAWAY_SLOTS_RIGHT[2] = {0,99999.0};
 float FARAWAY_SLOTS_REAR = -99999.0;
 float FARAWAY_SLOTS_FRONT = 99999.0;
-float NARROWSLOT_THRESHOLD = -99999.0;
+bool ANGEL_FILTER = false;
+float ANGEL_FILTER_LIMIT = -99999.0;
+bool VCU_TOO_SMALL_FILTER = false;
 float VCU_TOO_SMALL = -99999.0;
+bool PARALLEL_VECTOR_FILTER = false;
+float PARALLEL_VECTOR_LIMIT = -99999.0;
+float NARROWSLOT_THRESHOLD = -99999.0;
 
 
 // // ***************************输入的全局变量，用于ON方式获取
@@ -74,6 +79,12 @@ int final_select_ID = 0; //VCU和HMI最终统一的ID
 int final_ID = 0; //结合选择、推荐后的最终ID
 bool recommend_exist = false; //推荐车位是否已存在
 bool already_has_recommend_slot = false;
+bool in_release_range_last_frame = false; //车位释放范围连续帧要求
+int stable_frame_count = 0;
+const int STABLE_THRESHOLD = 3; // 连续帧数要求
+
+
+
 bool isNarrow = false; // 是否为窄车位
 
 
@@ -82,6 +93,10 @@ int mirror_fold_flag_ahead = 0; // 从planning拿的原始折叠flag（存在提
 int mirror_fold_flag = 0; //后视镜是否被折叠（准确值）
 static bool target_slot_already_updated_once = false; //目标车位已经被更新过一次
 bool target_slot_in_range = false; //目标车位是否在矩形范围内
+Sfus::SfusionSlotType slot_type_before_update;
+
+
+
 
 CDT_PSD_FUSION_PROCESS_TEMPLATE(cpsd_fusion_process)
 
@@ -154,6 +169,7 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
     if(!inFile.is_open()){
         DEBUG = false;
         FARAWAY_FILTER = false;
+
         LOGD("无法打开配置文件: %s, DEBUG: %d, FARAWAY_FILTER: %d", filename.c_str(), DEBUG,FARAWAY_FILTER);
         return false;
     }
@@ -165,15 +181,26 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
         //解析文件路径
         j.at("debug").at("save_to_json").get_to(DEBUG);
 
-        j.at("calib").at("NARROWSLOT_THRESHOLD").get_to(NARROWSLOT_THRESHOLD);
-
         j.at("calib").at("FARAWAY_FILTER").get_to(FARAWAY_FILTER);
+        auto FARAWAY_SLOTS_LEFT_RANGE = j.at("calib").at("FARAWAY_SLOTS_LEFT");
+        FARAWAY_SLOTS_LEFT[0] = FARAWAY_SLOTS_LEFT_RANGE[0];
+        FARAWAY_SLOTS_LEFT[1] = FARAWAY_SLOTS_LEFT_RANGE[1];
+        auto FARAWAY_SLOTS_RIGHT_RANGE = j.at("calib").at("FARAWAY_SLOTS_RIGHT");
+        FARAWAY_SLOTS_RIGHT[0] = FARAWAY_SLOTS_RIGHT_RANGE[0];
+        FARAWAY_SLOTS_RIGHT[1] = FARAWAY_SLOTS_RIGHT_RANGE[1];
         j.at("calib").at("FARAWAY_SLOTS_REAR").get_to(FARAWAY_SLOTS_REAR);
         j.at("calib").at("FARAWAY_SLOTS_FRONT").get_to(FARAWAY_SLOTS_FRONT);
-        j.at("calib").at("FARAWAY_SLOTS_LEFT").get_to(FARAWAY_SLOTS_LEFT);
-        j.at("calib").at("FARAWAY_SLOTS_RIGHT").get_to(FARAWAY_SLOTS_RIGHT);
 
+        j.at("calib").at("ANGEL_FILTER").get_to(ANGEL_FILTER);
+        j.at("calib").at("ANGEL_FILTER_LIMIT").get_to(ANGEL_FILTER_LIMIT);
+
+        j.at("calib").at("VCU_TOO_SMALL_FILTER").get_to(VCU_TOO_SMALL_FILTER);
         j.at("calib").at("VCU_TOO_SMALL").get_to(VCU_TOO_SMALL);
+        
+        j.at("calib").at("PARALLEL_VECTOR_FILTER").get_to(PARALLEL_VECTOR_FILTER);
+        j.at("calib").at("PARALLEL_VECTOR_LIMIT").get_to(PARALLEL_VECTOR_LIMIT);
+
+        j.at("calib").at("NARROWSLOT_THRESHOLD").get_to(NARROWSLOT_THRESHOLD);
     }
     catch (json::exception& e) {
         LOGD("配置文件解析错误: %s", e.what());
@@ -941,10 +968,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
                 }
 
-                // 车位的中心点是否在允许释放的区域
+                // ***************************车位不释放策略***************************
+                // ***************************1 车位的中心点是否在允许释放的区域
                 //限制范围（前后、左右）
-                LOGD("FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left-Right: [%f, %f]",
-                    FARAWAY_FILTER,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT,FARAWAY_SLOTS_LEFT,FARAWAY_SLOTS_RIGHT)
+                LOGD("[VCU NOTRELEASE1 range] FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left: [%f, %f], Right:[%f, %f]",
+                    FARAWAY_FILTER,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT,FARAWAY_SLOTS_LEFT[0],FARAWAY_SLOTS_LEFT[1],FARAWAY_SLOTS_RIGHT[0],FARAWAY_SLOTS_RIGHT[1])
                 if (FARAWAY_FILTER){
                     //车位中心点
                     float center_x = 0.0f;
@@ -956,36 +984,113 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     center_x /= 4.0f;
                     center_y /= 4.0f;
                     //判断中心点是否在矩形范围内
-                    if (center_x <= FARAWAY_SLOTS_REAR || center_x >= FARAWAY_SLOTS_FRONT ||
-                        center_y <= FARAWAY_SLOTS_LEFT || center_y >= FARAWAY_SLOTS_RIGHT) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4;  // 被占用
+                    const float FARAWAY_DEADZONE = 0.1;// 死区（0.2m）
+                    float rear_limit    = FARAWAY_SLOTS_REAR + FARAWAY_DEADZONE;
+                    float front_limit   = FARAWAY_SLOTS_FRONT - FARAWAY_DEADZONE;
+                    float left1         = FARAWAY_SLOTS_LEFT[0] + FARAWAY_DEADZONE;
+                    float left2         = FARAWAY_SLOTS_LEFT[1] - FARAWAY_DEADZONE;
+                    float right1        = FARAWAY_SLOTS_RIGHT[0] + FARAWAY_DEADZONE;
+                    float right2        = FARAWAY_SLOTS_RIGHT[1] - FARAWAY_DEADZONE;
+                    bool out_of_x_range = (center_x <= rear_limit || center_x >= front_limit);
+                    bool out_of_y_range = !((center_y >= left1 && center_y <= left2) ||
+                                            (center_y >= right1 && center_y <= right2));
+                    if (out_of_x_range || out_of_y_range) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                     } else {
                         if (psd_m_output.rectInfo.iSodType == 1) {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                         } else {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
                         }
                     }
-                    LOGD("[VCU occupied] ID: %d, center(%.1f,%.1f), RD occupied: %d, VCU occupied: %d",
+                    LOGD("[VCU NOTRELEASE1 range] ID: %d, center(%.1f,%.1f), x_out: %d, y_out: %d, stable_frame_count: %d, RD occupied: %d, VCU status: %d",
                         psd2vcu.FusionSlotInfo[i].slotLabel,
                         center_x,
                         center_y,
+                        out_of_x_range,
+                        out_of_y_range,
+                        stable_frame_count,
                         psd_m_output.rectInfo.iSodType,
                         psd2vcu.FusionSlotInfo[i].slotStatusType);
                 }
 
-
-                // 车位入口边宽度小于THRESHOLD 不释放
-                float VCU_AB = sqrt(pow(psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x, 2) +
-                                  pow(psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y, 2));
-                if (VCU_AB <= VCU_TOO_SMALL) {
-                    psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                // ***************************2 车位与自车夹角是否在允许释放的角度范围内
+                // 仅限制垂直水平车位，车位AB与自车中轴线 (0,45度)以内才释放
+                LOGD("[VCU NOTRELEASE2 anglelimit] ANGLE_FILTER: %d, ANGEL_FILTER_LIMIT:%f",ANGEL_FILTER,ANGEL_FILTER_LIMIT);
+                if (ANGEL_FILTER){
+                    if (psd_m_output.rectInfo.PStype != 2){
+                        float ax = 4.0f;
+                        float ay = 0.0f; //向量1 (-4.0)指向(0,0)
+                        float bx = psd2vcu.FusionSlotInfo[i].pt[1].x - psd2vcu.FusionSlotInfo[i].pt[0].x;
+                        float by = psd2vcu.FusionSlotInfo[i].pt[1].y - psd2vcu.FusionSlotInfo[i].pt[0].y;//向量2 A指向B
+                        //夹角计算
+                        float dot = ax * bx + ay * by;
+                        float normA = std::sqrt(ax * ax + ay * ay);
+                        float normB = std::sqrt(bx * bx + by * by);
+                        if (normA * normB < 1e-6f) continue;
+                        float cos_theta = dot / (normA * normB);
+                        if (cos_theta > 1.0f) cos_theta = 1.0f;
+                        if (cos_theta < -1.0f) cos_theta = -1.0f;
+                        float angle_deg = std::acos(cos_theta) * 180.0f / M_PI;
+                        
+                        // 死区（5度）
+                        const float ANGEL_DEADZONE = 5.0;
+                        if (angle_deg > ANGEL_FILTER_LIMIT + ANGEL_DEADZONE){
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                        }else if (angle_deg <= ANGEL_FILTER_LIMIT - ANGEL_DEADZONE){
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                        }
+                        LOGD("[VCU NOTRELEASE2 anglelimit] ID: %d, angle_deg: %.f",psd2vcu.FusionSlotInfo[i].slotLabel,angle_deg);
+                    }else{
+                        LOGD("VCU NOTRELEASE2 anglelimit] ID: %d, DIAGONAL SLOT NO LIMIT.",psd2vcu.FusionSlotInfo[i].slotLabel);
+                    }
                 }
-                LOGD("[VCU TOO SMALL] ID: %d, Threshold: %.3f, VCU_AB: %.3f, VCU occupied: %d",
-                    psd2vcu.FusionSlotInfo[i].slotLabel,
-                    VCU_TOO_SMALL,
-                    VCU_AB,
-                    psd2vcu.FusionSlotInfo[i].slotStatusType);
+                
+                // ***************************3 车位入口边宽度小于THRESHOLD 不释放
+                LOGD("[VCU NOTRELEASE3 abnarrow] VCU_TOO_SMALL_FILTER: %d, VCU_TOO_SMALL: %.3f",VCU_TOO_SMALL_FILTER,VCU_TOO_SMALL);
+                if (VCU_TOO_SMALL_FILTER){
+                    float VCU_AB = sqrt(pow(psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x, 2) +
+                                    pow(psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y, 2));
+                    // 死区（0.1m）
+                    const float TOO_SMALL_DEADZONE = 0.05;
+                    if (VCU_AB <= VCU_TOO_SMALL - TOO_SMALL_DEADZONE) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                    }else if (VCU_AB > VCU_TOO_SMALL + TOO_SMALL_DEADZONE){
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                    }
+                    LOGD("[VCU NOTRELEASE3 abnarrow] ID: %d, VCU_AB: %.3f, VCU occupied: %d",
+                        psd2vcu.FusionSlotInfo[i].slotLabel,
+                        VCU_AB,
+                        psd2vcu.FusionSlotInfo[i].slotStatusType);
+                }
+
+                // ***************************4 驶过水平车位，后轴中点到AD边VECTOR_THRESHOLD才可以释放
+                LOGD("[VCU NOTRELEASE4 parallel] PARALLEL_VECTOR_FILTER: %d, PARALLEL_VECTOR_LIMIT: %f",PARALLEL_VECTOR_FILTER,PARALLEL_VECTOR_LIMIT);
+                if (PARALLEL_VECTOR_FILTER){
+                    if (psd_m_output.rectInfo.PStype == 1){
+                        POINT_F VCU_car_rear_axle_center = { -4.064, 0.0 };
+
+                        float vector_carrearaxlecenter2parallelAD = (
+                            (psd2vcu.FusionSlotInfo[i].pt[3].y - psd2vcu.FusionSlotInfo[i].pt[0].y) * VCU_car_rear_axle_center.x
+                        - (psd2vcu.FusionSlotInfo[i].pt[3].x - psd2vcu.FusionSlotInfo[i].pt[0].x) * VCU_car_rear_axle_center.y
+                        + psd2vcu.FusionSlotInfo[i].pt[3].x * psd2vcu.FusionSlotInfo[i].pt[0].y
+                        - psd2vcu.FusionSlotInfo[i].pt[3].y * psd2vcu.FusionSlotInfo[i].pt[0].x
+                        ) / sqrt(
+                            pow(psd2vcu.FusionSlotInfo[i].pt[3].y - psd2vcu.FusionSlotInfo[i].pt[0].y, 2)
+                        + pow(psd2vcu.FusionSlotInfo[i].pt[3].x - psd2vcu.FusionSlotInfo[i].pt[0].x, 2)
+                        );
+                        // 死区（0.2m）
+                        const float PARALLEL_VECTOR_DEADZONE = 0.1;
+                        if (vector_carrearaxlecenter2parallelAD < PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                        }else if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT + PARALLEL_VECTOR_DEADZONE){
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                        }
+                        LOGD("[VCU NOTRELEASE4 parallel] PARALLEL VECTOR: %f, ID: %d", vector_carrearaxlecenter2parallelAD,psd2vcu.FusionSlotInfo[i].slotLabel)
+                    }else{
+                        LOGD("[VCU NOTRELEASE4 parallel] NOT PARALLEL SLOT.")
+                    }
+                }
                 
 
                 // 障碍物属性
@@ -1618,11 +1723,44 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     //check psd output to planning(2 target slot)
     //拿到目标车位ID后，发送目标车位信息给planning
     int target_slot_fusionSlotType = 0;
+    
     // if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
     if (final_ID > 0 && parkout_flag != 1 && (apa_status != 5 || (apa_status == 5 && !target_slot_already_updated_once))){  //进入guidance后只更新一次目标车位
         for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
             if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){ // 找到目标车位
 
+                // *******************正逆鱼骨，车位类型*******************
+                double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
+                double ABy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                double ADx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
+                double ADy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                double dotProduct = (ABx * ADx) + (ABy * ADy);
+                double magnitudeAB = sqrt(ABx * ABx + ABy * ABy);
+                double magnitudeAD = sqrt(ADx * ADx + ADy * ADy);
+                // 计算夹角的余弦值
+                double cosTheta = dotProduct / (magnitudeAB * magnitudeAD);
+                // 计算角度（弧度转度）
+                double angleRadians = acos(cosTheta);  // 计算弧度
+                double angleDegrees = angleRadians * (180.0 / M_PI);  // 转换为度
+                if (angleDegrees > 80  || angleDegrees < 100)
+                {
+                    psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
+                }
+                else if (angleDegrees <= 80){
+                    psd2planning.targetSlot.slotType = Sfus::SLOTTYP_RFOBL;
+                }
+                else{
+                    psd2planning.targetSlot.slotType = Sfus::SLOTTYP_OBL;
+                }
+                // 锁定更新前的车位类型
+                if (apa_status != 5){
+                    slot_type_before_update = psd2planning.targetSlot.slotType;
+                }
+                else{
+                    if (slot_type_before_update != NULL){
+                        psd2planning.targetSlot.slotType = slot_type_before_update;
+                    }
+                }
                 // *******************检查四个角点是否在范围内*******************
                 target_slot_in_range = true;
                 for(int j = 0; j < 4; j++) {
@@ -1666,30 +1804,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 else{
                     isNarrow = false;
                 }
-                // *******************正逆鱼骨*******************
-                double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
-                double ABy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
-                double ADx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
-                double ADy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
-                double dotProduct = (ABx * ADx) + (ABy * ADy);
-                double magnitudeAB = sqrt(ABx * ABx + ABy * ABy);
-                double magnitudeAD = sqrt(ADx * ADx + ADy * ADy);
-                // 计算夹角的余弦值
-                double cosTheta = dotProduct / (magnitudeAB * magnitudeAD);
-                // 计算角度（弧度转度）
-                double angleRadians = acos(cosTheta);  // 计算弧度
-                double angleDegrees = angleRadians * (180.0 / M_PI);  // 转换为度
-                if (angleDegrees > 80  || angleDegrees < 100)
-                {
-                    psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
-                }
-                else if (angleDegrees <= 80){
-                    psd2planning.targetSlot.slotType = Sfus::SLOTTYP_RFOBL;
-                }
-                else{
-                    psd2planning.targetSlot.slotType = Sfus::SLOTTYP_OBL;
-                }
-                //**************************************
+                //********************车位来源******************
                 psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
                 if (final_ID >= 1000 && final_ID < 10000){
                     psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
