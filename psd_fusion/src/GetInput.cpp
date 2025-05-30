@@ -139,12 +139,12 @@ void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigne
 
     // Step 2: 保留角度接近中位角的车位（阈值为4度）
     for (size_t i = 0; i < left_slots.size(); ++i) {
-        if (std::abs(left_angles[i] - left_median) < 4.0f) {
+        if (std::abs(left_angles[i] - left_median) < 3.0f) {
             singleframeslots.push_back(left_slots[i]);
         }
     }
     for (size_t i = 0; i < right_slots.size(); ++i) {
-        if (std::abs(right_angles[i] - right_median) < 4.0f) {
+        if (std::abs(right_angles[i] - right_median) < 3.0f) {
             singleframeslots.push_back(right_slots[i]);
         }
     }
