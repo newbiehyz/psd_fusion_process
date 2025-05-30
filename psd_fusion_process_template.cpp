@@ -613,7 +613,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 05301353 emos10.0.1 filter angled rdinput, VCUnotrelease, continously 2frameKF, close singleframe cali,update while 5,CLOSE SINGLE CALI,fusionSlotType,toosmall,FARAWAYconfig. DISABLE:psd2vcu fixed");
+    LOGD("PSD Version: 05301611 emos10.0.1 0530release. filter angled rdinput, VCUnotrelease, continously 2frameKF, close singleframe cali,update while 5,CLOSE SINGLE CALI,fusionSlotType,toosmall,FARAWAYconfig. DISABLE:psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1039,13 +1039,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         const float ANGEL_DEADZONE = 5.0;
                         if (angle_deg > ANGEL_FILTER_LIMIT + ANGEL_DEADZONE){
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
-                        }else if (angle_deg <= ANGEL_FILTER_LIMIT - ANGEL_DEADZONE){
-                            if (psd_m_output.rectInfo.iSodType == 1) {
-                                psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
-                            } else {
-                                psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
-                            }
                         }
+                        // else if (angle_deg <= ANGEL_FILTER_LIMIT - ANGEL_DEADZONE){
+                        //     if (psd_m_output.rectInfo.iSodType == 1) {
+                        //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                        //     } else {
+                        //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                        //     }
+                        // }
                         // else if (angle_deg <= ANGEL_FILTER_LIMIT - ANGEL_DEADZONE){
                         //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
                         // }
@@ -1064,13 +1065,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     const float TOO_SMALL_DEADZONE = 0.05;
                     if (VCU_AB <= VCU_TOO_SMALL - TOO_SMALL_DEADZONE) {
                         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
-                    } else if (VCU_AB > VCU_TOO_SMALL + TOO_SMALL_DEADZONE){
-                        if (psd_m_output.rectInfo.iSodType == 1) {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
-                        } else {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
-                        }
-                    }
+                    } 
+                    // else if (VCU_AB > VCU_TOO_SMALL + TOO_SMALL_DEADZONE){
+                    //     if (psd_m_output.rectInfo.iSodType == 1) {
+                    //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                    //     } else {
+                    //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                    //     }
+                    // }
                     // else if (VCU_AB > VCU_TOO_SMALL + TOO_SMALL_DEADZONE){
                     //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
                     // }
@@ -1100,24 +1102,26 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         if (psd2vcu.FusionSlotInfo[i].pt[0].y >= 0){ // 右侧
                             if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
                                 psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
-                            }else if (vector_carrearaxlecenter2parallelAD > PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
-                                if (psd_m_output.rectInfo.iSodType == 1) {
-                                    psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
-                                } else {
-                                    psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
-                                }
                             }
+                            // else if (vector_carrearaxlecenter2parallelAD > PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
+                            //     if (psd_m_output.rectInfo.iSodType == 1) {
+                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                            //     } else {
+                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                            //     }
+                            // }
                         }
                         else{
                             if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
                                 psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
-                            }else if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
-                                if (psd_m_output.rectInfo.iSodType == 1) {
-                                    psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
-                                } else {
-                                    psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
-                                }
                             }
+                            // else if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
+                            //     if (psd_m_output.rectInfo.iSodType == 1) {
+                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                            //     } else {
+                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                            //     }
+                            // }
                         }
                         LOGD("[VCU NOTRELEASE4 parallel] PARALLEL VECTOR: %f, ID: %d, set to %d", vector_carrearaxlecenter2parallelAD,psd2vcu.FusionSlotInfo[i].slotLabel,psd2vcu.FusionSlotInfo[i].slotStatusType)
                     }else{
@@ -1831,10 +1835,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 double dy = psd2planning.targetSlot.slotCorners.cornerB.y - psd2planning.targetSlot.slotCorners.cornerA.y;
                 double AB_dist = sqrt(dx * dx + dy * dy);
                 LOGD("isNarrow: %d, AB_dist: %f",isNarrow, AB_dist);
-                if (AB_dist <= NARROWSLOT_THRESHOLD) {
+                if (AB_dist <= NARROWSLOT_THRESHOLD - 100) {
                     isNarrow = true;
                 }
-                else{
+                else if (AB_dist > NARROWSLOT_THRESHOLD + 100){
                     isNarrow = false;
                 }
                 //********************车位来源******************
