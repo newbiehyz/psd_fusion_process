@@ -16,12 +16,12 @@ Kalman_filter::Kalman_filter(const ParkingSlotResultPtr& post_slot,
     missing_time_ = 0;
     apa_id_ = id_generator_;
 
-    occupy_ = quad_info->occupy;
+    // occupy_ = quad_info->occupy;
 
-    // //占用滤波
-    // occupy_ = 1;
-    // occupies_.push(quad_info->occupy);
-    // occupy_sum_ += occupy_;
+    //占用滤波
+    occupy_ = 1;
+    occupies_.push(quad_info->occupy);
+    occupy_sum_ += occupy_;
 
 
     material_ = quad_info->material;
@@ -662,7 +662,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     // adjustRectOrder(leftSide, corners_world_);
 
     // 更新车位占用
-    bool occupy_filter = false;
+    bool occupy_filter = true;
 
     if (occupy_filter) {
         // 占用均值滤波

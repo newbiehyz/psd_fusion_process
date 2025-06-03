@@ -151,7 +151,7 @@ void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigne
     LOGD("[INPUT rd_info filtered singleframeslots] size: %zu", singleframeslots.size());
     for (const auto& slot : singleframeslots) {
         LOGD("[INPUT rd_info filtered slot] bayType: %d, occupy: %d, material: %d, "
-            "tl:(%d,%d), bl:(%d,%d), tr:(%d,%d), br:(%d,%d)",
+            "tl:(%f,%f), bl:(%f,%f), tr:(%f,%f), br:(%f,%f)",
             slot.bayType,
             slot.occupy,
             slot.material,
