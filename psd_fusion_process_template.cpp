@@ -84,7 +84,7 @@ int stable_frame_count = 0;
 const int STABLE_THRESHOLD = 3; // 连续帧数要求
 
 
-
+int available_slots_num = 0; //可用车位数量
 bool isNarrow = false; // 是否为窄车位
 
 
@@ -613,7 +613,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06031842 emos10.0.1 occupy = 0.8 filter. filter angled rdinput, VCUnotrelease, continously 2frameKF, close singleframe cali,update while 5,CLOSE SINGLE CALI,fusionSlotType,toosmall,FARAWAYconfig. DISABLE:psd2vcu fixed");
+    LOGD("PSD Version: 06041128 emos10.0.1 fix rd_info int,psd2stateM,occupy = 0.8 filter,filter angled rdinput,VCUnotrelease,continously 2frameKF,close singleframe cali,update while 5. DISABLE:psd2vcu fixed");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1182,6 +1182,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 }
             }
             LOGD("vcu_available_slots size: %d",vcu_available_slots.size());
+            available_slots_num = vcu_available_slots.size();
             cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_available_slots ,10); //距离排序后的slots
             LOGD("cloest_slots size: %d",cloest_slots.size());
 
@@ -1978,18 +1979,30 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         final_ID = 0;
         HMI_temp_ID = 0;
     }
-    if (final_ID > 0){
+    if (final_ID > 0){ //有点选或推荐
         psd2statemachine.aps_apaParkType = slottype_decplan2statemachine(psd2planning.targetSlot.slotType);
         if (final_ID >= 10000){
             psd2statemachine.aps_apaParkFusionType = 1;
-        }
-        else{
+        }else{
             psd2statemachine.aps_apaParkFusionType = 0;
         }
-        psd2statemachine.aps_apaNarrowSlot = isNarrow; 
+
+        psd2statemachine.aps_apaNarrowSlot = isNarrow;
+
         if (slotlist_size > 0){
-            psd2statemachine.aps_apaAvailableSlot = 1;
             psd2statemachine.aps_apaHighlightSlot = 1;
+        }
+
+        psd2statemachine.aps_apaAvailableSlot = 1;
+
+    }else { //无点选或推荐
+        psd2statemachine.aps_apaParkType = 0;
+        psd2statemachine.aps_apaHighlightSlot = 0;
+
+        if (available_slots_num > 0){
+            psd2statemachine.aps_apaAvailableSlot = 1;
+        }else{
+            psd2statemachine.aps_apaAvailableSlot = 0;
         }
     }
     LOGD("[PSD2STATEMACHINE] SELECT ID: %d, ParkType = %d, ParkFusionType, %d, NarrowSlot: %d, ParkPlaceNum: %d, AvailableSlot: %d, HighlightSlot: %d",
