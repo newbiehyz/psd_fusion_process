@@ -1987,8 +1987,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2statemachine.aps_apaParkFusionType = 0;
         }
 
-        psd2statemachine.aps_apaNarrowSlot = isNarrow;
-
         if (slotlist_size > 0){
             psd2statemachine.aps_apaHighlightSlot = 1;
         }
