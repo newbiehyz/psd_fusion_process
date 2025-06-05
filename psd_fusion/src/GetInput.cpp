@@ -77,14 +77,14 @@ void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigne
             padVisionSlotCoord oneslot;
             oneslot.bayType = (parkingSlot.slotType == 0) ? 0x00 : (parkingSlot.slotType == 1) ? 0x01 : (parkingSlot.slotType == 2) ? 0x02 : 0xFF;
         
-            oneslot.a.x = parkingSlot.tl.x;
-            oneslot.a.y = parkingSlot.tl.y;
-            oneslot.b.x = parkingSlot.tr.x;
-            oneslot.b.y = parkingSlot.tr.y;
-            oneslot.c.x = parkingSlot.br.x;
-            oneslot.c.y = parkingSlot.br.y;
-            oneslot.d.x = parkingSlot.bl.x;
-            oneslot.d.y = parkingSlot.bl.y;
+            oneslot.a.x = int(parkingSlot.tl.x);
+            oneslot.a.y = int(parkingSlot.tl.y);
+            oneslot.b.x = int(parkingSlot.tr.x);
+            oneslot.b.y = int(parkingSlot.tr.y);
+            oneslot.c.x = int(parkingSlot.br.x);
+            oneslot.c.y = int(parkingSlot.br.y);
+            oneslot.d.x = int(parkingSlot.bl.x);
+            oneslot.d.y = int(parkingSlot.bl.y);
             oneslot.occupy = parkingSlot.filtered;
             oneslot.material = parkingSlot.label;
 
