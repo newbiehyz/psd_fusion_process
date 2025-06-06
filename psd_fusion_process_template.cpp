@@ -613,7 +613,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06061539 emos10.0.1 0606release fix potential coredump(availableslot),fix rd_info int,psd2stateM,occupy = 0.8 filter,filter angled rdinput,VCUnotrelease,continously 2frameKF,close singleframe cali,update while 5. DISABLE:psd2vcu fixed");
+    LOGD("PSD Version: 06061550 emos10.0.1 0606release filter obs,2.5degree angled,clear0USS,psd2stateM,occupy = 0.8 filter,continously 2frameKF,update while 5");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -776,7 +776,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         filetojson.SaveUssInfoToJson(uss_info,"/userdata/psd/USSapaSlotListInfo.json");
     }
     fusionslot.fillVisonstruct(uss_info, outputSlot_USS);
-    
+    fusionslot.clearInvalidUSSslots(outputSlot_USS);
     fusionslot.postprocessUSSslots(uss_info_restruct);
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
 

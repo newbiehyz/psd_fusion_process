@@ -139,18 +139,18 @@ void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigne
 
     // Step 2: 保留角度接近中位角的车位（阈值为4度）
     for (size_t i = 0; i < left_slots.size(); ++i) {
-        if (std::abs(left_angles[i] - left_median) < 3.0f) {
+        if (std::abs(left_angles[i] - left_median) < 2.5f) {
             singleframeslots.push_back(left_slots[i]);
         }
     }
     for (size_t i = 0; i < right_slots.size(); ++i) {
-        if (std::abs(right_angles[i] - right_median) < 3.0f) {
+        if (std::abs(right_angles[i] - right_median) < 2.5f) {
             singleframeslots.push_back(right_slots[i]);
         }
     }
-    LOGD("[INPUT rd_info filtered singleframeslots] size: %zu", singleframeslots.size());
+    LOGD("[INPUT rd_info FILTERED singleframeslots] size: %zu", singleframeslots.size());
     for (const auto& slot : singleframeslots) {
-        LOGD("[INPUT rd_info filtered slot] bayType: %d, occupy: %d, material: %d, "
+        LOGD("[INPUT rd_info FILTERED slot] bayType: %d, occupy: %d, material: %d, "
             "tl:(%f,%f), bl:(%f,%f), tr:(%f,%f), br:(%f,%f)",
             slot.bayType,
             slot.occupy,
@@ -194,6 +194,7 @@ void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {
         filetojson.SaveObsToJson(obs_info_get, "/userdata/psd/ObsInfo.json");
     }
 
+    // 打印原始的obs
     for (int i = 0; i < 50; ++i) {
         if (obs_info_get.pkEmapObs[i].FrameIndex == 0){
             continue;
@@ -208,6 +209,31 @@ void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {
             obs_info_get.pkEmapObs[i].age);
         }
     }
+
+    // 过滤误检的限位块（自车内）
+    Fus::PkEmapObs filtered_obs_info = obs_info_get;
+    memset(filtered_obs_info.pkEmapObs, 0, sizeof(filtered_obs_info.pkEmapObs));
+    int filtered_idx = 0;
+    for (int i = 0; i < 50; ++i) {
+        const auto& obs = obs_info_get.pkEmapObs[i];
+        if (obs.FrameIndex == 0) continue;
+
+        if (obs.obsCenter.x >= -1.0f && obs.obsCenter.x <= 1.0f &&
+            obs.obsCenter.y >= 0.5f) {
+            filtered_obs_info.pkEmapObs[filtered_idx++] = obs;
+        }
+    }
+    // 打印过滤后的obs
+    for (int i = 0; i < filtered_idx; ++i) {
+        const auto& obs = filtered_obs_info.pkEmapObs[i];
+        LOGD("[INPUT obs_info FILTERED] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%.3f, %.3f, %.3f), age: %d",
+             obs.FrameIndex, obs.obsID, obs.obsTyp,
+             obs.obsCenter.x, obs.obsCenter.y, obs.obsCenter.z,
+             obs.age);
+    }
+    // 覆盖原始数据
+    obs_info_get = filtered_obs_info;
+
 }
 
 void GetInput::GetAPAStatus(StatusDecOutput& apastatus_info, int& apa_status) {

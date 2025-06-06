@@ -20,6 +20,7 @@ class slotfusion
     // void mergeUSSleftandright(UssIf_stSlotInfo_t &total_uss_slot, const UssIf_stPLVOutputInfo_t& userData);
     void postprocessUSSslots(UssIf_stPLVOutputInfo_t &total_uss_slot);
     void fillVisonstruct(const UssIf_stPLVOutputInfo_t &total_uss_slot, apaSlotListInfo &uss_slots);
+    void clearInvalidUSSslots(apaSlotListInfo& uss_slots);
   private:
     bool deleteinvalidslot(UssIf_stSlotProperty_t uss_slot);
     double calculateOverlap(const APA_SPACE::SApaPSRect& rect1, const APA_SPACE::SApaPSRect& rect2);
