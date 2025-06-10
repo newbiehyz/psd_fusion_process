@@ -328,12 +328,14 @@ int cpsd_fusion_process::RecommendSelectID(const int &final_select, const int &r
 
 int cpsd_fusion_process::IsParkOut(int apastatus)
 {
-    if (apastatus == 3){
-        return 1;
+    static int parkout_flag_internal = 0;
+
+    if (apastatus == 3) {
+        parkout_flag_internal = 1;
+    } else if (apastatus == 2) {
+        parkout_flag_internal = 0;
     }
-    else{
-        return 0;
-    }
+    return parkout_flag_internal;
 }
 
 int cpsd_fusion_process::IsStill(const Loc::App2emap_DR drpose, Loc::App2emap_DR& previous_drpose)
@@ -613,7 +615,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06061621 emos10.0.1 filter obs,2.5degree angled,clear0USS,psd2stateM,occupy = 0.8 filter,continously 2frameKF,update while 5");
+    LOGD("PSD Version: 06101339 emos10.0.1 remember parkout,filter obs,2.5degree angled,clear0USS,psd2stateM,occupy = 0.8 filter,continously 2frameKF,update while 5");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
