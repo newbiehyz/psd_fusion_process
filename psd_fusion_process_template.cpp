@@ -591,7 +591,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06101602 emos10.0.1 fit with LYK: fusion, stopper, PStype, SOD");
+    LOGD("PSD Version: 06111106 emos10.0.1 RTmatrix,fit with LYK: fusion, stopper, PStype, SOD");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -784,8 +784,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
         PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
         info_cur.rectInfo.label = id;
-        info_cur.rectInfo.PStype = (type != 0) ? type : 1;
-        info_cur.rectInfo.iSodType = (sodtype != 0) ? sodtype : 1;
+        info_cur.rectInfo.PStype = type;
+        info_cur.rectInfo.iSodType = sodtype;
 
 
 
@@ -798,8 +798,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         info_w.rectInfo.pt[3].x = pt3_w.x() * 1000;
         info_w.rectInfo.pt[3].y = pt3_w.y() * 1000;
         info_w.rectInfo.label = id;
-        info_w.rectInfo.PStype = (type != 0) ? type : 1;
-        info_w.rectInfo.iSodType = (sodtype != 0) ? sodtype : 1;
+        info_w.rectInfo.PStype = type;
+        info_w.rectInfo.iSodType = sodtype;
 
         outputSlot_VIS.slots_in_cur_frame.push_back(info_cur);
         outputSlot_VIS.WorldoutRect.push_back(info_w);
@@ -997,6 +997,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
     // ============================================================Part5 输出下游
+
+    //------------------------------------------
+    //目标车位
+    apaSlotInfo selected_slot_in_world;
 
     //------------------------------------------
     //VCU 发送车位列表
@@ -1286,6 +1290,34 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 }
             }
 
+            // 目标车位记忆
+            // 遍历 outputSlot_FUSED.WorldoutRect 找到 final_ID 对应的车位
+            for (const auto& slot : outputSlot_FUSED.WorldoutRect) {
+                if (slot.rectInfo.label == final_ID) {
+                    selected_slot_in_world = slot; 
+                    break;
+                }
+            }
+
+            // selected_slot_in_world 为世界坐标下的目标车位
+            LOGD("[TARGET SLOT WORLD] final_ID: %d. (%.2f, %.2f) (%.2f, %.2f) (%.2f, %.2f) (%.2f, %.2f)",
+                final_ID,
+                selected_slot_in_world.rectInfo.pt[0].x,
+                selected_slot_in_world.rectInfo.pt[0].y,
+                selected_slot_in_world.rectInfo.pt[1].x,
+                selected_slot_in_world.rectInfo.pt[1].y,
+                selected_slot_in_world.rectInfo.pt[2].x,
+                selected_slot_in_world.rectInfo.pt[2].y,
+                selected_slot_in_world.rectInfo.pt[3].x,
+                selected_slot_in_world.rectInfo.pt[3].y)
+
+            // // 2. 如果找到了目标车位，调用 slotinframe2worldoutrect 转换
+            // if (selected_slot_in_world.rectInfo.label == final_ID) {
+            //     PSD_FusionModuleIFrunable.slotinframe2worldoutrect(selected_slot_in_world,
+            //                                         pose_globaldata.coord.x,
+            //                                         pose_globaldata.coord.y,
+            //                                         pose_globaldata.yaw);
+            // }
         }
 
         // For Test VCU slot lists
@@ -1326,7 +1358,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         if (psd2vcu.slotNum > 0){
             int i = 0;
             LOGD("PSD2VCU apa_status: %d, outputslot_fused size: %d",apa_status,outputSlot_FUSED.slots_in_cur_frame.size());
+            // 恢复目标车位标记
             PSD_FusionModuleIFrunable.restoreSelectedSlot(outputSlot_FUSED);
+            LOGD("After restoreSelectedSlot FUSIONSLOTS (ParkInSlot REQUIRED):")
+            LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
             
             for (auto& psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
                 if (i >= slotlist_size || i >= 50){
@@ -1703,25 +1738,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         k++;
     }
 
-    //***********************************DBG(PLANNING) 车位列表check
-    LOGD("================ DBG SLOTS ================");
-
-    for (int i = 0; i < 50; ++i) {
-        const auto& slot = psd2planning.SfusionSrchSlots[i];
-        LOGD("Index: %d | SlotID: %d | Type: %d | Source: %d | StopperDis: %.2f | "
-            "A(%.1f, %.1f) B(%.1f, %.1f) C(%.1f, %.1f) D(%.1f, %.1f)",
-            i,
-            slot.slotID,
-            slot.slotType,
-            slot.slotSource,
-            slot.stopper_Dis,
-            slot.slotCorners.cornerA.x, slot.slotCorners.cornerA.y,
-            slot.slotCorners.cornerB.x, slot.slotCorners.cornerB.y,
-            slot.slotCorners.cornerC.x, slot.slotCorners.cornerC.y,
-            slot.slotCorners.cornerD.x, slot.slotCorners.cornerD.y);
-    }
-    LOGD("=============================================");
-
 
     //***********************************PLANNING 发送目标车位
     //check psd output to planning(2 target slot)
@@ -1946,13 +1962,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2control.apc_LimitBarY[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperY[j]);
                 }
             }
-            else{
-                psd2control.apc_LimitBarX[2] = (20000,20000);
-                psd2control.apc_LimitBarY[2] = (20000,20000);
-            }
         }
     }
-    // 发最大值
+    // // 发最大值
     // psd2control.apc_LimitBarX[0] = -20000;
     // psd2control.apc_LimitBarX[1] = -20000;
     // psd2control.apc_LimitBarY[0] = -20000;

@@ -1081,6 +1081,31 @@ void PSD_FusionModuleIF::slotinframe2worldoutrect(apaSlotInfo& slot, const float
     }
 }
 
+void PSD_FusionModuleIF::slotinframe2worldoutrect_RTmatrix(apaSlotInfo& slot, const float& car_x_mm, const float& car_y_mm, const float& car_yaw_deg)
+{
+    double car_x = static_cast<double>(car_x_mm) * 0.001; // mm -> m
+    double car_y = static_cast<double>(car_y_mm) * 0.001; // mm -> m
+    double theta = static_cast<double>(car_yaw_deg) * M_PI / 180.0;
+
+    Eigen::Vector2d twb(car_x, car_y);
+    Eigen::Matrix2d Rwb;
+    Rwb << std::cos(theta), -std::sin(theta),
+           std::sin(theta),  std::cos(theta);
+
+    for (int i = 0; i < RECTPointNum; ++i)
+    {
+        double local_x = static_cast<double>(slot.rectInfo.pt[i].x) * 0.001; // mm -> m
+        double local_y = static_cast<double>(slot.rectInfo.pt[i].y) * 0.001; // mm -> m
+        Eigen::Vector2d pt_b(local_x, local_y);
+        Eigen::Vector2d pt_w = Rwb * pt_b + twb;
+
+        // 转回 mm 存回 slot
+        slot.rectInfo.pt[i].x = static_cast<int>(pt_w.x() * 1000.0);
+        slot.rectInfo.pt[i].y = static_cast<int>(pt_w.y() * 1000.0);
+    }
+}
+
+
 
 void PSD_FusionModuleIF::markParkInSlot(apaSlotListInfo &outputSlot_FUSED, int final_ID)
 {
@@ -1153,11 +1178,11 @@ bool PSD_FusionModuleIF::isSameSlot(const apaSlotInfo& a, const apaSlotInfo& b)
 }
 
 void PSD_FusionModuleIF::restoreSelectedSlot(apaSlotListInfo& slot_list){
-    if (!has_selected_slot_) return;
+    // if (!has_selected_slot_) return;
 
     for (auto& slot : slot_list.slots_in_cur_frame) {
         apaSlotInfo temp_slot = slot;
-        slotinframe2worldoutrect(temp_slot,m_vehicle_pose.coord.x,m_vehicle_pose.coord.y,m_vehicle_pose.yaw);
+        slotinframe2worldoutrect_RTmatrix(temp_slot,m_vehicle_pose.coord.x,m_vehicle_pose.coord.y,m_vehicle_pose.yaw);
         
         if (isSameSlot(temp_slot, selected_slot_)) {
             slot.rectInfo.ParkInSlot = 1;
