@@ -197,3 +197,10 @@ void ClearSelectRecommendSlot(int& HMI_temp_ID, int& HMI_select_ID, int& VCU_sel
     LOGD("[STATUSSELECT] in ClearSelectRecommendSlot HMI %d, VCU %d, final select %d", HMI_temp_ID, VCU_select_ID_ON, final_select_ID);
 }
 
+
+
+float CalcDistance(const POINT_I& a, const POINT_I& b) {
+    float dx = static_cast<float>(a.x - b.x);
+    float dy = static_cast<float>(a.y - b.y);
+    return std::sqrt(dx * dx + dy * dy);
+}

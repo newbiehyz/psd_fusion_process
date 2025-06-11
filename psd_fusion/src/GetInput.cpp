@@ -42,14 +42,22 @@ bool GetMatchedDRPose(unsigned long long rd_timestamp, Loc::App2emap_DR& matched
     return found;
 }
 
-// 构造函数
 GetInput::GetInput() {
 
 }
 
-// 析构函数
 GetInput::~GetInput() {
 
+}
+
+void GetInput::GetAPAStatus(StatusDecOutput& apastatus_info, int& apa_status) {
+    S2S_MCore_Bridge_GetSigStatusDecOutput(&apastatus_info);
+    if (DEBUG) {
+        filetojson.SaveApastatusToJson(apastatus_info, "/userdata/psd/APAStatus.json");
+    }
+
+    LOGD("[INPUT apastatus]: %d",apastatus_info.aps_apaStatusReq);
+    apa_status = apastatus_info.aps_apaStatusReq;
 }
 
 void GetInput::GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots) {
@@ -186,8 +194,6 @@ void GetInput::GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2em
     }
 }
 
-
-
 void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {
     EMC_perception_fusion_process_GetFieldPkEmapObs(obs_info_get);
     if (DEBUG) {
@@ -211,40 +217,34 @@ void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {
     }
 
     // 过滤误检的限位块（自车内）
-    Fus::PkEmapObs filtered_obs_info = obs_info_get;
-    memset(filtered_obs_info.pkEmapObs, 0, sizeof(filtered_obs_info.pkEmapObs));
-    int filtered_idx = 0;
-    for (int i = 0; i < 50; ++i) {
-        const auto& obs = obs_info_get.pkEmapObs[i];
-        if (obs.FrameIndex == 0) continue;
+    if (apa_status == 5){
+        
+        Fus::PkEmapObs filtered_obs_info = obs_info_get;
+        memset(filtered_obs_info.pkEmapObs, 0, sizeof(filtered_obs_info.pkEmapObs));
+        int filtered_idx = 0;
+        for (int i = 0; i < 50; ++i) {
+            const auto& obs = obs_info_get.pkEmapObs[i];
+            if (obs.FrameIndex == 0) continue;
 
-        if (obs.obsCenter.x >= -1.0f && obs.obsCenter.x <= 1.0f &&
-            obs.obsCenter.y >= 0.5f) {
-            filtered_obs_info.pkEmapObs[filtered_idx++] = obs;
+            if (obs.obsCenter.x >= -1.0f && obs.obsCenter.x <= 1.0f &&
+                obs.obsCenter.y >= 0.5f) {
+                filtered_obs_info.pkEmapObs[filtered_idx++] = obs;
+            }
         }
+        // 打印过滤后的obs
+        for (int i = 0; i < filtered_idx; ++i) {
+            const auto& obs = filtered_obs_info.pkEmapObs[i];
+            LOGD("[INPUT obs_info FILTERED while 5] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%.3f, %.3f, %.3f), age: %d",
+                obs.FrameIndex, obs.obsID, obs.obsTyp,
+                obs.obsCenter.x, obs.obsCenter.y, obs.obsCenter.z,
+                obs.age);
+        }
+        // 覆盖原始数据
+        obs_info_get = filtered_obs_info;
     }
-    // 打印过滤后的obs
-    for (int i = 0; i < filtered_idx; ++i) {
-        const auto& obs = filtered_obs_info.pkEmapObs[i];
-        LOGD("[INPUT obs_info FILTERED] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%.3f, %.3f, %.3f), age: %d",
-             obs.FrameIndex, obs.obsID, obs.obsTyp,
-             obs.obsCenter.x, obs.obsCenter.y, obs.obsCenter.z,
-             obs.age);
-    }
-    // 覆盖原始数据
-    obs_info_get = filtered_obs_info;
-
 }
 
-void GetInput::GetAPAStatus(StatusDecOutput& apastatus_info, int& apa_status) {
-    S2S_MCore_Bridge_GetSigStatusDecOutput(&apastatus_info);
-    if (DEBUG) {
-        filetojson.SaveApastatusToJson(apastatus_info, "/userdata/psd/APAStatus.json");
-    }
 
-    LOGD("[INPUT apastatus]: %d",apastatus_info.aps_apaStatusReq);
-    apa_status = apastatus_info.aps_apaStatusReq;
-}
 
 void GetInput::GetSearchParkStatus(StatusDecFusionOutput& searchpark_info, int& park_request , int& search_interrupt) {
     S2S_MCore_Bridge_GetSigStatusDecFusionOutput(&searchpark_info);
