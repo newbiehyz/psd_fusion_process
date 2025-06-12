@@ -216,32 +216,31 @@ void GetInput::GetPerception(Fus::PkEmapObs& obs_info_get) {
         }
     }
 
-    // 过滤误检的限位块（自车内）
-    if (apa_status == 5){
+    // // 过滤误检的限位块（自车内）
+    // if (apa_status == 5){
         
-        Fus::PkEmapObs filtered_obs_info = obs_info_get;
-        memset(filtered_obs_info.pkEmapObs, 0, sizeof(filtered_obs_info.pkEmapObs));
-        int filtered_idx = 0;
-        for (int i = 0; i < 50; ++i) {
-            const auto& obs = obs_info_get.pkEmapObs[i];
-            if (obs.FrameIndex == 0) continue;
+    //     Fus::PkEmapObs filtered_obs_info = obs_info_get;
+    //     memset(filtered_obs_info.pkEmapObs, 0, sizeof(filtered_obs_info.pkEmapObs));
+    //     int filtered_idx = 0;
+    //     for (int i = 0; i < 50; ++i) {
+    //         const auto& obs = obs_info_get.pkEmapObs[i];
+    //         if (obs.FrameIndex == 0) continue;
 
-            if (obs.obsCenter.x >= -1.0f && obs.obsCenter.x <= 1.0f &&
-                obs.obsCenter.y >= 0.5f) {
-                filtered_obs_info.pkEmapObs[filtered_idx++] = obs;
-            }
-        }
-        // 打印过滤后的obs
-        for (int i = 0; i < filtered_idx; ++i) {
-            const auto& obs = filtered_obs_info.pkEmapObs[i];
-            LOGD("[INPUT obs_info FILTERED while 5] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%.3f, %.3f, %.3f), age: %d",
-                obs.FrameIndex, obs.obsID, obs.obsTyp,
-                obs.obsCenter.x, obs.obsCenter.y, obs.obsCenter.z,
-                obs.age);
-        }
-        // 覆盖原始数据
-        obs_info_get = filtered_obs_info;
-    }
+    //         if (obs.obsCenter.y <= 0.5f) {
+    //             filtered_obs_info.pkEmapObs[filtered_idx++] = obs;
+    //         }
+    //     }
+    //     // 打印过滤后的obs
+    //     for (int i = 0; i < filtered_idx; ++i) {
+    //         const auto& obs = filtered_obs_info.pkEmapObs[i];
+    //         LOGD("[INPUT obs_info FILTERED while 5] frameindex: %llu, obsid: %d, obstyp: %u, obscenter (%.3f, %.3f, %.3f), age: %d",
+    //             obs.FrameIndex, obs.obsID, obs.obsTyp,
+    //             obs.obsCenter.x, obs.obsCenter.y, obs.obsCenter.z,
+    //             obs.age);
+    //     }
+    //     // 覆盖原始数据
+    //     obs_info_get = filtered_obs_info;
+    // }
 }
 
 
