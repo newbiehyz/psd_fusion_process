@@ -351,6 +351,22 @@ void slotfusion::fillVisonstruct(const UssIf_stPLVOutputInfo_t &total_uss_slot, 
     }
 }
 
+void slotfusion::clearInvalidUSSslots(apaSlotListInfo& uss_slots) {
+    auto& slots = uss_slots.slots_in_cur_frame;
+    slots.erase(
+        std::remove_if(slots.begin(), slots.end(), [](const apaSlotInfo& slot) {
+            for (int i = 0; i < 4; ++i) {
+                if (slot.rectInfo.pt[i].x != 0 || slot.rectInfo.pt[i].y != 0) {
+                    return false; // 只要有一个不为0就保留
+                }
+            }
+            return true; // 全部为0就删除
+        }),
+        slots.end()
+    );
+
+}
+
 double slotfusion::calculateOverlap(const APA_SPACE::SApaPSRect& rect1, const APA_SPACE::SApaPSRect& rect2) {
     // 计算两个矩形的交集面积
     double intersectionArea = calculateIntersectionArea(rect1, rect2);

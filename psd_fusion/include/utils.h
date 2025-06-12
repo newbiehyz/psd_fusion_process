@@ -31,7 +31,7 @@ void LogWorldSlotInfo(const apaSlotListInfo& slots, const std::string& slotType)
 
 void ClearSelectRecommendSlot(int& HMI_temp_ID, int& HMI_select_ID, int& VCU_select_ID_ON, int& final_select_ID, int& RECOMMEND_ID, int& final_ID, int apa_status);
 
-
+float CalcDistance(const POINT_I& a, const POINT_I& b);
 
 
 

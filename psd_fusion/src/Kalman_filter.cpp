@@ -16,12 +16,12 @@ Kalman_filter::Kalman_filter(const ParkingSlotResultPtr& post_slot,
     missing_time_ = 0;
     apa_id_ = id_generator_;
 
-    occupy_ = quad_info->occupy;
+    // occupy_ = quad_info->occupy;
 
-    // //占用滤波
-    // occupy_ = 1;
-    // occupies_.push(quad_info->occupy);
-    // occupy_sum_ += occupy_;
+    //占用滤波
+    occupy_ = 1;
+    occupies_.push(quad_info->occupy);
+    occupy_sum_ += occupy_;
 
 
     material_ = quad_info->material;
@@ -662,11 +662,11 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
     // adjustRectOrder(leftSide, corners_world_);
 
     // 更新车位占用
-    bool occupy_filter = false;
+    bool occupy_filter = true;
 
     if (occupy_filter) {
         // 占用均值滤波
-        int occupy_window_size = 5;
+        int occupy_window_size = 6;
         this->occupies_.push(quad_info->occupy);
         occupy_sum_ += quad_info->occupy;
         // LOGD("[PSD_occupy]slot_id: %d, occupies_size: %d", this->GetSlotApaId(), occupies_.size());
@@ -674,7 +674,7 @@ void Kalman_filter::Update(const QuadInfoPtr& quad_info, const padVehiclePose& v
             occupy_sum_ -= occupies_.front();
             // LOGD("[PSD_occupy]occupy_sum_: %d", occupy_sum_);
             occupies_.pop();
-            if (occupy_sum_ / (occupy_window_size * 1.0) >= 0.8) {
+            if (occupy_sum_ / (occupy_window_size * 1.0) >= 0.8) { //>=5/6
                 this->occupy_ = 1;
             } else {
                 this->occupy_ = 0;

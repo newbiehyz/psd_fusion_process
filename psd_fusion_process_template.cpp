@@ -18,12 +18,17 @@
 // ***************************配置文件修改的参数(@TODO：从配置文件读取后转成const)
 bool DEBUG = false; //json功能开关
 bool FARAWAY_FILTER = false; //距离范围限制车位释放功能开关
-float FARAWAY_SLOTS_LEFT = -99999.0; 
-float FARAWAY_SLOTS_RIGHT = 99999.0;
+float FARAWAY_SLOTS_LEFT[2] = {-99999.0,0}; 
+float FARAWAY_SLOTS_RIGHT[2] = {0,99999.0};
 float FARAWAY_SLOTS_REAR = -99999.0;
 float FARAWAY_SLOTS_FRONT = 99999.0;
-float NARROWSLOT_THRESHOLD = -99999.0;
+bool ANGEL_FILTER = false;
+float ANGEL_FILTER_LIMIT = -99999.0;
+bool VCU_TOO_SMALL_FILTER = false;
 float VCU_TOO_SMALL = -99999.0;
+bool PARALLEL_VECTOR_FILTER = false;
+float PARALLEL_VECTOR_LIMIT = -99999.0;
+float NARROWSLOT_THRESHOLD = -99999.0;
 
 
 // // ***************************输入的全局变量，用于ON方式获取
@@ -74,12 +79,30 @@ int final_select_ID = 0; //VCU和HMI最终统一的ID
 int final_ID = 0; //结合选择、推荐后的最终ID
 bool recommend_exist = false; //推荐车位是否已存在
 bool already_has_recommend_slot = false;
+bool in_release_range_last_frame = false; //车位释放范围连续帧要求
+int stable_frame_count = 0;
+const int STABLE_THRESHOLD = 3; // 连续帧数要求
+
+
+int available_slot_flag_to_statemachine = 0; //可用车位数量flag
 bool isNarrow = false; // 是否为窄车位
 
 
 int parkout_flag = 0; //当前是否为泊出
 int mirror_fold_flag_ahead = 0; // 从planning拿的原始折叠flag（存在提前）
 int mirror_fold_flag = 0; //后视镜是否被折叠（准确值）
+static bool target_slot_already_updated_once = false; //目标车位已经被更新过一次
+bool target_slot_in_range = false; //目标车位是否在矩形范围内
+Sfus::SfusionSlotType slot_type_before_update;
+POINT_I search_target_center = {0, 0}; // 第一次的目标车位中心点世界坐标
+POINT_I search_target_center_world = {0, 0}; // 第一次的目标车位中心点世界坐标（用于计算）
+POINT_I new_target_center = {0, 0}; // 更新的目标车位中心点世界坐标
+POINT_I new_target_center_world = {0,0}; // 更新的目标车位中心点世界坐标（用于计算）
+const float MAX_SLOT_MOVE_DIST_MM = 1500.0f; // 最大容忍距离
+
+
+
+
 
 CDT_PSD_FUSION_PROCESS_TEMPLATE(cpsd_fusion_process)
 
@@ -93,6 +116,29 @@ cpsd_fusion_process::~cpsd_fusion_process()
 
 }
 
+void load_image_from_csv(const std::string& filename, std::vector<std::vector<int>>& image) {
+    std::ifstream file(filename);
+    std::string line;
+    int row = 0;
+    
+    if (file.is_open()) {
+        while (getline(file, line) && row < image.size()) {
+            std::stringstream ss(line);
+            std::string value;
+            int col = 0;
+            while (getline(ss, value, ',')) {
+                image[row][col] = stoi(value); // 将字符串转换为整数
+                ++col;
+            }
+            ++row;
+        }
+        file.close();
+        LOGD("Load ipm camera id image success!");
+    } else {
+        LOGE("Load ipm camera id image false!");
+    }
+}
+
 tResult cpsd_fusion_process::Init()
 {
     LOGW("PSD Process Start Success!");
@@ -100,6 +146,10 @@ tResult cpsd_fusion_process::Init()
     if (!LoadFromFile("/app/neo/psd_config.json")) {
         LOGD("Load config failed!");
     }
+
+    // 读取ipm相机id图
+    ipm_camera_id_image.resize(896, std::vector<int>(896, 0));
+    load_image_from_csv("/app/neo/ipm_camera_id.csv", ipm_camera_id_image);
 
     // part1 初始化
     static int init_flag = 0;
@@ -152,6 +202,7 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
     if(!inFile.is_open()){
         DEBUG = false;
         FARAWAY_FILTER = false;
+
         LOGD("无法打开配置文件: %s, DEBUG: %d, FARAWAY_FILTER: %d", filename.c_str(), DEBUG,FARAWAY_FILTER);
         return false;
     }
@@ -163,15 +214,26 @@ bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
         //解析文件路径
         j.at("debug").at("save_to_json").get_to(DEBUG);
 
-        j.at("calib").at("NARROWSLOT_THRESHOLD").get_to(NARROWSLOT_THRESHOLD);
-
         j.at("calib").at("FARAWAY_FILTER").get_to(FARAWAY_FILTER);
+        auto FARAWAY_SLOTS_LEFT_RANGE = j.at("calib").at("FARAWAY_SLOTS_LEFT");
+        FARAWAY_SLOTS_LEFT[0] = FARAWAY_SLOTS_LEFT_RANGE[0];
+        FARAWAY_SLOTS_LEFT[1] = FARAWAY_SLOTS_LEFT_RANGE[1];
+        auto FARAWAY_SLOTS_RIGHT_RANGE = j.at("calib").at("FARAWAY_SLOTS_RIGHT");
+        FARAWAY_SLOTS_RIGHT[0] = FARAWAY_SLOTS_RIGHT_RANGE[0];
+        FARAWAY_SLOTS_RIGHT[1] = FARAWAY_SLOTS_RIGHT_RANGE[1];
         j.at("calib").at("FARAWAY_SLOTS_REAR").get_to(FARAWAY_SLOTS_REAR);
         j.at("calib").at("FARAWAY_SLOTS_FRONT").get_to(FARAWAY_SLOTS_FRONT);
-        j.at("calib").at("FARAWAY_SLOTS_LEFT").get_to(FARAWAY_SLOTS_LEFT);
-        j.at("calib").at("FARAWAY_SLOTS_RIGHT").get_to(FARAWAY_SLOTS_RIGHT);
 
+        j.at("calib").at("ANGEL_FILTER").get_to(ANGEL_FILTER);
+        j.at("calib").at("ANGEL_FILTER_LIMIT").get_to(ANGEL_FILTER_LIMIT);
+
+        j.at("calib").at("VCU_TOO_SMALL_FILTER").get_to(VCU_TOO_SMALL_FILTER);
         j.at("calib").at("VCU_TOO_SMALL").get_to(VCU_TOO_SMALL);
+        
+        j.at("calib").at("PARALLEL_VECTOR_FILTER").get_to(PARALLEL_VECTOR_FILTER);
+        j.at("calib").at("PARALLEL_VECTOR_LIMIT").get_to(PARALLEL_VECTOR_LIMIT);
+
+        j.at("calib").at("NARROWSLOT_THRESHOLD").get_to(NARROWSLOT_THRESHOLD);
     }
     catch (json::exception& e) {
         LOGD("配置文件解析错误: %s", e.what());
@@ -247,6 +309,16 @@ void cpsd_fusion_process::Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x
     slot.targetSlot.slotCorners.cornerD.x = slot_Dpt_temp_x;
     slot.targetSlot.slotCorners.cornerD.y = slot_Dpt_temp_y;
 }
+
+POINT_I Local2Global(const POINT_I& pt_local, const float& x, const float& y, const float& yaw)
+{
+    float theta = yaw * acos(-1) / 180.0;
+    POINT_I pt_global;
+    pt_global.x = pt_local.x * cos(theta) + pt_local.y * sin(theta) + x;
+    pt_global.y = pt_local.y * cos(theta) - pt_local.x * sin(theta) + y;
+    return pt_global;
+}
+
 
 int cpsd_fusion_process::HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select)
 {
@@ -577,6 +649,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         // 行泊切换清零，输出发送空值
         PSD_FusionModuleIFrunable.ClearSlotsMap();
         g_singleframe_locked_slots.clear();
+        target_slot_already_updated_once = false;
 
         LOGW("NOT IN PARKING STATE");
         RETURN_NOERROR;
@@ -591,7 +664,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06121307 emos10.0.1 [LYK]: PSD2CONTROL stopper,RTmatrix,fusion, stopper, PStype, SOD");
+    LOGD("PSD Version: 06121613 emos10.0.1 [LYK]: stopper protected,merge with baseline");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -651,6 +724,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
         S2S_MCore_Bridge_SetSigStatusDecFusionInput(&psd2statemachine);
         has_cleared_for_SEARCH_once = true;
+        target_slot_already_updated_once = false;
     }
 
     parkout_flag = IsParkOut(apa_status);
@@ -848,13 +922,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     //------------------------------------------
     // get USS
-
     S2S_MCore_Bridge_GetSigUssIf_stPLVOutputInfo(&uss_info);
     if (DEBUG == true){
         filetojson.SaveUssInfoToJson(uss_info,"/userdata/psd/USSapaSlotListInfo.json");
     }
     fusionslot.fillVisonstruct(uss_info, outputSlot_USS);
-    
+    fusionslot.clearInvalidUSSslots(outputSlot_USS);
     fusionslot.postprocessUSSslots(uss_info_restruct);
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
 
@@ -1054,10 +1127,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
                 }
 
-                // 车位的中心点是否在允许释放的区域
+                // ***************************车位不释放策略***************************
+                // ***************************1 车位的中心点是否在允许释放的区域
                 //限制范围（前后、左右）
-                LOGD("FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left-Right: [%f, %f]",
-                    FARAWAY_FILTER,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT,FARAWAY_SLOTS_LEFT,FARAWAY_SLOTS_RIGHT)
+                LOGD("[VCU NOTRELEASE1 range] FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left: [%f, %f], Right:[%f, %f]",
+                    FARAWAY_FILTER,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT,FARAWAY_SLOTS_LEFT[0],FARAWAY_SLOTS_LEFT[1],FARAWAY_SLOTS_RIGHT[0],FARAWAY_SLOTS_RIGHT[1])
                 if (FARAWAY_FILTER){
                     //车位中心点
                     float center_x = 0.0f;
@@ -1069,36 +1143,150 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     center_x /= 4.0f;
                     center_y /= 4.0f;
                     //判断中心点是否在矩形范围内
-                    if (center_x <= FARAWAY_SLOTS_REAR || center_x >= FARAWAY_SLOTS_FRONT ||
-                        center_y <= FARAWAY_SLOTS_LEFT || center_y >= FARAWAY_SLOTS_RIGHT) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4;  // 被占用
-                    } else {
-                        if (psd_m_output.rectInfo.iSodType == 1) {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 被占用
+                    const float FARAWAY_DEADZONE = 0.1;// 死区（0.2m）
+                    float rear_limit    = FARAWAY_SLOTS_REAR + FARAWAY_DEADZONE;
+                    float front_limit   = FARAWAY_SLOTS_FRONT - FARAWAY_DEADZONE;
+                    float left1         = FARAWAY_SLOTS_LEFT[0] + FARAWAY_DEADZONE;
+                    float left2         = FARAWAY_SLOTS_LEFT[1] - FARAWAY_DEADZONE;
+                    float right1        = FARAWAY_SLOTS_RIGHT[0] + FARAWAY_DEADZONE;
+                    float right2        = FARAWAY_SLOTS_RIGHT[1] - FARAWAY_DEADZONE;
+                    bool out_of_x_range = (center_x <= rear_limit || center_x >= front_limit);
+                    bool out_of_y_range = !((center_y >= left1 && center_y <= left2) ||
+                                            (center_y >= right1 && center_y <= right2));
+                    if (psd_m_output.rectInfo.PStype == 0){ // 垂直
+                        if (out_of_x_range || out_of_y_range) {
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                         } else {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 无占用
+                            if (psd_m_output.rectInfo.iSodType == 1) {
+                                psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                            } else {
+                                psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                            }
                         }
                     }
-                    LOGD("[VCU occupied] ID: %d, center(%.1f,%.1f), RD occupied: %d, VCU occupied: %d",
+                    LOGD("[VCU NOTRELEASE1 range] ID: %d, center(%.1f,%.1f), x_out: %d, y_out: %d, stable_frame_count: %d, RD occupied: %d, VCU status: %d",
                         psd2vcu.FusionSlotInfo[i].slotLabel,
                         center_x,
                         center_y,
+                        out_of_x_range,
+                        out_of_y_range,
+                        stable_frame_count,
                         psd_m_output.rectInfo.iSodType,
                         psd2vcu.FusionSlotInfo[i].slotStatusType);
                 }
 
-
-                // 车位入口边宽度小于THRESHOLD 不释放
-                float VCU_AB = sqrt(pow(psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x, 2) +
-                                  pow(psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y, 2));
-                if (VCU_AB <= VCU_TOO_SMALL) {
-                    psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                // ***************************2 车位与自车夹角是否在允许释放的角度范围内
+                // 仅限制垂直水平车位，车位AB与自车中轴线 (0,45度)以内才释放
+                LOGD("[VCU NOTRELEASE2 anglelimit] ANGLE_FILTER: %d, ANGEL_FILTER_LIMIT:%f",ANGEL_FILTER,ANGEL_FILTER_LIMIT);
+                if (ANGEL_FILTER){
+                    if (psd_m_output.rectInfo.PStype != 2){
+                        float ax = 4.0f;
+                        float ay = 0.0f; //向量1 (-4.0)指向(0,0)
+                        float bx = psd2vcu.FusionSlotInfo[i].pt[1].x - psd2vcu.FusionSlotInfo[i].pt[0].x;
+                        float by = psd2vcu.FusionSlotInfo[i].pt[1].y - psd2vcu.FusionSlotInfo[i].pt[0].y;//向量2 A指向B
+                        //夹角计算
+                        float dot = ax * bx + ay * by;
+                        float normA = std::sqrt(ax * ax + ay * ay);
+                        float normB = std::sqrt(bx * bx + by * by);
+                        if (normA * normB < 1e-6f) continue;
+                        float cos_theta = dot / (normA * normB);
+                        if (cos_theta > 1.0f) cos_theta = 1.0f;
+                        if (cos_theta < -1.0f) cos_theta = -1.0f;
+                        float angle_deg = std::acos(cos_theta) * 180.0f / M_PI;
+                        
+                        // 死区（5度）
+                        const float ANGEL_DEADZONE = 5.0;
+                        if (angle_deg > ANGEL_FILTER_LIMIT + ANGEL_DEADZONE){
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                        }
+                        // else if (angle_deg <= ANGEL_FILTER_LIMIT - ANGEL_DEADZONE){
+                        //     if (psd_m_output.rectInfo.iSodType == 1) {
+                        //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                        //     } else {
+                        //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                        //     }
+                        // }
+                        // else if (angle_deg <= ANGEL_FILTER_LIMIT - ANGEL_DEADZONE){
+                        //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                        // }
+                        LOGD("[VCU NOTRELEASE2 anglelimit] ID: %d, angle_deg: %.f",psd2vcu.FusionSlotInfo[i].slotLabel,angle_deg);
+                    }else{
+                        LOGD("VCU NOTRELEASE2 anglelimit] ID: %d, DIAGONAL SLOT NO LIMIT.",psd2vcu.FusionSlotInfo[i].slotLabel);
+                    }
                 }
-                LOGD("[VCU TOO SMALL] ID: %d, Threshold: %.3f, VCU_AB: %.3f, VCU occupied: %d",
-                    psd2vcu.FusionSlotInfo[i].slotLabel,
-                    VCU_TOO_SMALL,
-                    VCU_AB,
-                    psd2vcu.FusionSlotInfo[i].slotStatusType);
+                
+                // ***************************3 车位入口边宽度小于THRESHOLD 不释放
+                LOGD("[VCU NOTRELEASE3 abnarrow] VCU_TOO_SMALL_FILTER: %d, VCU_TOO_SMALL: %.3f",VCU_TOO_SMALL_FILTER,VCU_TOO_SMALL);
+                if (VCU_TOO_SMALL_FILTER){
+                    float VCU_AB = sqrt(pow(psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x, 2) +
+                                    pow(psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y, 2));
+                    // 死区（0.1m）
+                    const float TOO_SMALL_DEADZONE = 0.05;
+                    if (VCU_AB <= VCU_TOO_SMALL - TOO_SMALL_DEADZONE) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                    } 
+                    // else if (VCU_AB > VCU_TOO_SMALL + TOO_SMALL_DEADZONE){
+                    //     if (psd_m_output.rectInfo.iSodType == 1) {
+                    //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                    //     } else {
+                    //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                    //     }
+                    // }
+                    // else if (VCU_AB > VCU_TOO_SMALL + TOO_SMALL_DEADZONE){
+                    //     psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                    // }
+                    LOGD("[VCU NOTRELEASE3 abnarrow] ID: %d, VCU_AB: %.3f, VCU occupied: %d",
+                        psd2vcu.FusionSlotInfo[i].slotLabel,
+                        VCU_AB,
+                        psd2vcu.FusionSlotInfo[i].slotStatusType);
+                }
+
+                // ***************************4 驶过水平车位，后轴中点到AD边VECTOR_THRESHOLD才可以释放
+                LOGD("[VCU NOTRELEASE4 parallel] PARALLEL_VECTOR_FILTER: %d, PARALLEL_VECTOR_LIMIT: %f",PARALLEL_VECTOR_FILTER,PARALLEL_VECTOR_LIMIT);
+                if (PARALLEL_VECTOR_FILTER){
+                    if (psd_m_output.rectInfo.PStype == 1){
+                        POINT_F VCU_car_rear_axle_center = { -4.064, 0.0 };
+
+                        float vector_carrearaxlecenter2parallelAD = (
+                            (psd2vcu.FusionSlotInfo[i].pt[3].y - psd2vcu.FusionSlotInfo[i].pt[0].y) * VCU_car_rear_axle_center.x
+                        - (psd2vcu.FusionSlotInfo[i].pt[3].x - psd2vcu.FusionSlotInfo[i].pt[0].x) * VCU_car_rear_axle_center.y
+                        + psd2vcu.FusionSlotInfo[i].pt[3].x * psd2vcu.FusionSlotInfo[i].pt[0].y
+                        - psd2vcu.FusionSlotInfo[i].pt[3].y * psd2vcu.FusionSlotInfo[i].pt[0].x
+                        ) / sqrt(
+                            pow(psd2vcu.FusionSlotInfo[i].pt[3].y - psd2vcu.FusionSlotInfo[i].pt[0].y, 2)
+                        + pow(psd2vcu.FusionSlotInfo[i].pt[3].x - psd2vcu.FusionSlotInfo[i].pt[0].x, 2)
+                        );
+                        // 死区（0.2m）
+                        const float PARALLEL_VECTOR_DEADZONE = 0.1;
+                        if (psd2vcu.FusionSlotInfo[i].pt[0].y >= 0){ // 右侧
+                            if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
+                                psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                            }
+                            // else if (vector_carrearaxlecenter2parallelAD > PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
+                            //     if (psd_m_output.rectInfo.iSodType == 1) {
+                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                            //     } else {
+                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                            //     }
+                            // }
+                        }
+                        else{
+                            if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
+                                psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                            }
+                            // else if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
+                            //     if (psd_m_output.rectInfo.iSodType == 1) {
+                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                            //     } else {
+                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
+                            //     }
+                            // }
+                        }
+                        LOGD("[VCU NOTRELEASE4 parallel] PARALLEL VECTOR: %f, ID: %d, set to %d", vector_carrearaxlecenter2parallelAD,psd2vcu.FusionSlotInfo[i].slotLabel,psd2vcu.FusionSlotInfo[i].slotStatusType)
+                    }else{
+                        LOGD("[VCU NOTRELEASE4 parallel] NOT PARALLEL SLOT.")
+                    }
+                }
                 
 
                 // 障碍物属性
@@ -1153,6 +1341,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 }
             }
             LOGD("vcu_available_slots size: %d",vcu_available_slots.size());
+            if (vcu_available_slots.size() > 0){
+                available_slot_flag_to_statemachine = 1;
+            }else{
+                available_slot_flag_to_statemachine = 0;
+            }
             cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_available_slots ,10); //距离排序后的slots
             LOGD("cloest_slots size: %d",cloest_slots.size());
 
@@ -1738,91 +1931,253 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         k++;
     }
 
-
     //***********************************PLANNING 发送目标车位
     //check psd output to planning(2 target slot)
     //拿到目标车位ID后，发送目标车位信息给planning
     int target_slot_fusionSlotType = 0;
-    if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
-        for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
-            if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){
-                psd2planning.targetSlot.slotCorners.cornerA.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x; 
-                psd2planning.targetSlot.slotCorners.cornerA.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
-                psd2planning.targetSlot.slotCorners.cornerB.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x;
-                psd2planning.targetSlot.slotCorners.cornerB.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y;
-                psd2planning.targetSlot.slotCorners.cornerC.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].x;
-                psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
-                psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
-                psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
-
-                // *******************判定是否狭窄车位*******************
-                
-                double dx = psd2planning.targetSlot.slotCorners.cornerB.x - psd2planning.targetSlot.slotCorners.cornerA.x;
-                double dy = psd2planning.targetSlot.slotCorners.cornerB.y - psd2planning.targetSlot.slotCorners.cornerA.y;
-                double AB_dist = sqrt(dx * dx + dy * dy);
-                LOGD("isNarrow: %d, AB_dist: %f",isNarrow, AB_dist);
-                if (AB_dist <= NARROWSLOT_THRESHOLD) {
-                    isNarrow = true;
-                }
-                else{
-                    isNarrow = false;
-                }
-                // *******************正逆鱼骨*******************
-                double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
-                double ABy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
-                double ADx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
-                double ADy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
-                double dotProduct = (ABx * ADx) + (ABy * ADy);
-                double magnitudeAB = sqrt(ABx * ABx + ABy * ABy);
-                double magnitudeAD = sqrt(ADx * ADx + ADy * ADy);
-                // 计算夹角的余弦值
-                double cosTheta = dotProduct / (magnitudeAB * magnitudeAD);
-                // 计算角度（弧度转度）
-                double angleRadians = acos(cosTheta);  // 计算弧度
-                double angleDegrees = angleRadians * (180.0 / M_PI);  // 转换为度
-                if (angleDegrees > 80  || angleDegrees < 100)
-                {
-                    psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
-                }
-                else if (angleDegrees <= 80){
-                    psd2planning.targetSlot.slotType = Sfus::SLOTTYP_RFOBL;
-                }
-                else{
-                    psd2planning.targetSlot.slotType = Sfus::SLOTTYP_OBL;
-                }
-                //**************************************
-                psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
-                if (final_ID >= 1000 && final_ID < 10000){
-                    psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
-                }
-                else if (final_ID >= 10000){
-                    psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_USS;
-                }
-                else{
-                    psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
-                }
-                //*****************无车位材质接口，借用，0视觉1超声波3草砖*********************
-                if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.iMaterial == 1){
-                    target_slot_fusionSlotType = 3; // 
-                }
-                else{
-                    if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label >= 1000 && outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label < 10000){
-                        target_slot_fusionSlotType = 0;
+    
+    // if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
+    if (final_ID > 0 && parkout_flag != 1 && (apa_status != 5 || (apa_status == 5 && !target_slot_already_updated_once))){ //进入guidance后只更新一次目标车位
+        
+        //SEARCH阶段持续更新
+        if (apa_status != 5){ 
+            for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
+                if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){ // 找到目标车位
+    
+                    // *******************正逆鱼骨，车位类型*******************
+                    double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
+                    double ABy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                    double ADx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
+                    double ADy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                    double dotProduct = (ABx * ADx) + (ABy * ADy);
+                    double magnitudeAB = sqrt(ABx * ABx + ABy * ABy);
+                    double magnitudeAD = sqrt(ADx * ADx + ADy * ADy);
+                    // 计算夹角的余弦值
+                    double cosTheta = dotProduct / (magnitudeAB * magnitudeAD);
+                    // 计算角度（弧度转度）
+                    double angleRadians = acos(cosTheta);  // 计算弧度
+                    double angleDegrees = angleRadians * (180.0 / M_PI);  // 转换为度
+                    if (angleDegrees > 80  || angleDegrees < 100)
+                    {
+                        psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
+                    }
+                    else if (angleDegrees <= 80){
+                        psd2planning.targetSlot.slotType = Sfus::SLOTTYP_RFOBL;
                     }
                     else{
-                        target_slot_fusionSlotType = 1;
+                        psd2planning.targetSlot.slotType = Sfus::SLOTTYP_OBL;
+                    }
+
+                    psd2planning.targetSlot.slotCorners.cornerA.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x; 
+                    psd2planning.targetSlot.slotCorners.cornerA.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                    psd2planning.targetSlot.slotCorners.cornerB.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x;
+                    psd2planning.targetSlot.slotCorners.cornerB.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y;
+                    psd2planning.targetSlot.slotCorners.cornerC.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].x;
+                    psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
+                    psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
+                    psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
+                    
+                    // *******************目标车位记忆*******************
+                    // 记忆更新前的车位类型
+                    slot_type_before_update = psd2planning.targetSlot.slotType;
+                    // 目标车位转世界坐标系
+                    POINT_I ptA = {psd2planning.targetSlot.slotCorners.cornerA.x, psd2planning.targetSlot.slotCorners.cornerA.y};
+                    POINT_I ptB = {psd2planning.targetSlot.slotCorners.cornerB.x, psd2planning.targetSlot.slotCorners.cornerB.y};
+                    POINT_I ptC = {psd2planning.targetSlot.slotCorners.cornerC.x, psd2planning.targetSlot.slotCorners.cornerC.y};
+                    POINT_I ptD = {psd2planning.targetSlot.slotCorners.cornerD.x, psd2planning.targetSlot.slotCorners.cornerD.y};
+                    search_target_center.x = (ptA.x + ptB.x + ptC.x + ptD.x) / 4;
+                    search_target_center.y = (ptA.y + ptB.y + ptC.y + ptD.y) / 4;
+                    search_target_center_world = Local2Global(search_target_center, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+    
+                    // *******************判定是否狭窄车位*******************
+                    double dx = psd2planning.targetSlot.slotCorners.cornerB.x - psd2planning.targetSlot.slotCorners.cornerA.x;
+                    double dy = psd2planning.targetSlot.slotCorners.cornerB.y - psd2planning.targetSlot.slotCorners.cornerA.y;
+                    double AB_dist = sqrt(dx * dx + dy * dy);
+                    LOGD("isNarrow: %d, AB_dist: %f",isNarrow, AB_dist);
+                    if (AB_dist <= NARROWSLOT_THRESHOLD - 100) {
+                        isNarrow = true;
+                    }
+                    else if (AB_dist > NARROWSLOT_THRESHOLD + 100){
+                        isNarrow = false;
+                    }
+                    //********************车位来源******************
+                    psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
+                    if (final_ID >= 1000 && final_ID < 10000){
+                        psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
+                    }
+                    else if (final_ID >= 10000){
+                        psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_USS;
+                    }
+                    else{
+                        psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
+                    }
+                    //*****************无车位材质接口，借用，0视觉1超声波3草砖*********************
+                    if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.iMaterial == 1){
+                        target_slot_fusionSlotType = 3; // 
+                    }
+                    else{
+                        if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label >= 1000 && outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label < 10000){
+                            target_slot_fusionSlotType = 0;
+                        }
+                        else{
+                            target_slot_fusionSlotType = 1;
+                        }
+                    }
+                }
+            }
+        }
+        
+        
+        // else if (apa_status == 5 && !target_slot_already_updated_once){//进入guidance后只更新一次目标车位
+        //进入guidance后在范围内持续更新车位
+        else if (apa_status == 5){
+            for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
+                if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){ // 找到目标车位
+    
+                    // *******************正逆鱼骨，车位类型*******************
+                    double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
+                    double ABy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                    double ADx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
+                    double ADy = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                    double dotProduct = (ABx * ADx) + (ABy * ADy);
+                    double magnitudeAB = sqrt(ABx * ABx + ABy * ABy);
+                    double magnitudeAD = sqrt(ADx * ADx + ADy * ADy);
+                    // 计算夹角的余弦值
+                    double cosTheta = dotProduct / (magnitudeAB * magnitudeAD);
+                    // 计算角度（弧度转度）
+                    double angleRadians = acos(cosTheta);  // 计算弧度
+                    double angleDegrees = angleRadians * (180.0 / M_PI);  // 转换为度
+                    if (angleDegrees > 80  || angleDegrees < 100)
+                    {
+                        psd2planning.targetSlot.slotType = slottype_rd2decplan(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype);
+                    }
+                    else if (angleDegrees <= 80){
+                        psd2planning.targetSlot.slotType = Sfus::SLOTTYP_RFOBL;
+                    }
+                    else{
+                        psd2planning.targetSlot.slotType = Sfus::SLOTTYP_OBL;
+                    }
+
+                    // *******************目标车位更新一次*******************
+                    // 锁定更新前的车位类型
+                    if (slot_type_before_update != NULL){
+                        psd2planning.targetSlot.slotType = slot_type_before_update;
+                    }
+        
+                    // // 检查四个角点是否在范围内
+                    // target_slot_in_range = true;
+                    // for(int j = 0; j < 4; j++) {
+                    //     float x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[j].x;
+                    //     float y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[j].y;
+                    //     // 左侧：(-10000,4124) (-10000,-1136) (-1500,4124) (-1500,-1136)
+                    //     bool in_rect1 = (x >= -10000 && x <= -1500) && (y >= -1136 && y <= 4124);
+                    //     // 右侧：(1500,4124) (1500,-1136) (10000,4124) (10000,-1136)
+                    //     bool in_rect2 = (x >= 1500 && x <= 10000) && (y >= -1136 && y <= 4124);
+    
+                    //     if(!in_rect1 && !in_rect2) {
+                    //         target_slot_in_range = false;
+                    //         break;
+                    //     }
+                    // }
+
+                    // 检查四个角点是否在同相机
+                    target_slot_in_range = true;
+                    POINT_I point_A = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x,outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y};
+                    POINT_I point_B = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x,outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y};
+                    POINT_I pointA_pixel = math::coordConvert_car_center_to_pixel(point_A);
+                    POINT_I pointB_pixel = math::coordConvert_car_center_to_pixel(point_B);
+                    int camera_id_A, camera_id_B;
+                    camera_id_A = ipm_camera_id_image[pointA_pixel.y][pointA_pixel.x];
+                    camera_id_B = ipm_camera_id_image[pointB_pixel.y][pointB_pixel.x];
+                    LOGD("[PSD2PLANNING][UPDATE IN RANGE] single frame slot pointA (%d, %d), pointB (%d, %d)", pointA_pixel.x, pointA_pixel.y, pointB_pixel.x, pointB_pixel.y);
+                    LOGD("[PSD2PLANNING][UPDATE IN RANGE] single frame slot id: %d, camera_id_A = %d, camera_id_B = %d", final_ID, camera_id_A, camera_id_B);
+                    if (camera_id_A == 0 or camera_id_B == 0) {
+                        target_slot_in_range = false;
+                        continue;
+                    }
+                    if (camera_id_A != camera_id_B) {
+                        target_slot_in_range = false;
+                        continue;
+                    }
+
+                    // 如果不在范围内，则跳过更新
+                    if(!target_slot_in_range) {
+                        continue;
+                    }
+                    LOGD("[PSD2PLANNING][UPDATE IN RANGE] target slot in range: %d", target_slot_in_range);
+
+                    // 新目标车位转世界坐标系
+                    POINT_I ptA = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y};
+                    POINT_I ptB = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y};
+                    POINT_I ptC = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y};
+                    POINT_I ptD = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y};
+                    new_target_center.x = (ptA.x + ptB.x + ptC.x + ptD.x) / 4;
+                    new_target_center.y = (ptA.y + ptB.y + ptC.y + ptD.y) / 4;
+                    new_target_center_world = Local2Global(new_target_center, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                    
+                    // 计算新旧目标车位中心点的距离，如果小于阈值，则更新目标车位
+                    float target_slot_diff = CalcDistance(search_target_center_world, new_target_center_world);
+                    LOGD("[TARGET_SLOT_CHECK] world center moved: %f,threshold: %f", target_slot_diff,MAX_SLOT_MOVE_DIST_MM);
+                    if (target_slot_diff < MAX_SLOT_MOVE_DIST_MM){
+                        psd2planning.targetSlot.slotCorners.cornerA.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x; 
+                        psd2planning.targetSlot.slotCorners.cornerA.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                        psd2planning.targetSlot.slotCorners.cornerB.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x;
+                        psd2planning.targetSlot.slotCorners.cornerB.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y;
+                        psd2planning.targetSlot.slotCorners.cornerC.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].x;
+                        psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
+                        psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
+                        psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
+                        target_slot_already_updated_once = true;
+                    }
+    
+                    // *******************判定是否狭窄车位*******************
+                    double dx = psd2planning.targetSlot.slotCorners.cornerB.x - psd2planning.targetSlot.slotCorners.cornerA.x;
+                    double dy = psd2planning.targetSlot.slotCorners.cornerB.y - psd2planning.targetSlot.slotCorners.cornerA.y;
+                    double AB_dist = sqrt(dx * dx + dy * dy);
+                    LOGD("isNarrow: %d, AB_dist: %f",isNarrow, AB_dist);
+                    if (AB_dist <= NARROWSLOT_THRESHOLD - 100) {
+                        isNarrow = true;
+                    }
+                    else if (AB_dist > NARROWSLOT_THRESHOLD + 100){
+                        isNarrow = false;
+                    }
+                    //********************车位来源******************
+                    psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
+                    if (final_ID >= 1000 && final_ID < 10000){
+                        psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
+                    }
+                    else if (final_ID >= 10000){
+                        psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_USS;
+                    }
+                    else{
+                        psd2planning.targetSlot.slotSource = Sfus::SLOTSRC_VIS;
+                    }
+                    //*****************无车位材质接口，借用，0视觉1超声波3草砖*********************
+                    if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.iMaterial == 1){
+                        target_slot_fusionSlotType = 3; // 
+                    }
+                    else{
+                        if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label >= 1000 && outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label < 10000){
+                            target_slot_fusionSlotType = 0;
+                        }
+                        else{
+                            target_slot_fusionSlotType = 1;
+                        }
                     }
                 }
             }
         }
     }
+
     if (parkout_flag != 1){
         if (apa_status == 1 || apa_status == 6 || apa_status == 7 || apa_status == 0){
+            target_slot_already_updated_once = false; // 重置标志位
             memset(&psd2planning, 0, sizeof(Sfus::Sfsuion2DecPlan));
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
         }
         else{
-            LOGD("[PSD2PLANNING] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            LOGD("[PSD2PLANNING] UPDATED: %d, TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            target_slot_already_updated_once,
             psd2planning.timeStamp,
             apa_status,
             psd2planning.targetSlot.slotType,
@@ -1838,9 +2193,22 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2planning.targetSlot.slotCorners.cornerD.y);
             LOGD("[PSD2PLANNING] target_slot_fusionSlotType: %d",target_slot_fusionSlotType);
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
+
+            POINT_I ptA = {psd2planning.targetSlot.slotCorners.cornerA.x,psd2planning.targetSlot.slotCorners.cornerA.y};
+            POINT_I ptB = {psd2planning.targetSlot.slotCorners.cornerB.x,psd2planning.targetSlot.slotCorners.cornerB.y};
+            POINT_I ptC = {psd2planning.targetSlot.slotCorners.cornerC.x,psd2planning.targetSlot.slotCorners.cornerC.y};
+            POINT_I ptD = {psd2planning.targetSlot.slotCorners.cornerD.x,psd2planning.targetSlot.slotCorners.cornerD.y};
+            POINT_I A_world = Local2Global(ptA, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            POINT_I B_world = Local2Global(ptB, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            POINT_I C_world = Local2Global(ptC, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            POINT_I D_world = Local2Global(ptD, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            LOGD("[PSD2PLANNING] TARGET_SLOT_WORLD A(%d,%d), B(%d,%d), C(%d,%d), D(%d,%d)",
+                A_world.x, A_world.y,
+                B_world.x, B_world.y,
+                C_world.x, C_world.y,
+                D_world.x, D_world.y);
         }
     }
-    
 
 
     //***********************************PERCEPTION 发送目标车位
@@ -1871,14 +2239,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2perception.targetPosType = Sfus::POSHEADING_CD;
                     break;
                 default:
-                    psd2perception.targetPosType = Sfus::POSHEADING_NULL; // fallback or handle invalid case
+                    psd2perception.targetPosType = Sfus::POSHEADING_NULL;
                     break;
             }
 
             psd2perception.slotSource = psd2planning.targetSlot.slotSource;
             psd2perception.timeStamp = (current1970_ms >= 0) ? static_cast<uint64_t>(current1970_ms) : 0;
-            //后视镜折叠状态
-            psd2perception.flag_valid = mirror_fold_flag;
+            psd2perception.flag_valid = mirror_fold_flag;//后视镜折叠状态
         }
 
         LOGD("[PSD2PERCEPTION] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, targetPosType: %d, source: %d, mirrorfold: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
@@ -1911,19 +2278,26 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         final_ID = 0;
         HMI_temp_ID = 0;
     }
-    if (final_ID > 0){
+    if (final_ID > 0){ //有点选或推荐
         psd2statemachine.aps_apaParkType = slottype_decplan2statemachine(psd2planning.targetSlot.slotType);
         if (final_ID >= 10000){
             psd2statemachine.aps_apaParkFusionType = 1;
-        }
-        else{
+        }else{
             psd2statemachine.aps_apaParkFusionType = 0;
         }
-        psd2statemachine.aps_apaNarrowSlot = isNarrow; 
+
         if (slotlist_size > 0){
-            psd2statemachine.aps_apaAvailableSlot = 1;
             psd2statemachine.aps_apaHighlightSlot = 1;
         }
+
+        psd2statemachine.aps_apaAvailableSlot = 1;
+
+    }else { //无点选或推荐
+        psd2statemachine.aps_apaParkType = 0;
+        psd2statemachine.aps_apaHighlightSlot = 0;
+        psd2statemachine.aps_apaAvailableSlot = available_slot_flag_to_statemachine;
+
+
     }
     LOGD("[PSD2STATEMACHINE] SELECT ID: %d, ParkType = %d, ParkFusionType, %d, NarrowSlot: %d, ParkPlaceNum: %d, AvailableSlot: %d, HighlightSlot: %d",
     final_ID,
@@ -1961,14 +2335,21 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2control.apc_LimitBarX[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperX[j]);
                     psd2control.apc_LimitBarY[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperY[j]);
                 }
+
+                // 若限位块均为(0,0)，则设置为(-20000,-20000)
+                if (psd2control.apc_LimitBarX[0] == 0 && psd2control.apc_LimitBarY[0] == 0 &&
+                    psd2control.apc_LimitBarX[1] == 0 && psd2control.apc_LimitBarY[1] == 0) {
+                    psd2control.apc_LimitBarX[0] = -20000;
+                    psd2control.apc_LimitBarY[0] = -20000;
+                    psd2control.apc_LimitBarX[1] = -20000;
+                    psd2control.apc_LimitBarY[1] = -20000;
+                }
+
+                break;
             }
         }
     }
-    // // 发最大值
-    // psd2control.apc_LimitBarX[0] = -20000;
-    // psd2control.apc_LimitBarX[1] = -20000;
-    // psd2control.apc_LimitBarY[0] = -20000;
-    // psd2control.apc_LimitBarY[1] = -20000;
+
     LOGD("[PSD2CONTROL]LimitBar for target slot: (%d, %d), (%d, %d)", 
        psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
        psd2control.apc_LimitBarX[1], psd2control.apc_LimitBarY[1]);
