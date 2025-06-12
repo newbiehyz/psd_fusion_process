@@ -121,21 +121,23 @@ namespace math{
         return grand;
     }
 
-    // // 0428 origin
-    // POINT_I coordConvert_car_center(const POINT_I& slot)
-    // {
-    //     POINT_I grand;
+    POINT_I coordConvert_car_center_to_pixel(const POINT_I& car_center)
+    {
+        POINT_I pixel;
 
-    //     float REAR_AXEL_TO_CENTER = (VEHICLE_LENGTH / 2) - REAR_AXLE_CENTER_VEHICLE_REAR;
+        float REAR_AXEL_TO_CENTER = (VEHICLE_LENGTH / 2.0f) - REAR_AXLE_CENTER_VEHICLE_REAR;
 
-    //     float x = slot.x - BIRD_VIEW_HEIGHT/2;
-    //     float y = BIRD_VIEW_HEIGHT/2 - slot.y + (REAR_AXEL_TO_CENTER / LR_BIRD_PIXECL_2_WORLD);
+        // 从米单位转为像素单位
+        float x_pixel = car_center.x / LR_BIRD_PIXECL_2_WORLD;
+        float y_pixel = car_center.y / LR_BIRD_PIXECL_2_WORLD;
 
-    //     grand.x = x * LR_BIRD_PIXECL_2_WORLD;
-    //     grand.y = y * LR_BIRD_PIXECL_2_WORLD;
+        // 逆向恢复 pixel 坐标
+        pixel.x = x_pixel + BIRD_VIEW_HEIGHT / 2.0f;
+        pixel.y = BIRD_VIEW_HEIGHT / 2.0f - (y_pixel - (REAR_AXEL_TO_CENTER / LR_BIRD_PIXECL_2_WORLD));
 
-    //     return grand;
-    // }
+        return pixel;
+    }
+
 
     apaSlotListInfo ConvertSingeleframe2Local(const std::vector<padVisionSlotCoord> &singleframeslot){
         apaSlotListInfo local_slots;

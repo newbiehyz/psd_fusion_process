@@ -78,6 +78,7 @@ public:
     int dr_cul_x = 0;
     int dr_cul_y = 0;
     float dr_cul_theta = 0.0;
+    std::vector<std::vector<int>> ipm_camera_id_image;
 	
     
 };

@@ -2553,7 +2553,7 @@ bool PSD_FusionModuleIF::CalibrateSingleSlot(const padVisionSlotCoord &quad,
 
 void PSD_FusionModuleIF::shrink_quad(apaSlotInfo &original_rect){
     if (original_rect.rectInfo.PStype == 0){//垂直车位
-        int shrink_amount = 150;
+        int shrink_amount = 135;
 
         POINT_F AB_unit = unit_vector(original_rect.rectInfo.pt[0],original_rect.rectInfo.pt[1]);
         POINT_F CD_unit = unit_vector(original_rect.rectInfo.pt[2],original_rect.rectInfo.pt[3]);

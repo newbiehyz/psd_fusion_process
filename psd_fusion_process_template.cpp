@@ -116,6 +116,29 @@ cpsd_fusion_process::~cpsd_fusion_process()
 
 }
 
+void load_image_from_csv(const std::string& filename, std::vector<std::vector<int>>& image) {
+    std::ifstream file(filename);
+    std::string line;
+    int row = 0;
+    
+    if (file.is_open()) {
+        while (getline(file, line) && row < image.size()) {
+            std::stringstream ss(line);
+            std::string value;
+            int col = 0;
+            while (getline(ss, value, ',')) {
+                image[row][col] = stoi(value); // 将字符串转换为整数
+                ++col;
+            }
+            ++row;
+        }
+        file.close();
+        LOGD("Load ipm camera id image success!");
+    } else {
+        LOGE("Load ipm camera id image false!");
+    }
+}
+
 tResult cpsd_fusion_process::Init()
 {
     LOGW("PSD Process Start Success!");
@@ -123,6 +146,10 @@ tResult cpsd_fusion_process::Init()
     if (!LoadFromFile("/app/neo/psd_config.json")) {
         LOGD("Load config failed!");
     }
+
+    // 读取ipm相机id图
+    ipm_camera_id_image.resize(896, std::vector<int>(896, 0));
+    load_image_from_csv("/app/neo/ipm_camera_id.csv", ipm_camera_id_image);
 
     // part1 初始化
     static int init_flag = 0;
@@ -621,7 +648,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 0611115 emos10.0.1 update while 5(protect),remember parkout,filter obs while 5,clear0USS,occupy = 0.8 filter,continously 2frameKF,2.5degree angled");
+    LOGD("PSD Version: 06121303 emos10.0.1 update while 5(same camera+threshold protected),remember parkout,filter obs while 5,clear0USS,occupy > 0.8 filter,continously 2frameKF,2.5degree angled");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1845,8 +1872,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
         }
         
-        //进入guidance后只更新一次目标车位
-        else if (apa_status == 5 && !target_slot_already_updated_once){
+        
+        // else if (apa_status == 5 && !target_slot_already_updated_once){//进入guidance后只更新一次目标车位
+        //进入guidance后在范围内持续更新车位
+        else if (apa_status == 5){
             for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
                 if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){ // 找到目标车位
     
@@ -1880,26 +1909,47 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         psd2planning.targetSlot.slotType = slot_type_before_update;
                     }
         
-                    // 检查四个角点是否在范围内
-                    target_slot_in_range = true;
-                    for(int j = 0; j < 4; j++) {
-                        float x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[j].x;
-                        float y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[j].y;
-                        // 左侧：(-10000,4124) (-10000,-1136) (-1500,4124) (-1500,-1136)
-                        bool in_rect1 = (x >= -10000 && x <= -1500) && (y >= -1136 && y <= 4124);
-                        // 右侧：(1500,4124) (1500,-1136) (10000,4124) (10000,-1136)
-                        bool in_rect2 = (x >= 1500 && x <= 10000) && (y >= -1136 && y <= 4124);
+                    // // 检查四个角点是否在范围内
+                    // target_slot_in_range = true;
+                    // for(int j = 0; j < 4; j++) {
+                    //     float x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[j].x;
+                    //     float y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[j].y;
+                    //     // 左侧：(-10000,4124) (-10000,-1136) (-1500,4124) (-1500,-1136)
+                    //     bool in_rect1 = (x >= -10000 && x <= -1500) && (y >= -1136 && y <= 4124);
+                    //     // 右侧：(1500,4124) (1500,-1136) (10000,4124) (10000,-1136)
+                    //     bool in_rect2 = (x >= 1500 && x <= 10000) && (y >= -1136 && y <= 4124);
     
-                        if(!in_rect1 && !in_rect2) {
-                            target_slot_in_range = false;
-                            break;
-                        }
-                    }
+                    //     if(!in_rect1 && !in_rect2) {
+                    //         target_slot_in_range = false;
+                    //         break;
+                    //     }
+                    // }
 
-                    // 如果apa_status==5且不在范围内，则跳过更新
-                    if(apa_status == 5 && !target_slot_in_range) {
+                    // 检查四个角点是否在同相机
+                    target_slot_in_range = true;
+                    POINT_I point_A = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x,outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y};
+                    POINT_I point_B = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x,outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y};
+                    POINT_I pointA_pixel = math::coordConvert_car_center_to_pixel(point_A);
+                    POINT_I pointB_pixel = math::coordConvert_car_center_to_pixel(point_B);
+                    int camera_id_A, camera_id_B;
+                    camera_id_A = ipm_camera_id_image[pointA_pixel.y][pointA_pixel.x];
+                    camera_id_B = ipm_camera_id_image[pointB_pixel.y][pointB_pixel.x];
+                    LOGD("[PSD2PLANNING][UPDATE IN RANGE] single frame slot pointA (%d, %d), pointB (%d, %d)", pointA_pixel.x, pointA_pixel.y, pointB_pixel.x, pointB_pixel.y);
+                    LOGD("[PSD2PLANNING][UPDATE IN RANGE] single frame slot id: %d, camera_id_A = %d, camera_id_B = %d", final_ID, camera_id_A, camera_id_B);
+                    if (camera_id_A == 0 or camera_id_B == 0) {
+                        target_slot_in_range = false;
                         continue;
                     }
+                    if (camera_id_A != camera_id_B) {
+                        target_slot_in_range = false;
+                        continue;
+                    }
+
+                    // 如果不在范围内，则跳过更新
+                    if(!target_slot_in_range) {
+                        continue;
+                    }
+                    LOGD("[PSD2PLANNING][UPDATE IN RANGE] target slot in range: %d", target_slot_in_range);
 
                     // 新目标车位转世界坐标系
                     POINT_I ptA = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y};
@@ -1962,6 +2012,48 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 }
             }
         }
+    }
+
+    if (parkout_flag != 1){
+        if (apa_status == 1 || apa_status == 6 || apa_status == 7 || apa_status == 0){
+            target_slot_already_updated_once = false; // 重置标志位
+            memset(&psd2planning, 0, sizeof(Sfus::Sfsuion2DecPlan));
+            EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
+        }
+        else{
+            LOGD("[PSD2PLANNING] UPDATED: %d, TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            target_slot_already_updated_once,
+            psd2planning.timeStamp,
+            apa_status,
+            psd2planning.targetSlot.slotType,
+            psd2planning.targetSlot.slotSource,
+            psd2planning.targetSlot.stopper_Dis,
+            psd2planning.targetSlot.slotCorners.cornerA.x,
+            psd2planning.targetSlot.slotCorners.cornerA.y,
+            psd2planning.targetSlot.slotCorners.cornerB.x,
+            psd2planning.targetSlot.slotCorners.cornerB.y,
+            psd2planning.targetSlot.slotCorners.cornerC.x,
+            psd2planning.targetSlot.slotCorners.cornerC.y,
+            psd2planning.targetSlot.slotCorners.cornerD.x,
+            psd2planning.targetSlot.slotCorners.cornerD.y);
+            LOGD("[PSD2PLANNING] target_slot_fusionSlotType: %d",target_slot_fusionSlotType);
+            EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
+
+            POINT_I ptA = {psd2planning.targetSlot.slotCorners.cornerA.x,psd2planning.targetSlot.slotCorners.cornerA.y};
+            POINT_I ptB = {psd2planning.targetSlot.slotCorners.cornerB.x,psd2planning.targetSlot.slotCorners.cornerB.y};
+            POINT_I ptC = {psd2planning.targetSlot.slotCorners.cornerC.x,psd2planning.targetSlot.slotCorners.cornerC.y};
+            POINT_I ptD = {psd2planning.targetSlot.slotCorners.cornerD.x,psd2planning.targetSlot.slotCorners.cornerD.y};
+            POINT_I A_world = Local2Global(ptA, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            POINT_I B_world = Local2Global(ptB, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            POINT_I C_world = Local2Global(ptC, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            POINT_I D_world = Local2Global(ptD, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+            LOGD("[PSD2PLANNING] TARGET_SLOT_WORLD A(%d,%d), B(%d,%d), C(%d,%d), D(%d,%d)",
+                A_world.x, A_world.y,
+                B_world.x, B_world.y,
+                C_world.x, C_world.y,
+                D_world.x, D_world.y);
+        }
+    }
 
 
     //***********************************PERCEPTION 发送目标车位
