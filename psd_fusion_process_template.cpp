@@ -648,7 +648,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06121539 emos10.0.1 update while 5(same camera+threshold protected),remember parkout,filter obs while 5,clear0USS,occupy > 0.8 filter,continously 2frameKF,2.5degree angled.Disable:stopper filter");
+    LOGD("PSD Version: 06121539 emos10.0.1 stopper protected,update while 5(same camera+threshold protected),remember parkout,filter obs while 5,clear0USS,occupy > 0.8 filter,continously 2frameKF,2.5degree angled.Disable:stopper filter");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -2180,6 +2180,17 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2control.apc_LimitBarX[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperX[j]);
                     psd2control.apc_LimitBarY[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperY[j]);
                 }
+
+                // 若限位块均为(0,0)，则设置为(-20000,-20000)
+                if (psd2control.apc_LimitBarX[0] == 0 && psd2control.apc_LimitBarY[0] == 0 &&
+                    psd2control.apc_LimitBarX[1] == 0 && psd2control.apc_LimitBarY[1] == 0) {
+                    psd2control.apc_LimitBarX[0] = -20000;
+                    psd2control.apc_LimitBarY[0] = -20000;
+                    psd2control.apc_LimitBarX[1] = -20000;
+                    psd2control.apc_LimitBarY[1] = -20000;
+                }
+
+                break;
             }
         }
     }
