@@ -664,7 +664,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06121613 emos10.0.1 [LYK]: stopper protected,merge with baseline");
+    LOGD("PSD Version: 06121939 emos10.0.1 [LYK]: stopper protected,merge with baseline");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -2087,47 +2087,51 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     POINT_I pointA_pixel = math::coordConvert_car_center_to_pixel(point_A);
                     POINT_I pointB_pixel = math::coordConvert_car_center_to_pixel(point_B);
                     int camera_id_A, camera_id_B;
-                    camera_id_A = ipm_camera_id_image[pointA_pixel.y][pointA_pixel.x];
-                    camera_id_B = ipm_camera_id_image[pointB_pixel.y][pointB_pixel.x];
-                    LOGD("[PSD2PLANNING][UPDATE IN RANGE] single frame slot pointA (%d, %d), pointB (%d, %d)", pointA_pixel.x, pointA_pixel.y, pointB_pixel.x, pointB_pixel.y);
-                    LOGD("[PSD2PLANNING][UPDATE IN RANGE] single frame slot id: %d, camera_id_A = %d, camera_id_B = %d", final_ID, camera_id_A, camera_id_B);
-                    if (camera_id_A == 0 or camera_id_B == 0) {
-                        target_slot_in_range = false;
-                        continue;
-                    }
-                    if (camera_id_A != camera_id_B) {
-                        target_slot_in_range = false;
-                        continue;
-                    }
+                    if (pointA_pixel.x > 0 && pointA_pixel.y > 0 && pointB_pixel.x > 0 && pointB_pixel.y > 0 && 
+                        pointA_pixel.x <= 895 && pointA_pixel.y <= 895 && pointB_pixel.x <= 895 && pointB_pixel.y <= 895){
+                        
+                        camera_id_A = ipm_camera_id_image[pointA_pixel.y][pointA_pixel.x];
+                        camera_id_B = ipm_camera_id_image[pointB_pixel.y][pointB_pixel.x];
+                        LOGD("[PSD2PLANNING][UPDATE IN RANGE] single frame slot pointA (%d, %d), pointB (%d, %d)", pointA_pixel.x, pointA_pixel.y, pointB_pixel.x, pointB_pixel.y);
+                        LOGD("[PSD2PLANNING][UPDATE IN RANGE] single frame slot id: %d, camera_id_A = %d, camera_id_B = %d", final_ID, camera_id_A, camera_id_B);
+                        if (camera_id_A == 0 or camera_id_B == 0) {
+                            target_slot_in_range = false;
+                            continue;
+                        }
+                        if (camera_id_A != camera_id_B) {
+                            target_slot_in_range = false;
+                            continue;
+                        }
 
-                    // 如果不在范围内，则跳过更新
-                    if(!target_slot_in_range) {
-                        continue;
-                    }
-                    LOGD("[PSD2PLANNING][UPDATE IN RANGE] target slot in range: %d", target_slot_in_range);
+                        // 如果不在范围内，则跳过更新
+                        if(!target_slot_in_range) {
+                            continue;
+                        }
+                        LOGD("[PSD2PLANNING][UPDATE IN RANGE] target slot in range: %d", target_slot_in_range);
 
-                    // 新目标车位转世界坐标系
-                    POINT_I ptA = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y};
-                    POINT_I ptB = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y};
-                    POINT_I ptC = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y};
-                    POINT_I ptD = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y};
-                    new_target_center.x = (ptA.x + ptB.x + ptC.x + ptD.x) / 4;
-                    new_target_center.y = (ptA.y + ptB.y + ptC.y + ptD.y) / 4;
-                    new_target_center_world = Local2Global(new_target_center, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-                    
-                    // 计算新旧目标车位中心点的距离，如果小于阈值，则更新目标车位
-                    float target_slot_diff = CalcDistance(search_target_center_world, new_target_center_world);
-                    LOGD("[TARGET_SLOT_CHECK] world center moved: %f,threshold: %f", target_slot_diff,MAX_SLOT_MOVE_DIST_MM);
-                    if (target_slot_diff < MAX_SLOT_MOVE_DIST_MM){
-                        psd2planning.targetSlot.slotCorners.cornerA.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x; 
-                        psd2planning.targetSlot.slotCorners.cornerA.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
-                        psd2planning.targetSlot.slotCorners.cornerB.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x;
-                        psd2planning.targetSlot.slotCorners.cornerB.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y;
-                        psd2planning.targetSlot.slotCorners.cornerC.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].x;
-                        psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
-                        psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
-                        psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
-                        target_slot_already_updated_once = true;
+                        // 新目标车位转世界坐标系
+                        POINT_I ptA = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y};
+                        POINT_I ptB = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y};
+                        POINT_I ptC = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y};
+                        POINT_I ptD = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y};
+                        new_target_center.x = (ptA.x + ptB.x + ptC.x + ptD.x) / 4;
+                        new_target_center.y = (ptA.y + ptB.y + ptC.y + ptD.y) / 4;
+                        new_target_center_world = Local2Global(new_target_center, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                        
+                        // 计算新旧目标车位中心点的距离，如果小于阈值，则更新目标车位
+                        float target_slot_diff = CalcDistance(search_target_center_world, new_target_center_world);
+                        LOGD("[TARGET_SLOT_CHECK] world center moved: %f,threshold: %f", target_slot_diff,MAX_SLOT_MOVE_DIST_MM);
+                        if (target_slot_diff < MAX_SLOT_MOVE_DIST_MM){
+                            psd2planning.targetSlot.slotCorners.cornerA.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x; 
+                            psd2planning.targetSlot.slotCorners.cornerA.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
+                            psd2planning.targetSlot.slotCorners.cornerB.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x;
+                            psd2planning.targetSlot.slotCorners.cornerB.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].y;
+                            psd2planning.targetSlot.slotCorners.cornerC.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].x;
+                            psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
+                            psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
+                            psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
+                            target_slot_already_updated_once = true;
+                        }
                     }
     
                     // *******************判定是否狭窄车位*******************
