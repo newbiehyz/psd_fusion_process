@@ -1956,7 +1956,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     memset(&psd2control, 0, sizeof(APAControlBumpInput));
     if (final_ID != 0){
         for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
-            if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.ParkInSlot == 1){
+            if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label == final_ID){
                 for (int j = 0; j < 2; ++j) {
                     psd2control.apc_LimitBarX[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperX[j]);
                     psd2control.apc_LimitBarY[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperY[j]);
