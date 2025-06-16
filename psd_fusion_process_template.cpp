@@ -664,7 +664,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06121939 emos10.0.1 [LYK]: stopper protected,merge with baseline");
+    LOGD("PSD Version: 06160952 emos10.0.1 [LYK]: update once,stopper protected,merge with baseline");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1938,6 +1938,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
     // if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
     if (final_ID > 0 && parkout_flag != 1 && (apa_status != 5 || (apa_status == 5 && !target_slot_already_updated_once))){ //进入guidance后只更新一次目标车位
+    // if (final_ID > 0 && parkout_flag != 1){ //进入guidance后持续更新目标车位
         
         //SEARCH阶段持续更新
         if (apa_status != 5){ 
@@ -2103,11 +2104,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                             continue;
                         }
 
+                        LOGD("[PSD2PLANNING][UPDATE IN RANGE] target slot in range: %d", target_slot_in_range);
                         // 如果不在范围内，则跳过更新
                         if(!target_slot_in_range) {
                             continue;
                         }
-                        LOGD("[PSD2PLANNING][UPDATE IN RANGE] target slot in range: %d", target_slot_in_range);
 
                         // 新目标车位转世界坐标系
                         POINT_I ptA = {outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y};
@@ -2198,19 +2199,21 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             LOGD("[PSD2PLANNING] target_slot_fusionSlotType: %d",target_slot_fusionSlotType);
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
 
-            POINT_I ptA = {psd2planning.targetSlot.slotCorners.cornerA.x,psd2planning.targetSlot.slotCorners.cornerA.y};
-            POINT_I ptB = {psd2planning.targetSlot.slotCorners.cornerB.x,psd2planning.targetSlot.slotCorners.cornerB.y};
-            POINT_I ptC = {psd2planning.targetSlot.slotCorners.cornerC.x,psd2planning.targetSlot.slotCorners.cornerC.y};
-            POINT_I ptD = {psd2planning.targetSlot.slotCorners.cornerD.x,psd2planning.targetSlot.slotCorners.cornerD.y};
-            POINT_I A_world = Local2Global(ptA, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-            POINT_I B_world = Local2Global(ptB, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-            POINT_I C_world = Local2Global(ptC, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-            POINT_I D_world = Local2Global(ptD, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-            LOGD("[PSD2PLANNING] TARGET_SLOT_WORLD A(%d,%d), B(%d,%d), C(%d,%d), D(%d,%d)",
-                A_world.x, A_world.y,
-                B_world.x, B_world.y,
-                C_world.x, C_world.y,
-                D_world.x, D_world.y);
+            if (target_slot_in_range && apa_status == 5){
+                POINT_I ptA = {psd2planning.targetSlot.slotCorners.cornerA.x,psd2planning.targetSlot.slotCorners.cornerA.y};
+                POINT_I ptB = {psd2planning.targetSlot.slotCorners.cornerB.x,psd2planning.targetSlot.slotCorners.cornerB.y};
+                POINT_I ptC = {psd2planning.targetSlot.slotCorners.cornerC.x,psd2planning.targetSlot.slotCorners.cornerC.y};
+                POINT_I ptD = {psd2planning.targetSlot.slotCorners.cornerD.x,psd2planning.targetSlot.slotCorners.cornerD.y};
+                POINT_I A_world = Local2Global(ptA, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                POINT_I B_world = Local2Global(ptB, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                POINT_I C_world = Local2Global(ptC, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                POINT_I D_world = Local2Global(ptD, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                LOGD("[PSD2PLANNING] TARGET_SLOT_WORLD A(%d,%d), B(%d,%d), C(%d,%d), D(%d,%d)",
+                    A_world.x, A_world.y,
+                    B_world.x, B_world.y,
+                    C_world.x, C_world.y,
+                    D_world.x, D_world.y);
+            }
         }
     }
 
