@@ -648,7 +648,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06160958 emos10.0.1 target slot update once,stopper protected,update while 5(same camera+threshold protected),remember parkout,filter obs while 5,clear0USS,occupy > 0.8 filter,continously 2frameKF,2.5degree angled.Disable:stopper filter");
+    LOGD("PSD Version: 06191319 emos10.0.1 fix targetslot parallel update,catch OVERLAP dump,target slot update once,stopper protected,update while 5(same camera+threshold protected),remember parkout,filter obs while 5,clear0USS,occupy > 0.8 filter.Disable:stopper filter");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1136,6 +1136,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         const float PARALLEL_VECTOR_DEADZONE = 0.1;
                         if (psd2vcu.FusionSlotInfo[i].pt[0].y >= 0){ // 右侧
                             if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
+                            // if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE ||  // -0.8
+                            //     vector_carrearaxlecenter2parallelAD >= 6 - PARALLEL_VECTOR_DEADZONE){ // 越过6m
                                 psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                             }
                             // else if (vector_carrearaxlecenter2parallelAD > PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
@@ -1148,6 +1150,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         }
                         else{
                             if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
+                            // if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE || // -0.8
+                            //     vector_carrearaxlecenter2parallelAD <= -6 - PARALLEL_VECTOR_DEADZONE){ // 越过6m
                                 psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                             }
                             // else if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
@@ -1782,9 +1786,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     int target_slot_fusionSlotType = 0;
     
     // if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
-    if (final_ID > 0 && parkout_flag != 1 && (apa_status != 5 || (apa_status == 5 && !target_slot_already_updated_once))){ //进入guidance后只更新一次目标车位
     // if (final_ID > 0 && parkout_flag != 1){ //进入guidance后持续更新目标车位
-        
+    if (final_ID > 0 && parkout_flag != 1 && (apa_status != 5 || (apa_status == 5 && !target_slot_already_updated_once))){ //进入guidance后只更新一次目标车位
+
         //SEARCH阶段持续更新
         if (apa_status != 5){ 
             for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
@@ -1873,12 +1877,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
         }
         
-        
-        // else if (apa_status == 5 && !target_slot_already_updated_once){//进入guidance后只更新一次目标车位
-        //进入guidance后在范围内持续更新车位
-        else if (apa_status == 5){
+        // else if (apa_status == 5){ //进入guidance后在范围内持续更新车位
+        else if (apa_status == 5 && !target_slot_already_updated_once){//进入guidance后只更新一次目标车位
+
             for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
-                if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){ // 找到目标车位
+                if ((final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label) && (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype == 0)){ // 找到目标车位
     
                     // *******************正逆鱼骨，车位类型*******************
                     double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
