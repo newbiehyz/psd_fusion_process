@@ -664,7 +664,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06160952 emos10.0.1 [LYK]: update once,stopper protected,merge with baseline");
+    LOGD("PSD Version: 06201103 emos10.0.1 [LYK]: 0619 release,fix targetslot parallel update,catch OVERLAP dump,update once");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1260,6 +1260,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         const float PARALLEL_VECTOR_DEADZONE = 0.1;
                         if (psd2vcu.FusionSlotInfo[i].pt[0].y >= 0){ // 右侧
                             if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
+                            // if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE ||  // -0.8
+                            //     vector_carrearaxlecenter2parallelAD >= 6 - PARALLEL_VECTOR_DEADZONE){ // 越过6m
                                 psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                             }
                             // else if (vector_carrearaxlecenter2parallelAD > PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
@@ -1272,6 +1274,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         }
                         else{
                             if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
+                            // if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE || // -0.8
+                            //     vector_carrearaxlecenter2parallelAD <= -6 - PARALLEL_VECTOR_DEADZONE){ // 越过6m
                                 psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                             }
                             // else if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
@@ -1935,11 +1939,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     //check psd output to planning(2 target slot)
     //拿到目标车位ID后，发送目标车位信息给planning
     int target_slot_fusionSlotType = 0;
+    POINT_I world_slot_memory[4]; // ABCD角点
+
     
     // if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
-    if (final_ID > 0 && parkout_flag != 1 && (apa_status != 5 || (apa_status == 5 && !target_slot_already_updated_once))){ //进入guidance后只更新一次目标车位
     // if (final_ID > 0 && parkout_flag != 1){ //进入guidance后持续更新目标车位
-        
+    if (final_ID > 0 && parkout_flag != 1 && (apa_status != 5 || (apa_status == 5 && !target_slot_already_updated_once))){ //进入guidance后只更新一次目标车位
+
         //SEARCH阶段持续更新
         if (apa_status != 5){ 
             for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
@@ -1989,6 +1995,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     search_target_center.x = (ptA.x + ptB.x + ptC.x + ptD.x) / 4;
                     search_target_center.y = (ptA.y + ptB.y + ptC.y + ptD.y) / 4;
                     search_target_center_world = Local2Global(search_target_center, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+
+
+                    // *******************目标车位世界坐标系顺序记忆*******************
+                    world_slot_memory[0] = Local2Global(ptA, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                    world_slot_memory[1] = Local2Global(ptB, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                    world_slot_memory[2] = Local2Global(ptC, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                    world_slot_memory[3] = Local2Global(ptD, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+
     
                     // *******************判定是否狭窄车位*******************
                     double dx = psd2planning.targetSlot.slotCorners.cornerB.x - psd2planning.targetSlot.slotCorners.cornerA.x;
@@ -2028,12 +2042,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
         }
         
-        
-        // else if (apa_status == 5 && !target_slot_already_updated_once){//进入guidance后只更新一次目标车位
-        //进入guidance后在范围内持续更新车位
-        else if (apa_status == 5){
+        // else if (apa_status == 5){ //进入guidance后在范围内持续更新车位
+        else if (apa_status == 5 && !target_slot_already_updated_once){//进入guidance后只更新一次目标车位
+
             for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
-                if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){ // 找到目标车位
+                if ((final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label) && (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.PStype == 0)){ // 找到目标车位
     
                     // *******************正逆鱼骨，车位类型*******************
                     double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
@@ -2123,6 +2136,44 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         float target_slot_diff = CalcDistance(search_target_center_world, new_target_center_world);
                         LOGD("[TARGET_SLOT_CHECK] world center moved: %f,threshold: %f", target_slot_diff,MAX_SLOT_MOVE_DIST_MM);
                         if (target_slot_diff < MAX_SLOT_MOVE_DIST_MM){
+                            
+                            // 根据世界坐标最小距离匹配角点顺序
+                            POINT_I cur_local_pts[4] = {ptA, ptB, ptC, ptD};
+                            POINT_I cur_world_pts[4];
+                            for (int j = 0; j < 4; ++j) {
+                                cur_world_pts[j] = Local2Global(cur_local_pts[j], pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                            }
+
+                            int matched_idx[4] = {-1, -1, -1, -1};
+                            bool used_flag[4] = {false, false, false, false};
+
+                            for (int k = 0; k < 4; ++k) {
+                                float min_dist = 1e9;
+                                int best_j = -1;
+                                for (int j = 0; j < 4; ++j) {
+                                    if (used_flag[j]) continue;
+                                    float dx = world_slot_memory[k].x - cur_world_pts[j].x;
+                                    float dy = world_slot_memory[k].y - cur_world_pts[j].y;
+                                    float dist = std::sqrt(dx * dx + dy * dy);
+                                    if (dist < min_dist) {
+                                        min_dist = dist;
+                                        best_j = j;
+                                    }
+                                }
+                                matched_idx[k] = best_j;
+                                used_flag[best_j] = true;
+                            }
+                            
+                            // psd2planning.targetSlot.slotCorners.cornerA.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[matched_idx[0]].x;
+                            // psd2planning.targetSlot.slotCorners.cornerA.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[matched_idx[0]].y;
+                            // psd2planning.targetSlot.slotCorners.cornerB.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[matched_idx[1]].x;
+                            // psd2planning.targetSlot.slotCorners.cornerB.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[matched_idx[1]].y;
+                            // psd2planning.targetSlot.slotCorners.cornerC.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[matched_idx[2]].x;
+                            // psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[matched_idx[2]].y;
+                            // psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[matched_idx[3]].x;
+                            // psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[matched_idx[3]].y;
+
+                            // 未排角点顺序
                             psd2planning.targetSlot.slotCorners.cornerA.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x; 
                             psd2planning.targetSlot.slotCorners.cornerA.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].y;
                             psd2planning.targetSlot.slotCorners.cornerB.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x;
@@ -2356,7 +2407,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
         }
     }
-
     LOGD("[PSD2CONTROL]LimitBar for target slot: (%d, %d), (%d, %d)", 
        psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
        psd2control.apc_LimitBarX[1], psd2control.apc_LimitBarY[1]);

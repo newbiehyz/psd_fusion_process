@@ -997,41 +997,57 @@ void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
 
 void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED) {
     auto &slots = outputSlotFUSED.slots_in_cur_frame;
-
     auto &worldRects = outputSlotFUSED.WorldoutRect;
+
+    if (slots.size() != worldRects.size()) {
+        LOGD("[removeOverlappingSlots] Size mismatch: slots_in_cur_frame.size = %zu, WorldoutRect.size = %zu",
+             slots.size(), worldRects.size());
+        return;
+    }
+
     std::vector<bool> toDelete(slots.size(), false);
-    
-    for (size_t i = 0; i < slots.size(); ++i) {
-        if (toDelete[i]) continue;
-        
-        Vertexes vert1;
-        changePoint(slots[i], vert1);
-        
-        for (size_t j = i + 1; j < slots.size(); ++j) {
-            if (toDelete[j]) continue;
-            
-            Vertexes vert2;
-            changePoint(slots[j], vert2);
-            
-            double iou = iouEx(vert1, vert2);
-            if (iou > 0.2) {
-                toDelete[j] = true; // 删除索引较大的矩形
+
+    try {
+        for (size_t i = 0; i < slots.size(); ++i) {
+            if (toDelete.at(i)) continue;
+
+            Vertexes vert1;
+            changePoint(slots.at(i), vert1);
+
+            for (size_t j = i + 1; j < slots.size(); ++j) {
+                if (toDelete.at(j)) continue;
+
+                Vertexes vert2;
+                changePoint(slots.at(j), vert2);
+
+                double iou = iouEx(vert1, vert2);
+                if (iou > 0.2) {
+                    toDelete.at(j) = true;
+                }
             }
         }
-    }
-    
-    // 删除标记为 true 的矩形，并同步删除 WorldoutRect 中对应的矩形
-    size_t writeIndex = 0;
-    for (size_t i = 0; i < slots.size(); ++i) {
-        if (!toDelete[i]) {
-            slots[writeIndex] = slots[i];
-            worldRects[writeIndex] = worldRects[i];
-            ++writeIndex;
+
+        size_t writeIndex = 0;
+        for (size_t i = 0; i < slots.size(); ++i) {
+            if (!toDelete.at(i)) {
+                slots.at(writeIndex) = slots.at(i);
+                worldRects.at(writeIndex) = worldRects.at(i);
+                ++writeIndex;
+            }
         }
+        slots.resize(writeIndex);
+        worldRects.resize(writeIndex);
+
+    } catch (const std::out_of_range &e) {
+        LOGD("[removeOverlappingSlots] Out of range exception: %s", e.what());
+    } catch (const std::exception &e) {
+        LOGD("[removeOverlappingSlots] Exception: %s", e.what());
+    } catch (...) {
+        LOGD("[removeOverlappingSlots] Unknown exception caught.");
     }
-    slots.resize(writeIndex);
-    worldRects.resize(writeIndex);
 }
+
+
 
 
 // 计算两点之间的欧氏距离
