@@ -664,7 +664,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06201103 emos10.0.1 [LYK]: 0619 release,fix targetslot parallel update,catch OVERLAP dump,update once");
+    LOGD("PSD Version: 06201112 emos10.0.1 [LYK]: parkout stopper,fix targetslot parallel update,catch OVERLAP dump,update once");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -2406,6 +2406,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 break;
             }
         }
+    }
+    else if (parkout_flag == 1) { // 泊出时，限位块设置为(-20000,-20000)
+        psd2control.apc_LimitBarX[0] = -20000;
+        psd2control.apc_LimitBarY[0] = -20000;
+        psd2control.apc_LimitBarX[1] = -20000;
+        psd2control.apc_LimitBarY[1] = -20000;
     }
     LOGD("[PSD2CONTROL]LimitBar for target slot: (%d, %d), (%d, %d)", 
        psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
