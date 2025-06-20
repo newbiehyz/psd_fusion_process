@@ -648,7 +648,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06191319 emos10.0.1 fix targetslot parallel update,catch OVERLAP dump,target slot update once,stopper protected,update while 5(same camera+threshold protected),remember parkout,filter obs while 5,clear0USS,occupy > 0.8 filter.Disable:stopper filter");
+    LOGD("PSD Version: 06201101 emos10.0.1 0619release,fix targetslot parallel update,catch OVERLAP dump,target slot update once,stopper protected,update while 5(same camera+threshold protected),remember parkout,filter obs while 5,clear0USS,occupy > 0.8 filter.Disable:stopper filter");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
