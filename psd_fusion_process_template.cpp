@@ -2058,7 +2058,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                             world_slot_memory[3].x, world_slot_memory[3].y);
 
             for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
-                // if ((final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label) && (slot_type_before_update != 3)){ // 找到目标车位
+                // if ((final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label) && (slot_type_before_update == 1)){ // 找到目标车位
                 if ((final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label)){ // 找到目标车位
     
                     // *******************正逆鱼骨，车位类型*******************
