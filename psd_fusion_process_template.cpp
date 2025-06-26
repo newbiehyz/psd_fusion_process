@@ -650,7 +650,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06241654 emos10.0.1 fix targetslot stopperdis");
+    LOGD("PSD Version: 06261310 emos10.0.1 0626 release fix targetslot stopperdis");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1789,8 +1789,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     
     // if (final_ID > 0 && apa_status != 5 && parkout_flag != 1){ //进入guidance后固定目标车位角点
-    // if (final_ID > 0 && parkout_flag != 1){ //进入guidance后持续更新目标车位
-    if (final_ID > 0 && parkout_flag != 1 && (apa_status != 5 || (apa_status == 5 && !target_slot_already_updated_once))){ //进入guidance后只更新一次目标车位
+    if (final_ID > 0 && parkout_flag != 1){ //进入guidance后持续更新目标车位
+    // if (final_ID > 0 && parkout_flag != 1 && (apa_status != 5 || (apa_status == 5 && !target_slot_already_updated_once))){ //进入guidance后只更新一次目标车位
 
         //SEARCH阶段持续更新
         if (apa_status != 5){ 
