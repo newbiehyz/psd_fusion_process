@@ -666,7 +666,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 06261309 emos10.0.1 [LYK]: 0626 release fix targetslot stopperdis");
+    LOGD("PSD Version: 07031508 emos10.0.1 [LYK]: 0703 release add dignoal slot");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1155,7 +1155,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     bool out_of_x_range = (center_x <= rear_limit || center_x >= front_limit);
                     bool out_of_y_range = !((center_y >= left1 && center_y <= left2) ||
                                             (center_y >= right1 && center_y <= right2));
-                    if (psd_m_output.rectInfo.PStype == 0){ // 垂直
+                    if (psd_m_output.rectInfo.PStype == 0 || psd_m_output.rectInfo.PStype == 2){ // 垂直or斜列
                         if (out_of_x_range || out_of_y_range) {
                             psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                         } else {
