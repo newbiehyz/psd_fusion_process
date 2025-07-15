@@ -1,4 +1,5 @@
 #include "fusion.h"
+#include "psd_fusion_process_template.h"
 
 using namespace std;
 

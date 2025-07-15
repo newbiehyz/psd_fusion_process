@@ -5,7 +5,6 @@
 #include <cmath>
 #include <algorithm>
 #include "psd_fusion_process_header.h"
-#include "psd_fusion_process_template.h"
 #include "apa_define.h"
 #include "iou.h"
 

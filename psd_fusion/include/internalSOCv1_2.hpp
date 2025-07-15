@@ -2,7 +2,6 @@
 #ifndef APA_INTERNALSOCV1_2_HPP
 #define APA_INTERNALSOCV1_2_HPP
 
-// #include "externalSOC.hpp"
 /*
 typedef unsigned char padImg; 		// 处理与拼接完成准备检测的图像 //zhguoi:no use
 typedef unsigned char padProcImg; 	// 处理完未拼接的单张图像

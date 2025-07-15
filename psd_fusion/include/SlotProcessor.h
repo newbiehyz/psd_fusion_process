@@ -4,7 +4,6 @@
 #include "psd_fusion_process_header.h"
 #include "psd_fusion_process_template.h"
 #include "apa_define.h"
-#include "fusion.h"
 #include "PSD_FusionModuleIF.h"
 #include <vector>
 
