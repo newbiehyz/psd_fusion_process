@@ -74,6 +74,26 @@ private:
     int IsParkOut(int apastatus);
     int IsStill(const Loc::App2emap_DR dr_pose, Loc::App2emap_DR& previous_dr_pose);
 
+    void ProcessFarawayFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output);
+    void ProcessAngleFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output);
+    void ProcessWidthFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output);
+    void ProcessParallelFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output);
+    void SetObstacleProperties(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output);
+    void ProcessRecommendationLogic(apaSlotInfo& selected_slot_in_world);
+    void ProcessNonSearchVCUDisplay(uint64_t current1970_ms);
+
+    void ProcessPSD2VCU(int apa_status, uint64_t current1970_ms, apaSlotInfo& selected_slot_in_world);
+    void ProcessPSD2APAHandle(uint64_t current1970_ms);
+    void ProcessPSD2APAHandleTargetID();
+    void ProcessPSD2Planning(uint64_t current1970_ms);
+    void ProcessPSD2PlanningTargetSlot(uint64_t current1970_ms, int& target_slot_fusionSlotType);
+    void ProcessGuidanceTargetSlotUpdate(int& target_slot_fusionSlotType);
+    void ProcessPSD2Perception(uint64_t current1970_ms, int target_slot_fusionSlotType);
+    void ProcessPSD2StateMachine();
+    void ProcessPSD2USS();
+    void ProcessPSD2Control();
+
+
 public:
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
