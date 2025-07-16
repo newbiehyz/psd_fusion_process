@@ -1,4 +1,7 @@
 #include "utils.h"
+#include "save_to_json.h"
+
+namespace PSDConfigUtils {
 
 void ClearRD(rd::QuadParkingSlots& rd_info) {
     rd_info = rd::QuadParkingSlots{};
@@ -203,4 +206,125 @@ float CalcDistance(const POINT_I& a, const POINT_I& b) {
     float dx = static_cast<float>(a.x - b.x);
     float dy = static_cast<float>(a.y - b.y);
     return std::sqrt(dx * dx + dy * dy);
+}
+
+bool LoadFromFile(const std::string& filename) {
+    std::ifstream inFile(filename);
+    if (!inFile.is_open()) {
+        DEBUG = false;
+        FARAWAY_FILTER = false;
+        LOGD("无法打开配置文件: %s, DEBUG: %d, FARAWAY_FILTER: %d", filename.c_str(), DEBUG, FARAWAY_FILTER);
+        return false;
+    }
+
+    try {
+        json j;
+        inFile >> j;
+
+        // 解析文件路径
+        j.at("debug").at("save_to_json").get_to(DEBUG);
+
+        j.at("calib").at("FARAWAY_FILTER").get_to(FARAWAY_FILTER);
+        auto FARAWAY_SLOTS_LEFT_RANGE = j.at("calib").at("FARAWAY_SLOTS_LEFT");
+        FARAWAY_SLOTS_LEFT[0] = FARAWAY_SLOTS_LEFT_RANGE[0];
+        FARAWAY_SLOTS_LEFT[1] = FARAWAY_SLOTS_LEFT_RANGE[1];
+        auto FARAWAY_SLOTS_RIGHT_RANGE = j.at("calib").at("FARAWAY_SLOTS_RIGHT");
+        FARAWAY_SLOTS_RIGHT[0] = FARAWAY_SLOTS_RIGHT_RANGE[0];
+        FARAWAY_SLOTS_RIGHT[1] = FARAWAY_SLOTS_RIGHT_RANGE[1];
+        j.at("calib").at("FARAWAY_SLOTS_REAR").get_to(FARAWAY_SLOTS_REAR);
+        j.at("calib").at("FARAWAY_SLOTS_FRONT").get_to(FARAWAY_SLOTS_FRONT);
+
+        j.at("calib").at("ANGEL_FILTER").get_to(ANGEL_FILTER);
+        j.at("calib").at("ANGEL_FILTER_LIMIT").get_to(ANGEL_FILTER_LIMIT);
+
+        j.at("calib").at("VCU_TOO_SMALL_FILTER").get_to(VCU_TOO_SMALL_FILTER);
+        j.at("calib").at("VCU_TOO_SMALL").get_to(VCU_TOO_SMALL);
+
+        j.at("calib").at("PARALLEL_VECTOR_FILTER").get_to(PARALLEL_VECTOR_FILTER);
+        j.at("calib").at("PARALLEL_VECTOR_LIMIT").get_to(PARALLEL_VECTOR_LIMIT);
+
+        j.at("calib").at("NARROWSLOT_THRESHOLD").get_to(NARROWSLOT_THRESHOLD);
+    }
+    catch (json::exception& e) {
+        LOGD("配置文件解析错误: %s", e.what());
+        return false;
+    }
+    inFile.close();
+    return true;
+}
+
+void Slot2Global(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw) {
+    float theta = yaw * acos(-1) / 180.;
+
+    float slot_Apt_temp_x = slot.targetSlot.slotCorners.cornerA.x * cos(theta) + slot.targetSlot.slotCorners.cornerA.y * sin(theta) + x;
+    float slot_Apt_temp_y = slot.targetSlot.slotCorners.cornerA.y * cos(theta) - slot.targetSlot.slotCorners.cornerA.x * sin(theta) + y;
+
+    float slot_Bpt_temp_x = slot.targetSlot.slotCorners.cornerB.x * cos(theta) + slot.targetSlot.slotCorners.cornerB.y * sin(theta) + x;
+    float slot_Bpt_temp_y = slot.targetSlot.slotCorners.cornerB.y * cos(theta) - slot.targetSlot.slotCorners.cornerB.x * sin(theta) + y;
+
+    float slot_Cpt_temp_x = slot.targetSlot.slotCorners.cornerC.x * cos(theta) + slot.targetSlot.slotCorners.cornerC.y * sin(theta) + x;
+    float slot_Cpt_temp_y = slot.targetSlot.slotCorners.cornerC.y * cos(theta) - slot.targetSlot.slotCorners.cornerC.x * sin(theta) + y;
+
+    float slot_Dpt_temp_x = slot.targetSlot.slotCorners.cornerD.x * cos(theta) + slot.targetSlot.slotCorners.cornerD.y * sin(theta) + x;
+    float slot_Dpt_temp_y = slot.targetSlot.slotCorners.cornerD.y * cos(theta) - slot.targetSlot.slotCorners.cornerD.x * sin(theta) + y;
+
+    slot.targetSlot.slotCorners.cornerA.x = slot_Apt_temp_x;
+    slot.targetSlot.slotCorners.cornerA.y = slot_Apt_temp_y;
+
+    slot.targetSlot.slotCorners.cornerB.x = slot_Bpt_temp_x;
+    slot.targetSlot.slotCorners.cornerB.y = slot_Bpt_temp_y;
+
+    slot.targetSlot.slotCorners.cornerC.x = slot_Cpt_temp_x;
+    slot.targetSlot.slotCorners.cornerC.y = slot_Cpt_temp_y;
+
+    slot.targetSlot.slotCorners.cornerD.x = slot_Dpt_temp_x;
+    slot.targetSlot.slotCorners.cornerD.y = slot_Dpt_temp_y;
+}
+
+void Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw) {
+    float theta = yaw * static_cast<float>(M_PI) / 180.0f;
+
+    float tmp_A_x = slot.targetSlot.slotCorners.cornerA.x - x;
+    float tmp_A_y = slot.targetSlot.slotCorners.cornerA.y - y;
+    float tmp_B_x = slot.targetSlot.slotCorners.cornerB.x - x;
+    float tmp_B_y = slot.targetSlot.slotCorners.cornerB.y - y;
+    float tmp_C_x = slot.targetSlot.slotCorners.cornerC.x - x;
+    float tmp_C_y = slot.targetSlot.slotCorners.cornerC.y - y;
+    float tmp_D_x = slot.targetSlot.slotCorners.cornerD.x - x;
+    float tmp_D_y = slot.targetSlot.slotCorners.cornerD.y - y;
+
+    float slot_Apt_temp_x = tmp_A_x * cos(theta) - tmp_A_y * sin(theta);
+    float slot_Apt_temp_y = tmp_A_x * sin(theta) + tmp_A_y * cos(theta);
+
+    float slot_Bpt_temp_x = tmp_B_x * cos(theta) - tmp_B_y * sin(theta);
+    float slot_Bpt_temp_y = tmp_B_x * sin(theta) + tmp_B_y * cos(theta);
+
+    float slot_Cpt_temp_x = tmp_C_x * cos(theta) - tmp_C_y * sin(theta);
+    float slot_Cpt_temp_y = tmp_C_x * sin(theta) + tmp_C_y * cos(theta);
+
+    float slot_Dpt_temp_x = tmp_D_x * cos(theta) - tmp_D_y * sin(theta);
+    float slot_Dpt_temp_y = tmp_D_x * sin(theta) + tmp_D_y * cos(theta);
+
+    slot.targetSlot.slotCorners.cornerA.x = slot_Apt_temp_x;
+    slot.targetSlot.slotCorners.cornerA.y = slot_Apt_temp_y;
+
+    slot.targetSlot.slotCorners.cornerB.x = slot_Bpt_temp_x;
+    slot.targetSlot.slotCorners.cornerB.y = slot_Bpt_temp_y;
+
+    slot.targetSlot.slotCorners.cornerC.x = slot_Cpt_temp_x;
+    slot.targetSlot.slotCorners.cornerC.y = slot_Cpt_temp_y;
+
+    slot.targetSlot.slotCorners.cornerD.x = slot_Dpt_temp_x;
+    slot.targetSlot.slotCorners.cornerD.y = slot_Dpt_temp_y;
+}
+
+POINT_I Local2Global(const POINT_I& pt_local, const float& x, const float& y, const float& yaw) {
+    float theta = yaw * acos(-1) / 180.0;
+    POINT_I pt_global;
+    pt_global.x = pt_local.x * cos(theta) + pt_local.y * sin(theta) + x;
+    pt_global.y = pt_local.y * cos(theta) - pt_local.x * sin(theta) + y;
+    return pt_global;
+}
+
+
 }

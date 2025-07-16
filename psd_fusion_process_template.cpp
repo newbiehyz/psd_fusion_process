@@ -161,225 +161,6 @@ tResult cpsd_fusion_process::Stop()
     RETURN_NOERROR;
 }
 
-bool cpsd_fusion_process::LoadFromFile(const std::string& filename){
-    std::ifstream inFile(filename);
-    if(!inFile.is_open()){
-        DEBUG = false;
-        FARAWAY_FILTER = false;
-
-        LOGD("无法打开配置文件: %s, DEBUG: %d, FARAWAY_FILTER: %d", filename.c_str(), DEBUG,FARAWAY_FILTER);
-        return false;
-    }
-
-    try{
-        json j;
-        inFile >> j;
-
-        //解析文件路径
-        j.at("debug").at("save_to_json").get_to(DEBUG);
-
-        j.at("calib").at("FARAWAY_FILTER").get_to(FARAWAY_FILTER);
-        auto FARAWAY_SLOTS_LEFT_RANGE = j.at("calib").at("FARAWAY_SLOTS_LEFT");
-        FARAWAY_SLOTS_LEFT[0] = FARAWAY_SLOTS_LEFT_RANGE[0];
-        FARAWAY_SLOTS_LEFT[1] = FARAWAY_SLOTS_LEFT_RANGE[1];
-        auto FARAWAY_SLOTS_RIGHT_RANGE = j.at("calib").at("FARAWAY_SLOTS_RIGHT");
-        FARAWAY_SLOTS_RIGHT[0] = FARAWAY_SLOTS_RIGHT_RANGE[0];
-        FARAWAY_SLOTS_RIGHT[1] = FARAWAY_SLOTS_RIGHT_RANGE[1];
-        j.at("calib").at("FARAWAY_SLOTS_REAR").get_to(FARAWAY_SLOTS_REAR);
-        j.at("calib").at("FARAWAY_SLOTS_FRONT").get_to(FARAWAY_SLOTS_FRONT);
-
-        j.at("calib").at("ANGEL_FILTER").get_to(ANGEL_FILTER);
-        j.at("calib").at("ANGEL_FILTER_LIMIT").get_to(ANGEL_FILTER_LIMIT);
-
-        j.at("calib").at("VCU_TOO_SMALL_FILTER").get_to(VCU_TOO_SMALL_FILTER);
-        j.at("calib").at("VCU_TOO_SMALL").get_to(VCU_TOO_SMALL);
-        
-        j.at("calib").at("PARALLEL_VECTOR_FILTER").get_to(PARALLEL_VECTOR_FILTER);
-        j.at("calib").at("PARALLEL_VECTOR_LIMIT").get_to(PARALLEL_VECTOR_LIMIT);
-
-        j.at("calib").at("NARROWSLOT_THRESHOLD").get_to(NARROWSLOT_THRESHOLD);
-    }
-    catch (json::exception& e) {
-        LOGD("配置文件解析错误: %s", e.what());
-        return false;
-    }
-    inFile.close();
-    return true;
-}
-
-void cpsd_fusion_process::Slot2Global(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw)
-{
-    float theta = yaw * acos(-1) / 180.;
-
-    float slot_Apt_temp_x = slot.targetSlot.slotCorners.cornerA.x * cos(theta) + slot.targetSlot.slotCorners.cornerA.y * sin(theta) + x;
-    float slot_Apt_temp_y = slot.targetSlot.slotCorners.cornerA.y * cos(theta) - slot.targetSlot.slotCorners.cornerA.x * sin(theta) + y;
-
-    float slot_Bpt_temp_x = slot.targetSlot.slotCorners.cornerB.x * cos(theta) + slot.targetSlot.slotCorners.cornerB.y * sin(theta) + x;
-    float slot_Bpt_temp_y = slot.targetSlot.slotCorners.cornerB.y * cos(theta) - slot.targetSlot.slotCorners.cornerB.x * sin(theta) + y;
-
-    float slot_Cpt_temp_x = slot.targetSlot.slotCorners.cornerC.x * cos(theta) + slot.targetSlot.slotCorners.cornerC.y * sin(theta) + x;
-    float slot_Cpt_temp_y = slot.targetSlot.slotCorners.cornerC.y * cos(theta) - slot.targetSlot.slotCorners.cornerC.x * sin(theta) + y;
-
-    float slot_Dpt_temp_x = slot.targetSlot.slotCorners.cornerD.x * cos(theta) + slot.targetSlot.slotCorners.cornerD.y * sin(theta) + x;
-    float slot_Dpt_temp_y = slot.targetSlot.slotCorners.cornerD.y * cos(theta) - slot.targetSlot.slotCorners.cornerD.x * sin(theta) + y;
-
-    slot.targetSlot.slotCorners.cornerA.x = slot_Apt_temp_x;
-    slot.targetSlot.slotCorners.cornerA.y = slot_Apt_temp_y;
-
-    slot.targetSlot.slotCorners.cornerB.x = slot_Bpt_temp_x;
-    slot.targetSlot.slotCorners.cornerB.y = slot_Bpt_temp_y;
-
-    slot.targetSlot.slotCorners.cornerC.x = slot_Cpt_temp_x;
-    slot.targetSlot.slotCorners.cornerC.y = slot_Cpt_temp_y;
-
-    slot.targetSlot.slotCorners.cornerD.x = slot_Dpt_temp_x;
-    slot.targetSlot.slotCorners.cornerD.y = slot_Dpt_temp_y;
-}
-
-void cpsd_fusion_process::Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw)
-{
-    float theta = yaw * static_cast<float>(M_PI) / 180.0f;
-
-    float tmp_A_x = slot.targetSlot.slotCorners.cornerA.x - x;
-    float tmp_A_y = slot.targetSlot.slotCorners.cornerA.y - y;
-    float tmp_B_x = slot.targetSlot.slotCorners.cornerB.x - x;
-    float tmp_B_y = slot.targetSlot.slotCorners.cornerB.y - y;
-    float tmp_C_x = slot.targetSlot.slotCorners.cornerC.x - x;
-    float tmp_C_y = slot.targetSlot.slotCorners.cornerC.y - y;
-    float tmp_D_x = slot.targetSlot.slotCorners.cornerD.x - x;
-    float tmp_D_y = slot.targetSlot.slotCorners.cornerD.y - y;
-
-    float slot_Apt_temp_x = tmp_A_x * cos(theta) - tmp_A_y * sin(theta);
-    float slot_Apt_temp_y = tmp_A_x * sin(theta) + tmp_A_y * cos(theta);
-
-    float slot_Bpt_temp_x = tmp_B_x * cos(theta) - tmp_B_y * sin(theta);
-    float slot_Bpt_temp_y = tmp_B_x * sin(theta) + tmp_B_y * cos(theta);
-
-    float slot_Cpt_temp_x = tmp_C_x * cos(theta) - tmp_C_y * sin(theta);
-    float slot_Cpt_temp_y = tmp_C_x * sin(theta) + tmp_C_y * cos(theta);
-
-    float slot_Dpt_temp_x = tmp_D_x * cos(theta) - tmp_D_y * sin(theta);
-    float slot_Dpt_temp_y = tmp_D_x * sin(theta) + tmp_D_y * cos(theta);
-
-    slot.targetSlot.slotCorners.cornerA.x = slot_Apt_temp_x;
-    slot.targetSlot.slotCorners.cornerA.y = slot_Apt_temp_y;
-
-    slot.targetSlot.slotCorners.cornerB.x = slot_Bpt_temp_x;
-    slot.targetSlot.slotCorners.cornerB.y = slot_Bpt_temp_y;
-
-    slot.targetSlot.slotCorners.cornerC.x = slot_Cpt_temp_x;
-    slot.targetSlot.slotCorners.cornerC.y = slot_Cpt_temp_y;
-
-    slot.targetSlot.slotCorners.cornerD.x = slot_Dpt_temp_x;
-    slot.targetSlot.slotCorners.cornerD.y = slot_Dpt_temp_y;
-}
-
-POINT_I Local2Global(const POINT_I& pt_local, const float& x, const float& y, const float& yaw)
-{
-    float theta = yaw * acos(-1) / 180.0;
-    POINT_I pt_global;
-    pt_global.x = pt_local.x * cos(theta) + pt_local.y * sin(theta) + x;
-    pt_global.y = pt_local.y * cos(theta) - pt_local.x * sin(theta) + y;
-    return pt_global;
-}
-
-
-int cpsd_fusion_process::HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select)
-{
-    LOGD("[HMIVCUSELECT IN] HMI:%d HMI temp:%d VCU:%d",hmi_select,hmi_temp,vcu_select);
-    //HMI 部分
-    //中间变量保存HMI发送的 [0 - ID - 0]，一秒内发送五次
-    if (hmi_select){
-        hmi_temp = hmi_select;
-    }
-    //VCU 部分，已从GET获取
-    //VCU接收的点选车位 与 HMI接收的点选车位 二选一
-    if (vcu_select != 0 && hmi_temp == 0) {
-        final_select_ID = vcu_select; 
-    } 
-    else if (vcu_select == 0 && hmi_temp != 0) {
-        final_select_ID = hmi_temp;
-    } 
-    else if (vcu_select != 0 && hmi_temp != 0 && (vcu_select == hmi_temp)) {
-        final_select_ID = hmi_temp;
-    }
-    else if (vcu_select == 0 && hmi_temp == 0){
-        final_select_ID = 0;
-    }
-    else {
-        final_select_ID = vcu_select;
-    }
-    //结合HMI和VCU，得到final_select_ID
-    return final_select_ID;
-}
-
-int cpsd_fusion_process::RecommendSelectID(const int &final_select, const int &recommend)
-{
-    if (final_select){
-        return final_select;
-    }
-    else{
-        return recommend;
-    }
-}
-
-int cpsd_fusion_process::IsParkOut(int apastatus)
-{
-    static int parkout_flag_internal = 0;
-
-    if (apastatus == 3) {
-        parkout_flag_internal = 1;
-    } else if (apastatus == 2) {
-        parkout_flag_internal = 0;
-    }
-    return parkout_flag_internal;
-}
-
-int cpsd_fusion_process::IsStill(const Loc::App2emap_DR drpose, Loc::App2emap_DR& previous_drpose)
-{
-    static int no_change_count = 0;
-    float epsilon = 30.0; // 设置阈值，可以根据需要调整
-    bool has_changed = false; // 比较 drpose 和 previous_drpose 是否变化
-    int still_threshold = 5; //静止阈值，连续多少次没有变化算静止
-    LOGD("[STILL] dr: x:%f, y:%f, yaw: %f,previous: x:%f, y:%f, yaw:%f",
-    drpose.x,
-    drpose.y,
-    drpose.canAng,
-    previous_drpose.x,
-    previous_drpose.y,
-    previous_drpose.canAng);
-
-    if (fabs(drpose.x - previous_drpose.x) > epsilon ||
-        fabs(drpose.y - previous_drpose.y) > epsilon ||
-        fabs(drpose.canAng - previous_drpose.canAng) > epsilon)
-    {
-        has_changed = true;
-    }
-    LOGD("[STILL] has_changed:%d",has_changed);
-
-    // 如果没有变化，增加连续无变化计数
-    if (!has_changed)
-    {
-        no_change_count++;
-    }
-    else
-    {
-        no_change_count = 0;  // 有变化时重置计数器
-    }
-    LOGD("[STILL] no_change_count:%d",no_change_count);
-
-    // 如果连续still_threshold次没有变化，则认为是静止状态
-    if (no_change_count >= still_threshold)
-    {
-        previous_drpose = drpose; // 更新 previous_drpose 为当前的 drpose
-        return 1;  // is_Still = 1
-    }
-
-    previous_drpose = drpose; // 更新 previous_drpose 为当前的 drpose
-    return 0;  // is_Still = 0
-}
-
-
 void cpsd_fusion_process::ProcessFarawayFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output)
 {
     LOGD("[VCU NOTRELEASE1 range] FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left: [%f, %f], Right:[%f, %f]",
@@ -693,7 +474,7 @@ void cpsd_fusion_process::ProcessRecommendationLogic(apaSlotInfo& selected_slot_
     // final_ID 已记忆，每次清零全列表，并mark此车位。必须search时打标记
     PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED, final_ID);
     LOGD("After markParkInSlot FUSIONSLOTS:");
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSDConfigUtils::LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
     // 设置 slotSelectedFlag
     int selected_label = -1;
@@ -744,7 +525,7 @@ void cpsd_fusion_process::ProcessNonSearchVCUDisplay(uint64_t current1970_ms)
         // 恢复目标车位标记
         PSD_FusionModuleIFrunable.restoreSelectedSlot(outputSlot_FUSED);
         LOGD("After restoreSelectedSlot FUSIONSLOTS (ParkInSlot REQUIRED):");
-        LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+        PSDConfigUtils::LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
         
         for (auto& psd_m_output : outputSlot_FUSED.slots_in_cur_frame) {
             if (i >= slotlist_size || i >= 50) {
@@ -1156,13 +937,13 @@ void cpsd_fusion_process::ProcessPSD2PlanningTargetSlot(uint64_t current1970_ms,
                     POINT_I ptD = { psd2planning.targetSlot.slotCorners.cornerD.x, psd2planning.targetSlot.slotCorners.cornerD.y };
                     search_target_center.x = (ptA.x + ptB.x + ptC.x + ptD.x) / 4;
                     search_target_center.y = (ptA.y + ptB.y + ptC.y + ptD.y) / 4;
-                    search_target_center_world = Local2Global(search_target_center, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                    search_target_center_world = PSDConfigUtils::Local2Global(search_target_center, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
 
                     // *******************目标车位世界坐标系顺序记忆*******************
-                    world_slot_memory[0] = Local2Global(ptA, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-                    world_slot_memory[1] = Local2Global(ptB, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-                    world_slot_memory[2] = Local2Global(ptC, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-                    world_slot_memory[3] = Local2Global(ptD, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                    world_slot_memory[0] = PSDConfigUtils::Local2Global(ptA, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                    world_slot_memory[1] = PSDConfigUtils::Local2Global(ptB, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                    world_slot_memory[2] = PSDConfigUtils::Local2Global(ptC, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                    world_slot_memory[3] = PSDConfigUtils::Local2Global(ptD, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
                     LOGD("[PSD2PLANNING][UPDATE BEFORE GUIDANCE] world_slot_memory: A(%d,%d), B(%d,%d), C(%d,%d), D(%d,%d)",
                         world_slot_memory[0].x, world_slot_memory[0].y,
                         world_slot_memory[1].x, world_slot_memory[1].y,
@@ -1238,10 +1019,10 @@ void cpsd_fusion_process::ProcessPSD2PlanningTargetSlot(uint64_t current1970_ms,
                 POINT_I ptB = { psd2planning.targetSlot.slotCorners.cornerB.x, psd2planning.targetSlot.slotCorners.cornerB.y };
                 POINT_I ptC = { psd2planning.targetSlot.slotCorners.cornerC.x, psd2planning.targetSlot.slotCorners.cornerC.y };
                 POINT_I ptD = { psd2planning.targetSlot.slotCorners.cornerD.x, psd2planning.targetSlot.slotCorners.cornerD.y };
-                POINT_I A_world = Local2Global(ptA, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-                POINT_I B_world = Local2Global(ptB, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-                POINT_I C_world = Local2Global(ptC, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
-                POINT_I D_world = Local2Global(ptD, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                POINT_I A_world = PSDConfigUtils::Local2Global(ptA, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                POINT_I B_world = PSDConfigUtils::Local2Global(ptB, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                POINT_I C_world = PSDConfigUtils::Local2Global(ptC, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                POINT_I D_world = PSDConfigUtils::Local2Global(ptD, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
                 LOGD("[PSD2PLANNING] TARGET_SLOT_WORLD A(%d,%d), B(%d,%d), C(%d,%d), D(%d,%d)",
                     A_world.x, A_world.y,
                     B_world.x, B_world.y,
@@ -1366,10 +1147,10 @@ void cpsd_fusion_process::ProcessGuidanceTargetSlotUpdate(int& target_slot_fusio
                     POINT_I ptD = { outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x, outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y };
                     new_target_center.x = (ptA.x + ptB.x + ptC.x + ptD.x) / 4;
                     new_target_center.y = (ptA.y + ptB.y + ptC.y + ptD.y) / 4;
-                    new_target_center_world = Local2Global(new_target_center, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                    new_target_center_world = PSDConfigUtils::Local2Global(new_target_center, pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
 
                     // 计算新旧目标车位中心点的距离，如果小于阈值，则更新目标车位
-                    float target_slot_diff = CalcDistance(search_target_center_world, new_target_center_world);
+                    float target_slot_diff = PSDConfigUtils::CalcDistance(search_target_center_world, new_target_center_world);
                     LOGD("[PSD2PLANNING][UPDATE IN GUIDANCE][TARGET_SLOT_CHECK] world center moved: %f,threshold: %f", target_slot_diff, MAX_SLOT_MOVE_DIST_MM);
                     
                     if (target_slot_diff < MAX_SLOT_MOVE_DIST_MM) {
@@ -1377,7 +1158,7 @@ void cpsd_fusion_process::ProcessGuidanceTargetSlotUpdate(int& target_slot_fusio
                         POINT_I cur_local_pts[4] = { ptA, ptB, ptC, ptD };
                         POINT_I cur_world_pts[4];
                         for (int j = 0; j < 4; ++j) {
-                            cur_world_pts[j] = Local2Global(cur_local_pts[j], pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
+                            cur_world_pts[j] = PSDConfigUtils::Local2Global(cur_local_pts[j], pose_globaldata.coord.x, pose_globaldata.coord.y, pose_globaldata.yaw);
                         }
 
                         int matched_idx[4] = { -1, -1, -1, -1 };
@@ -1861,27 +1642,27 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     ProcessMapInfoSlot(latest_map_info, pose_globaldata, outputSlot_VIS, PSD_FusionModuleIFrunable);
 
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
+        PSDConfigUtils::ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
     }
 
     ProcessUssSlots(uss_info, uss_info_restruct, outputSlot_USS, outputSlot_VIS, outputSlot_FUSED, fusionslot);
 
     // outputSlot_FUSED优化：类型修正
     LOGD("Without SlotTypeCorrect FUSIONSLOTS:")
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSDConfigUtils::LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
     PSD_FusionModuleIFrunable.SlotTypeCorrect(outputSlot_FUSED);
     LOGD("After SlotTypeCorrect FUSIONSLOTS:")
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSDConfigUtils::LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
     // outputSlot_FUSED优化：限位块、地锁、其他障碍物
     LOGD("Without StopperLockOBS FUSIONSLOTS:")
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSDConfigUtils::LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
     PSD_FusionModuleIFrunable.StopperLockOBS(obs_info_get,outputSlot_FUSED);
     LOGD("After StopperLockOBS FUSIONSLOTS:")
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSDConfigUtils::LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
+        PSDConfigUtils::ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
         dr_first = true;
         slotlist_size = 0;
     }
@@ -1895,7 +1676,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     // APAStatus == standby/finish/error时，清零车位ID
     // Clear, new
     if (apa_status == 1 || apa_status == 6 || apa_status == 7){
-        ClearSelectRecommendSlot(HMI_temp_ID, HMI_select_ID, VCU_select_ID_ON, final_select_ID, RECOMMEND_ID, final_ID, apa_status);
+        PSDConfigUtils::ClearSelectRecommendSlot(HMI_temp_ID, HMI_select_ID, VCU_select_ID_ON, final_select_ID, RECOMMEND_ID, final_ID, apa_status);
         already_has_recommend_slot = false;
     }
     LOGD("[STATUSSELECT] HMI %d, VCU %d, final select %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);

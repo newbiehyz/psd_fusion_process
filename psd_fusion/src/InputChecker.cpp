@@ -19,10 +19,10 @@ void HandleStateBasedClear(int apa_status) {
         UssIf_stPLVOutputInfo_t uss_info{};
         UssIf_stPLVOutputInfo_t uss_info_restruct{};
 
-        ClearRD(rd_info);
-        ClearDR(dr_pose, pose_globaldata);
-        ClearOBS(obs_info_get);
-        ClearUSS(uss_info, uss_info_restruct);
+        PSDConfigUtils::ClearRD(rd_info);
+        PSDConfigUtils::ClearDR(dr_pose, pose_globaldata);
+        PSDConfigUtils::ClearOBS(obs_info_get);
+        PSDConfigUtils::ClearUSS(uss_info, uss_info_restruct);
         PSD_FusionModuleIFrunable.ClearSlotsMap();
     }
 }
@@ -36,10 +36,10 @@ void HandleSearchStateFirstEnter(int apa_status, bool& has_cleared_once) {
         UssIf_stPLVOutputInfo_t uss_info{};
         UssIf_stPLVOutputInfo_t uss_info_restruct{};
 
-        ClearRD(rd_info);
-        ClearDR(dr_pose, pose_globaldata);
-        ClearOBS(obs_info_get);
-        ClearUSS(uss_info, uss_info_restruct);
+        PSDConfigUtils::ClearRD(rd_info);
+        PSDConfigUtils::ClearDR(dr_pose, pose_globaldata);
+        PSDConfigUtils::ClearOBS(obs_info_get);
+        PSDConfigUtils::ClearUSS(uss_info, uss_info_restruct);
         PSD_FusionModuleIFrunable.ClearSlotsMap();
 
         g_singleframe_locked_slots.clear();

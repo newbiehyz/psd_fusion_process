@@ -57,7 +57,7 @@ void ProcessMapInfoSlot(const Loc::MapInfo& map_info,
     }
 
     LOGD("[APA_SLAM] finish processing slot list");
-    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+    PSDConfigUtils::LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 }
 
 
@@ -78,9 +78,9 @@ void ProcessUssSlots(UssIf_stPLVOutputInfo_t& uss_info,
 
 
     // 统计车位数
-    LogSlotInfo(outputSlot_USS, "ORIGIN USSSLOTS");
+    PSDConfigUtils::LogSlotInfo(outputSlot_USS, "ORIGIN USSSLOTS");
     slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
     LOGD("After VIS/USS Merge FUSIONSLOTS:")
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
-    LogWorldSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSDConfigUtils::LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSDConfigUtils::LogWorldSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 }
