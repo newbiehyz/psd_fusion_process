@@ -107,7 +107,7 @@ tResult cpsd_fusion_process::Init()
 {
     LOGW("PSD Process Start Success!");
     // Load Config
-    if (!LoadFromFile("/app/neo/psd_config.json")) {
+    if (!PSDConfigUtils::LoadFromFile("/app/neo/psd_config.json")) {
         LOGD("Load config failed!");
     }
 
@@ -397,7 +397,7 @@ void cpsd_fusion_process::ProcessRecommendationLogic(apaSlotInfo& selected_slot_
         }
         
         // 推荐车位作为final_ID
-        final_ID = RecommendSelectID(final_select_ID, RECOMMEND_ID);
+        final_ID = PSDSelectionLogic::RecommendSelectID(final_select_ID, RECOMMEND_ID);
     } else if (final_select_ID == 0 && !is_Still) { // 状态2：当没有点选ID且运动，保留RD原状态
         LOGD("RECOMMEND2: not still, NO Recommend!");
         RECOMMEND_ID = 0;
@@ -1670,7 +1670,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     //============================================================Part4 点选目标ID
 
     // VCU,HMI 双终端接收点选的目标车位
-    final_select_ID = HMIVCUSelect(HMI_temp_ID,HMI_select_ID,VCU_select_ID_ON);
+    final_select_ID = PSDSelectionLogic::HMIVCUSelect(HMI_temp_ID,HMI_select_ID,VCU_select_ID_ON,final_select_ID);
     LOGD("[HMIVCUSELECT OUT] final_select_id: %d",final_select_ID);
 
     // APAStatus == standby/finish/error时，清零车位ID

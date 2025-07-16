@@ -12,6 +12,7 @@
 #include "SlotProcessor.h"
 #include "utils.h"
 #include "psd2vcu.h"
+#include "psd_selection_logic.h"
 
 void mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION); 
 int slottype_uss2rd(UssIf_enmSlotType_t uss_type);
@@ -66,14 +67,6 @@ public:
     virtual tResult TimeTrigger_thread_100ms_1() override;
     
 private:
-    bool LoadFromFile(const std::string& filename);
-    void Slot2Global(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw);
-    void Slot2Local(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw);
-    int HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select);
-    int RecommendSelectID(const int &final_select, const int &recommend);
-    int IsParkOut(int apastatus);
-    int IsStill(const Loc::App2emap_DR dr_pose, Loc::App2emap_DR& previous_dr_pose);
-
     void ProcessFarawayFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output);
     void ProcessAngleFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output);
     void ProcessWidthFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output);
