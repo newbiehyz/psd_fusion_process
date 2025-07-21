@@ -336,13 +336,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     // search_interrupt = getInput.search_interrupt; //@TODO
 
     // ============================================================Part2 InputChecker
-    HandleStateBasedClear(apa_status);
-    HandleSearchStateFirstEnter(apa_status, has_cleared_for_SEARCH_once);
+    ClearHistoricalSlots(apa_status);
+    ClearHistoricalSlotsOnceSearch(apa_status, has_cleared_for_SEARCH_once);
     UpdateParkoutAndStill(apa_status, dr_pose, previous_dr_pose, parkout_flag, is_Still);
     if (mirror_fold_flag == 1) {
         HandleMirrorFold(singleframeslots, singleframeslotsID, rd_info);
     }
-    PrintSlotCheckStatus(singleframeslots, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED);
+    CheckSlotStatus(singleframeslots, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED);
 
     // ============================================================Part3 SlotProcessor
     // Yukan: Convert Slot using Mapinfo
@@ -366,6 +366,12 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     }
 
     ProcessUssSlots(uss_info, uss_info_restruct, outputSlot_USS, outputSlot_VIS, outputSlot_FUSED, fusionslot);
+    PSDConfigUtils::LogSlotInfo(outputSlot_USS, "ORIGIN USSSLOTS");
+
+    // outputSlot_FUSED优化：融合后统计车位数
+    slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
+    LOGD("After VIS/USS Merge FUSIONSLOTS:")
+    PSDConfigUtils::LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
     // outputSlot_FUSED优化：类型修正
     LOGD("Without SlotTypeCorrect FUSIONSLOTS:")

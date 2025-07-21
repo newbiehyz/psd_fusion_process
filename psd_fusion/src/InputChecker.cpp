@@ -10,7 +10,7 @@ extern Sfus::FusionSlotInfovector psd2vcu;
 extern StatusDecFusionInput psd2statemachine;
 extern bool target_slot_already_updated_once;
 
-void HandleStateBasedClear(int apa_status) {
+void ClearHistoricalSlots(int apa_status) {
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7) {
         rd::QuadParkingSlots rd_info{};
         Loc::App2emap_DR dr_pose{};
@@ -27,7 +27,7 @@ void HandleStateBasedClear(int apa_status) {
     }
 }
 
-void HandleSearchStateFirstEnter(int apa_status, bool& has_cleared_once) {
+void ClearHistoricalSlotsOnceSearch(int apa_status, bool& has_cleared_once) {
     if (apa_status == 2 && !has_cleared_once) {
         rd::QuadParkingSlots rd_info{};
         Loc::App2emap_DR dr_pose{};
@@ -69,7 +69,7 @@ void UpdateParkoutAndStill(int apa_status, const Loc::App2emap_DR& dr_pose, Loc:
     prev_pose = dr_pose;
 }
 
-void PrintSlotCheckStatus(const std::vector<padVisionSlotCoord>& singleframeslots,
+void CheckSlotStatus(const std::vector<padVisionSlotCoord>& singleframeslots,
                           const apaSlotListInfo& vis, const apaSlotListInfo& uss, const apaSlotListInfo& fused) {
     LOGD("[CHECK SIZE] singleframeslots size: %d", singleframeslots.size());
     LOGD("[CHECK SIZE] vis: %d, uss: %d, fused: %d",

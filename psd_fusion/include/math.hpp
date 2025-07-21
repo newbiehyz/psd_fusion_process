@@ -21,8 +21,6 @@
 // 假设它们在 psd_fusion_process_header.h 或 apa_define.h 中。
 
 namespace math{
-    // --- 只保留函数声明，函数体已移到 math.cpp ---
-
     int CalcDistance(POINT_I a, POINT_I b);
     float CalcDistanceF(POINT_F a, POINT_F b);
     int CalPointAndLineDistance(const POINT_I& point, const POINT_I& pta, const POINT_I& ptb);

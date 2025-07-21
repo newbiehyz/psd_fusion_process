@@ -17,9 +17,6 @@ void ProcessMapInfoSlot(const Loc::MapInfo& map_info,
     Rwb << std::cos(theta), -std::sin(theta),
            std::sin(theta),  std::cos(theta);
 
-    outputSlot_VIS.slots_in_cur_frame.clear();
-    outputSlot_VIS.WorldoutRect.clear();
-
     for (const auto& ps : map_info.ParkingSlot) {
         Eigen::Vector2d c_b(ps.center.x, ps.center.y);
         Eigen::Vector2d lon_dir(ps.longDirection.x, ps.longDirection.y);
