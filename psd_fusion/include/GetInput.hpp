@@ -39,8 +39,7 @@ public:
     void GetAllInput();
 
 
-
-
+public:
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
     std::vector<padVisionSlotCoord> singleframeslots;
@@ -55,11 +54,4 @@ public:
     StatusDecFusionOutput searchpark_info;
     int park_request;
     int search_interrupt;
-
-
-
-
-private:
-
-
 };

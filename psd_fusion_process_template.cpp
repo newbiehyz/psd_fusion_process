@@ -31,7 +31,7 @@ tResult cpsd_fusion_process::Init()
     ipm_camera_id_image.resize(896, std::vector<int>(896, 0));
     load_image_from_csv("/app/neo/ipm_camera_id.csv", ipm_camera_id_image);
 
-    // part1 初始化
+    // 初始化
     static int init_flag = 0;
     if(init_flag == 0){
         //updatevisionslots 初始化
@@ -208,6 +208,7 @@ tResult cpsd_fusion_process::OnHMI_InputInfo(const HMI_InputInfo& userData)
 
 tResult cpsd_fusion_process::OnSelectSlot(const Sfus::SelectSlot& userData)
 {
+    // 接收VCU点选的目标ID
     VCU_select_ID_ON = userData.SelectSlotID;
     LOGD("[SELECTID] OnSelectSlot VCU ID: %d !!!!",VCU_select_ID_ON);
     RETURN_NOERROR;
@@ -220,6 +221,7 @@ tResult cpsd_fusion_process::OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch
 
 tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
 {
+    // 接收DBG点选的目标ID
     HMI_select_ID = userData.SelectSlotID;
     LOGD("[SELECTID] OnSelectSlot2 HMI ID: %d !!!!",HMI_select_ID);
     RETURN_NOERROR;
@@ -301,10 +303,11 @@ tResult cpsd_fusion_process::OnPlan2Psd(const Pla::Plan2Psd& userData)
 
 tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 {
-    // ============================================================Part0 行泊切换
+    // ------------------------------------------------------------
+    // 行泊切换
+    // ------------------------------------------------------------
 	static kbd::sm::StateClient state_client;
     if (state_client.parking_stop()){
-        // 行泊切换清零，输出发送空值
         PSD_FusionModuleIFrunable.ClearSlotsMap();
         g_singleframe_locked_slots.clear();
         target_slot_already_updated_once = false;
@@ -313,14 +316,18 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         RETURN_NOERROR;
     }
 
-    // ============================================================Part1 GetInput
+
+
+    // ------------------------------------------------------------
+    // GetInput
+    // ------------------------------------------------------------
     auto current = std::chrono::system_clock::now(); 
     auto current1970 = current.time_since_epoch();
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count();
     auto start = std::chrono::steady_clock::now();
 
     LOGD("PSD Version: 07221042 emos10.0.1 [LYK] REBUILD");
-    // GET方式获取
+
     GetInput getInput;
     getInput.GetAllInput();
 
@@ -336,16 +343,30 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     static int cached_selected_label = -1; // SEARCH-GUIDANCE切换时固定的目标ID
     // search_interrupt = getInput.search_interrupt; //@TODO
 
-    // ============================================================Part2 InputChecker
+
+
+    // ------------------------------------------------------------
+    // Input Check
+    // ------------------------------------------------------------
     ClearHistoricalSlots(apa_status);
     ClearHistoricalSlotsOnceSearch(apa_status, has_cleared_for_SEARCH_once);
+
+
+
+    // ------------------------------------------------------------
+    // Parkout, Stll and MirrorFold 
+    // ------------------------------------------------------------
     UpdateParkoutAndStill(apa_status, dr_pose, previous_dr_pose, parkout_flag, is_Still);
     if (mirror_fold_flag == 1) {
         HandleMirrorFold(singleframeslots, singleframeslotsID, rd_info);
     }
     CheckSlotStatus(singleframeslots, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED);
 
-    // ============================================================Part3 SlotProcessor
+
+    
+    // ------------------------------------------------------------
+    // Slot Process
+    // ------------------------------------------------------------
     // Yukan: Convert Slot using Mapinfo
     Loc::MapInfo latest_map_info;
     {
@@ -394,7 +415,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         slotlist_size = 0;
     }
 
-    //============================================================Part4 点选目标ID
+
+
+    // ------------------------------------------------------------
+    // Target Slot Selection Logic
+    // ------------------------------------------------------------
     // VCU,HMI 双终端接收点选的目标车位
     final_select_ID = PSDSelectionLogic::HMIVCUSelect(HMI_temp_ID,HMI_select_ID,VCU_select_ID_ON,final_select_ID);
     LOGD("[HMIVCUSELECT OUT] final_select_id: %d",final_select_ID);
@@ -407,7 +432,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     }
     LOGD("[STATUSSELECT] HMI %d, VCU %d, final select %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);
 
-    // ============================================================Part5 输出下游    
+
+
+    // ------------------------------------------------------------
+    // Output
+    // ------------------------------------------------------------  
     //VCU 发送车位列表
     apaSlotInfo selected_slot_in_world;
     ProcessPSD2VCU(apa_status, current1970_ms, selected_slot_in_world, psd2vcu, slotlist_size, is_Still, outputSlot_FUSED, PSD_FusionModuleIFrunable);
