@@ -1,5 +1,4 @@
-#ifndef SLOT_PROCESSOR_H
-#define SLOT_PROCESSOR_H
+#pragma once
 
 #include "psd_fusion_process_header.h"
 #include "psd_fusion_process_template.h"
@@ -21,6 +20,3 @@ void ProcessUssSlots(UssIf_stPLVOutputInfo_t& uss_info,
                      apaSlotListInfo& outputSlot_VIS,
                      apaSlotListInfo& outputSlot_FUSED,
                      slotfusion& fusionslot);
-
-
-#endif

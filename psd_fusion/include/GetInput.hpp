@@ -1,5 +1,4 @@
-#ifndef PARKINGSYSTEM_HPP
-#define PARKINGSYSTEM_HPP
+#pragma once
 
 #include <vector>
 #include "psd_fusion_process_header.h"
@@ -64,5 +63,3 @@ private:
 
 
 };
-
-#endif // PARKINGSYSTEM_HPP

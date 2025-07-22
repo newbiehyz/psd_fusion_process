@@ -1,5 +1,4 @@
-#ifndef CONFIG_MANAGER_H
-#define CONFIG_MANAGER_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -38,5 +37,3 @@ private:
 
     PsdConfig currentConfig;
 };
-
-#endif // CONFIG_MANAGER_H

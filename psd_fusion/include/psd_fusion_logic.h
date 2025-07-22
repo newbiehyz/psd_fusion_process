@@ -1,5 +1,4 @@
-#ifndef PSD_FUSION_LOGIC_H
-#define PSD_FUSION_LOGIC_H
+#pragma once
 
 #include "psd_fusion_process_header.h"
 #include "psd_fusion_process_template.h"
@@ -72,5 +71,3 @@ void ProcessPSD2Perception(uint64_t current1970_ms, int target_slot_fusionSlotTy
 void ProcessPSD2StateMachine(int final_ID, int slotlist_size, int apa_status, StatusDecFusionInput& psd2statemachine, Sfus::Sfsuion2DecPlan& psd2planning, int available_slot_flag_to_statemachine);
 void ProcessPSD2USS(int final_ID);
 void ProcessPSD2Control(int final_ID, int parkout_flag, apaSlotListInfo& outputSlot_FUSED, APAControlBumpInput& psd2control);
-
-#endif // PSD_FUSION_LOGIC_H

@@ -1,5 +1,4 @@
-#ifndef PSD_SELECTION_LOGIC_H
-#define PSD_SELECTION_LOGIC_H
+#pragma once
 
 #include "psd_fusion_process_header.h"
 #include "psd_fusion_process_template.h"
@@ -17,5 +16,3 @@ namespace PSDSelectionLogic {
     // 静止状态判断
     int IsStill(const Loc::App2emap_DR drpose, Loc::App2emap_DR& previous_drpose);
 }
-
-#endif
