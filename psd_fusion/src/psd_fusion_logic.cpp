@@ -5,27 +5,12 @@
 #include <typeinfo>
 #include <float.h>
 #include "math.hpp"
+#include "ConfigManager.h"
 
 // ***************************标定量
 #define VEHICLE_LENGTH 5259.9
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7
 #define MM_TO_M 1000.0
-
-// ***************************配置文件修改的参数
-// 这些全局变量现在在这里定义，并在psd_fusion_logic.h中声明为extern
-bool DEBUG = false;
-bool FARAWAY_FILTER = false; //距离范围限制车位释放功能开关
-float FARAWAY_SLOTS_LEFT[2] = {-99999.0,0};
-float FARAWAY_SLOTS_RIGHT[2] = {0,99999.0};
-float FARAWAY_SLOTS_REAR = -99999.0;
-float FARAWAY_SLOTS_FRONT = 99999.0;
-bool ANGEL_FILTER = false;
-float ANGEL_FILTER_LIMIT = -99999.0;
-bool VCU_TOO_SMALL_FILTER = false;
-float VCU_TOO_SMALL = -99999.0;
-bool PARALLEL_VECTOR_FILTER = false;
-float PARALLEL_VECTOR_LIMIT = -99999.0;
-float NARROWSLOT_THRESHOLD = -99999.0;
 
 // ***************************输入的全局变量
 int apa_status = 0;
@@ -69,11 +54,8 @@ POINT_I new_target_center_world = {0,0}; // 更新的目标车位中心点世界
 const float MAX_SLOT_MOVE_DIST_MM = 1500.0f; // 最大容忍距离
 POINT_I world_slot_memory[4]; // ABCD角点
 
-// IPM相机ID图，这里只是声明，实际加载逻辑需要保留在 Init 中
 std::vector<std::vector<int>> ipm_camera_id_image;
 
-// 将原 cpsd_fusion_process 类的私有成员函数定义复制到这里
-// 并根据需要修改函数签名，传入原来作为成员变量访问的数据
 
 void load_image_from_csv(const std::string& filename, std::vector<std::vector<int>>& image) {
     std::ifstream file(filename);
@@ -101,11 +83,13 @@ void load_image_from_csv(const std::string& filename, std::vector<std::vector<in
 }
 
 void ProcessFarawayFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output) {
+    const PsdConfig& config = ConfigManager::getInstance().getConfig();
     LOGD("[VCU NOTRELEASE1 range] FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left: [%f, %f], Right:[%f, %f]",
-        FARAWAY_FILTER, FARAWAY_SLOTS_REAR, FARAWAY_SLOTS_FRONT,
-        FARAWAY_SLOTS_LEFT[0], FARAWAY_SLOTS_LEFT[1], FARAWAY_SLOTS_RIGHT[0], FARAWAY_SLOTS_RIGHT[1]);
+        config.faraway_filter, config.faraway_slots_rear, config.faraway_slots_front,
+        config.faraway_slots_left[0], config.faraway_slots_left[1],config.faraway_slots_right[0], config.faraway_slots_right[1]);
 
-    if (FARAWAY_FILTER) {
+
+    if (config.faraway_filter) {
         // 车位中心点计算
         float center_x = 0.0f, center_y = 0.0f;
         for (int j = 0; j < 4; ++j) {
@@ -117,12 +101,12 @@ void ProcessFarawayFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const
 
         // 判断中心点是否在矩形范围内
         const float FARAWAY_DEADZONE = 0.1; // 死区（0.2m）
-        float rear_limit = FARAWAY_SLOTS_REAR + FARAWAY_DEADZONE;
-        float front_limit = FARAWAY_SLOTS_FRONT - FARAWAY_DEADZONE;
-        float left1 = FARAWAY_SLOTS_LEFT[0] + FARAWAY_DEADZONE;
-        float left2 = FARAWAY_SLOTS_LEFT[1] - FARAWAY_DEADZONE;
-        float right1 = FARAWAY_SLOTS_RIGHT[0] + FARAWAY_DEADZONE;
-        float right2 = FARAWAY_SLOTS_RIGHT[1] - FARAWAY_DEADZONE;
+        float rear_limit = config.faraway_slots_rear + FARAWAY_DEADZONE;
+        float front_limit = config.faraway_slots_front - FARAWAY_DEADZONE;
+        float left1 = config.faraway_slots_left[0] + FARAWAY_DEADZONE;
+        float left2 = config.faraway_slots_left[1] - FARAWAY_DEADZONE;
+        float right1 = config.faraway_slots_right[0] + FARAWAY_DEADZONE;
+        float right2 = config.faraway_slots_right[1] - FARAWAY_DEADZONE;
 
         bool out_of_x_range = (center_x <= rear_limit || center_x >= front_limit);
         bool out_of_y_range = !((center_y >= left1 && center_y <= left2) ||
@@ -148,9 +132,11 @@ void ProcessFarawayFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const
 }
 
 void ProcessAngleFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output) {
-    LOGD("[VCU NOTRELEASE2 anglelimit] ANGLE_FILTER: %d, ANGEL_FILTER_LIMIT:%f", ANGEL_FILTER, ANGEL_FILTER_LIMIT);
+    const PsdConfig& config = ConfigManager::getInstance().getConfig();
+    LOGD("[VCU NOTRELEASE2 anglelimit] ANGLE_FILTER: %d, ANGEL_FILTER_LIMIT:%f", config.angel_filter, config.angel_filter_limit);
 
-    if (ANGEL_FILTER) {
+
+    if (config.angel_filter) {
         if (slot_output.rectInfo.PStype != 2) {
             float ax = 4.0f, ay = 0.0f; // 向量1 (-4.0)指向(0,0)
             float bx = vcu_data.FusionSlotInfo[index].pt[1].x - vcu_data.FusionSlotInfo[index].pt[0].x;
@@ -169,43 +155,43 @@ void ProcessAngleFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const a
 
                 // 死区（5度）
                 const float ANGEL_DEADZONE = 5.0;
-                if (angle_deg > ANGEL_FILTER_LIMIT + ANGEL_DEADZONE) {
+                if (angle_deg > config.angel_filter_limit + ANGEL_DEADZONE) {
                     vcu_data.FusionSlotInfo[index].slotStatusType = 4;
                 }
-
-                LOGD("[VCU NOTRELEASE2 anglelimit] ID: %d, angle_deg: %.f",
-                    vcu_data.FusionSlotInfo[index].slotLabel, angle_deg);
+                LOGD("[VCU NOTRELEASE2 anglelimit] ID: %d, angle_deg: %.f",vcu_data.FusionSlotInfo[index].slotLabel, angle_deg);
             }
         } else {
-            LOGD("[VCU NOTRELEASE2 anglelimit] ID: %d, DIAGONAL SLOT NO LIMIT.",
-                vcu_data.FusionSlotInfo[index].slotLabel);
+            LOGD("[VCU NOTRELEASE2 anglelimit] ID: %d, DIAGONAL SLOT NO LIMIT.",vcu_data.FusionSlotInfo[index].slotLabel);
         }
     }
 }
 
 void ProcessWidthFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output) {
-    LOGD("[VCU NOTRELEASE3 abnarrow] VCU_TOO_SMALL_FILTER: %d, VCU_TOO_SMALL: %.3f", VCU_TOO_SMALL_FILTER, VCU_TOO_SMALL);
+    const PsdConfig& config = ConfigManager::getInstance().getConfig();
+    LOGD("[VCU NOTRELEASE3 abnarrow] VCU_TOO_SMALL_FILTER: %d, VCU_TOO_SMALL: %.3f", config.vcu_too_small_filter, config.vcu_too_small);
 
-    if (VCU_TOO_SMALL_FILTER) {
+
+    if (config.vcu_too_small_filter) {
         float VCU_AB = sqrt(pow(vcu_data.FusionSlotInfo[index].pt[0].x - vcu_data.FusionSlotInfo[index].pt[1].x, 2) +
                             pow(vcu_data.FusionSlotInfo[index].pt[0].y - vcu_data.FusionSlotInfo[index].pt[1].y, 2));
 
-        // 死区（0.1m）
+        // 死区（0.05m）
         const float TOO_SMALL_DEADZONE = 0.05;
-        if (VCU_AB <= VCU_TOO_SMALL - TOO_SMALL_DEADZONE) {
+        if (VCU_AB <= config.vcu_too_small - TOO_SMALL_DEADZONE) {
             vcu_data.FusionSlotInfo[index].slotStatusType = 4;
         }
-
         LOGD("[VCU NOTRELEASE3 abnarrow] ID: %d, VCU_AB: %.3f, VCU occupied: %d",
             vcu_data.FusionSlotInfo[index].slotLabel, VCU_AB, vcu_data.FusionSlotInfo[index].slotStatusType);
     }
 }
 
 void ProcessParallelFilter(int index, Sfus::FusionSlotInfovector& vcu_data, const apaSlotInfo& slot_output) {
+    const PsdConfig& config = ConfigManager::getInstance().getConfig();
     LOGD("[VCU NOTRELEASE4 parallel] PARALLEL_VECTOR_FILTER: %d, PARALLEL_VECTOR_LIMIT: %f",
-             PARALLEL_VECTOR_FILTER, PARALLEL_VECTOR_LIMIT);
+             config.parallel_vector_filter, config.parallel_vector_limit);
 
-    if (PARALLEL_VECTOR_FILTER) {
+
+    if (config.parallel_vector_filter) {
         if (slot_output.rectInfo.PStype == 1) {
             POINT_F VCU_car_rear_axle_center = { -4.064, 0.0 };
 
@@ -222,11 +208,11 @@ void ProcessParallelFilter(int index, Sfus::FusionSlotInfovector& vcu_data, cons
             // 死区（0.2m）
             const float PARALLEL_VECTOR_DEADZONE = 0.1;
             if (vcu_data.FusionSlotInfo[index].pt[0].y >= 0) { // 右侧
-                if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE) { // -0.8
+                if (vector_carrearaxlecenter2parallelAD <= config.parallel_vector_limit - PARALLEL_VECTOR_DEADZONE) {
                     vcu_data.FusionSlotInfo[index].slotStatusType = 4;
                 }
-            } else {
-                if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE) { // -0.8
+            } else { // 左侧
+                if (vector_carrearaxlecenter2parallelAD >= config.parallel_vector_limit - PARALLEL_VECTOR_DEADZONE) {
                     vcu_data.FusionSlotInfo[index].slotStatusType = 4;
                 }
             }
@@ -811,8 +797,8 @@ void ProcessPSD2Planning(uint64_t current1970_ms, Sfus::Sfsuion2DecPlan& psd2pla
 }
 
 void ProcessPSD2PlanningTargetSlot(uint64_t current1970_ms, int& target_slot_fusionSlotType, int final_ID, int apa_status, int parkout_flag, Sfus::Sfsuion2DecPlan& psd2planning, apaSlotListInfo& outputSlot_FUSED, const padVehiclePose& pose_globaldata, std::vector<std::vector<int>>& ipm_camera_id_image) {
-    //***********************************PLANNING 发送目标车位
-    //check psd output to planning(2 target slot)
+    const PsdConfig& config = ConfigManager::getInstance().getConfig();
+
     //拿到目标车位ID后，发送目标车位信息给planning
     target_slot_fusionSlotType = 0;
 
@@ -885,9 +871,9 @@ void ProcessPSD2PlanningTargetSlot(uint64_t current1970_ms, int& target_slot_fus
                     double AB_dist = sqrt(dx * dx + dy * dy);
                     LOGD("isNarrow: %d, AB_dist: %f", isNarrow, AB_dist);
 
-                    if (AB_dist <= NARROWSLOT_THRESHOLD - 100) {
+                    if (AB_dist <= config.narrowslot_threshold - 100) {
                         isNarrow = true;
-                    } else if (AB_dist > NARROWSLOT_THRESHOLD + 100) {
+                    } else if (AB_dist > config.narrowslot_threshold + 100) {
                         isNarrow = false;
                     }
 
@@ -964,6 +950,8 @@ void ProcessPSD2PlanningTargetSlot(uint64_t current1970_ms, int& target_slot_fus
 
 
 void ProcessGuidanceTargetSlotUpdate(int& target_slot_fusionSlotType, int final_ID, apaSlotListInfo& outputSlot_FUSED, Sfus::Sfsuion2DecPlan& psd2planning, const padVehiclePose& pose_globaldata, std::vector<std::vector<int>>& ipm_camera_id_image) {
+    const PsdConfig& config = ConfigManager::getInstance().getConfig();
+    
     LOGD("[PSD2PLANNING][UPDATE IN GUIDANCE] world_slot_memory: A(%d,%d), B(%d,%d), C(%d,%d), D(%d,%d)",
         world_slot_memory[0].x, world_slot_memory[0].y,
         world_slot_memory[1].x, world_slot_memory[1].y,
@@ -1006,9 +994,9 @@ void ProcessGuidanceTargetSlotUpdate(int& target_slot_fusionSlotType, int final_
                 double AB_dist = sqrt(dx * dx + dy * dy);
                 LOGD("isNarrow: %d, AB_dist: %f", isNarrow, AB_dist);
 
-                if (AB_dist <= NARROWSLOT_THRESHOLD - 100) {
+                if (AB_dist <= config.narrowslot_threshold - 100) {
                     isNarrow = true;
-                } else if (AB_dist > NARROWSLOT_THRESHOLD + 100) {
+                } else if (AB_dist > config.narrowslot_threshold + 100) {
                     isNarrow = false;
                 }
 

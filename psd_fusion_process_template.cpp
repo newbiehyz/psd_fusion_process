@@ -1,6 +1,7 @@
 #include "psd_fusion_process_header.h"
 #include "psd_fusion_process_template.h"
 #include "state_client.hpp"
+#include "ConfigManager.h"
 #include <iostream>
 #include <typeinfo>
 #include <float.h>
@@ -22,7 +23,7 @@ tResult cpsd_fusion_process::Init()
 {
     LOGW("PSD Process Start Success!");
     // Load Config
-    if (!PSDConfigUtils::LoadFromFile("/app/neo/psd_config.json")) {
+    if (!ConfigManager::getInstance().loadFromFile("/app/neo/psd_config.json")) {
         LOGD("Load config failed!");
     }
 

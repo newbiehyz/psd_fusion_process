@@ -1,5 +1,4 @@
 #include "utils.h"
-#include "save_to_json.h"
 
 namespace PSDConfigUtils {
 
@@ -209,48 +208,8 @@ float CalcDistance(const POINT_I& a, const POINT_I& b) {
 }
 
 bool LoadFromFile(const std::string& filename) {
-    std::ifstream inFile(filename);
-    if (!inFile.is_open()) {
-        DEBUG = false;
-        FARAWAY_FILTER = false;
-        LOGD("无法打开配置文件: %s, DEBUG: %d, FARAWAY_FILTER: %d", filename.c_str(), DEBUG, FARAWAY_FILTER);
-        return false;
-    }
-
-    try {
-        json j;
-        inFile >> j;
-
-        // 解析文件路径
-        j.at("debug").at("save_to_json").get_to(DEBUG);
-
-        j.at("calib").at("FARAWAY_FILTER").get_to(FARAWAY_FILTER);
-        auto FARAWAY_SLOTS_LEFT_RANGE = j.at("calib").at("FARAWAY_SLOTS_LEFT");
-        FARAWAY_SLOTS_LEFT[0] = FARAWAY_SLOTS_LEFT_RANGE[0];
-        FARAWAY_SLOTS_LEFT[1] = FARAWAY_SLOTS_LEFT_RANGE[1];
-        auto FARAWAY_SLOTS_RIGHT_RANGE = j.at("calib").at("FARAWAY_SLOTS_RIGHT");
-        FARAWAY_SLOTS_RIGHT[0] = FARAWAY_SLOTS_RIGHT_RANGE[0];
-        FARAWAY_SLOTS_RIGHT[1] = FARAWAY_SLOTS_RIGHT_RANGE[1];
-        j.at("calib").at("FARAWAY_SLOTS_REAR").get_to(FARAWAY_SLOTS_REAR);
-        j.at("calib").at("FARAWAY_SLOTS_FRONT").get_to(FARAWAY_SLOTS_FRONT);
-
-        j.at("calib").at("ANGEL_FILTER").get_to(ANGEL_FILTER);
-        j.at("calib").at("ANGEL_FILTER_LIMIT").get_to(ANGEL_FILTER_LIMIT);
-
-        j.at("calib").at("VCU_TOO_SMALL_FILTER").get_to(VCU_TOO_SMALL_FILTER);
-        j.at("calib").at("VCU_TOO_SMALL").get_to(VCU_TOO_SMALL);
-
-        j.at("calib").at("PARALLEL_VECTOR_FILTER").get_to(PARALLEL_VECTOR_FILTER);
-        j.at("calib").at("PARALLEL_VECTOR_LIMIT").get_to(PARALLEL_VECTOR_LIMIT);
-
-        j.at("calib").at("NARROWSLOT_THRESHOLD").get_to(NARROWSLOT_THRESHOLD);
-    }
-    catch (json::exception& e) {
-        LOGD("配置文件解析错误: %s", e.what());
-        return false;
-    }
-    inFile.close();
-    return true;
+    ConfigManager& configManager = ConfigManager::getInstance(); // Get the singleton instance
+    return configManager.loadFromFile(filename);
 }
 
 void Slot2Global(Sfus::Sfsuion2DecPlan &slot, const float &x, const float &y, const float &yaw) {

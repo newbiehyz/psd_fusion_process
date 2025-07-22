@@ -10,22 +10,7 @@
 #include "utils.h"
 #include "psd_selection_logic.h"
 
-// 声明外部变量 (如果这些变量确实需要在多个文件中共享且为全局变量)
-// 更好的做法是把这些变量封装在一个结构体或类中，并通过参数传递
-extern bool DEBUG;
-extern bool FARAWAY_FILTER;
-extern float FARAWAY_SLOTS_LEFT[2];
-extern float FARAWAY_SLOTS_RIGHT[2];
-extern float FARAWAY_SLOTS_REAR;
-extern float FARAWAY_SLOTS_FRONT;
-extern bool ANGEL_FILTER;
-extern float ANGEL_FILTER_LIMIT;
-extern bool VCU_TOO_SMALL_FILTER;
-extern float VCU_TOO_SMALL;
-extern bool PARALLEL_VECTOR_FILTER;
-extern float PARALLEL_VECTOR_LIMIT;
-extern float NARROWSLOT_THRESHOLD;
-
+// 声明外部变量
 extern int apa_status;
 extern int park_request;
 extern const int search_interrupt;
