@@ -26,21 +26,7 @@ bool GetMatchedDRPose(unsigned long long rd_timestamp, Loc::App2emap_DR& matched
 class GetInput {
 public:
     GetInput();
-
     ~GetInput();
-
-    void GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots);
-    void GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2emap_DR& previous_dr_pose, padVehiclePose& pose_globaldata, bool& is_Still, int& still_count);
-    void GetPerception(Fus::PkEmapObs& obs_info_get);
-    void GetAPAStatus(StatusDecOutput& apastatus_info, int& apa_status);
-    void GetSearchParkStatus(StatusDecFusionOutput& searchpark_info, int& park_request, int& search_interrupt);
-
-    void ClearExistedInput(unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots, padVehiclePose& pose_globaldata, int& apa_status);
-
-    void GetAllInput();
-
-
-
 
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -57,12 +43,15 @@ public:
     int park_request;
     int search_interrupt;
 
+    void GetRDInfo(int& apa_status, rd::QuadParkingSlots& rd_info, unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots);
+    void GetDRInfo(int& apa_status, Loc::App2emap_DR& dr_pose, Loc::App2emap_DR& previous_dr_pose, padVehiclePose& pose_globaldata, bool& is_Still, int& still_count);
+    void GetPerception(Fus::PkEmapObs& obs_info_get);
+    void GetAPAStatus(StatusDecOutput& apastatus_info, int& apa_status);
+    void GetSearchParkStatus(StatusDecFusionOutput& searchpark_info, int& park_request, int& search_interrupt);
+    void GetAllInput();
 
-
-
-private:
-
-
+    void ClearExistedInput(unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots, padVehiclePose& pose_globaldata, int& apa_status);
+    void ClearAllInput();
 };
 
 #endif // PARKINGSYSTEM_HPP

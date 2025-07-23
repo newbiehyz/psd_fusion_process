@@ -330,6 +330,10 @@ void SlotTypeDetermine(apaSlotInfo &slot, int slot_type_AB_thr) {
 
 // 区分 水平 / 垂直斜列
 void PSD_FusionModuleIF::SlotTypeCorrect(apaSlotListInfo &outputSlotVIS) {
+    LOGD("Without SlotTypeCorrect FUSIONSLOTS:")
+    LogSlotInfo(outputSlotVIS, "FUSIONSLOTS");
+
+
     int slot_type_AB_thr = 4500 * 4500;
 
     for (size_t i = 0; i < outputSlotVIS.slots_in_cur_frame.size(); ++i) {
@@ -339,10 +343,15 @@ void PSD_FusionModuleIF::SlotTypeCorrect(apaSlotListInfo &outputSlotVIS) {
     for (size_t i = 0; i < outputSlotVIS.WorldoutRect.size(); ++i) {
         SlotTypeDetermine(outputSlotVIS.WorldoutRect[i], slot_type_AB_thr);
     }
+
+
+    LOGD("After SlotTypeCorrect FUSIONSLOTS:")
 }
 
 
 void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS) {
+    LOGD("Without StopperLockOBS FUSIONSLOTS:")
+    LogSlotInfo(outputSlotVIS, "FUSIONSLOTS");
     for (auto &obs : empobs.pkEmapObs) {
         if (obs.obsTyp == Fus::OBS_WHEELSTOP){
             LOGD("Processing Stopper obsID: %d", obs.obsID);
@@ -672,6 +681,9 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
             LOGD("Updated iSodInSlot: %d", outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType);
         }
     }
+
+
+    LOGD("After StopperLockOBS FUSIONSLOTS:")
 }
 
 

@@ -623,101 +623,47 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         RETURN_NOERROR;
     }
 
-
-
-    // ============================================================Part1 初始化、获取输入
-
     auto current = std::chrono::system_clock::now(); 
     auto current1970 = current.time_since_epoch();
-    auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
-    auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
+    auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count();
+    auto start = std::chrono::steady_clock::now(); // 计算TIMECOST
 
     LOGD("PSD Version: 07171125 emos10.0.1 [LYK]: 0717 release add dignoal slot");
-    // GET方式获取
-    rd::QuadParkingSlots rd_info;
-    unsigned long long singleframeslotsID;
-    std::vector<padVisionSlotCoord> singleframeslots;
-    Loc::App2emap_DR dr_pose;
-    Loc::App2emap_DR matched_dr_pose; //延时DR
-    padVehiclePose pose_globaldata;
-    Fus::PkEmapObs obs_info_get;
-    UssIf_stPLVOutputInfo_t uss_info;
-    auto uss_info_restruct = uss_info;
-    StatusDecOutput statemachine_info;
 
-    GetInput getInput;
-    getInput.GetAllInput();
 
-    rd_info = getInput.rd_info;
-    singleframeslotsID = getInput.singleframeslotsID;
-    singleframeslots = getInput.singleframeslots;
-    dr_pose = getInput.dr_pose;
-    pose_globaldata = getInput.pose_globaldata;
-    obs_info_get = getInput.obs_info_get;
-    apa_status = getInput.apa_status;
+    // ============================================================Part1 GET获取输入
+    GetInput inputData;
+    inputData.GetAllInput();
+
+    auto& rd_info = inputData.rd_info;
+    auto& singleframeslotsID = inputData.singleframeslotsID;
+    auto& singleframeslots = inputData.singleframeslots;
+    auto& dr_pose = inputData.dr_pose;
+    auto& pose_globaldata = inputData.pose_globaldata;
+    auto& obs_info_get = inputData.obs_info_get;
+    apa_status = inputData.apa_status;
+
     static bool has_cleared_for_SEARCH_once = false; //是否已经保护清零（进入SEARCH时清零一次）
-    static int cached_selected_label = -1; // SEARCH-GUIDANCE切换时固定的目标ID
-
-
-
-
 
 
 
     // ============================================================Part2 校验输入
-
-    //------------------------------------------
-    // 根据状态机清空车位
-    if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){ //正常清零
-        ClearRD(rd_info);
-        ClearDR(dr_pose,pose_globaldata);
-        ClearOBS(obs_info_get);
-        ClearUSS(uss_info,uss_info_restruct);
-        PSD_FusionModuleIFrunable.ClearSlotsMap();
-        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
+    if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
+        inputData.ClearAllInput();
         has_cleared_for_SEARCH_once = false; //flag重置
     }
     else if (apa_status == 2 && !has_cleared_for_SEARCH_once){ //第一次进search清零
-        ClearRD(rd_info);
-        ClearDR(dr_pose,pose_globaldata);
-        ClearOBS(obs_info_get);
-        ClearUSS(uss_info,uss_info_restruct);
-        PSD_FusionModuleIFrunable.ClearSlotsMap();
-        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
+        inputData.ClearAllInput();
+        has_cleared_for_SEARCH_once = true;
+        target_slot_already_updated_once = false;
         // 第一次清零，发送空值
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
         EMC_psd_fusion_process_SetFieldFusionSlotInfovector(psd2vcu);
         memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
         S2S_MCore_Bridge_SetSigStatusDecFusionInput(&psd2statemachine);
-        has_cleared_for_SEARCH_once = true;
-        target_slot_already_updated_once = false;
     }
 
-    parkout_flag = IsParkOut(apa_status);
-    LOGD("[PARKOUT] flag: %d", parkout_flag);
-    is_Still = IsStill(dr_pose,previous_dr_pose);
-    LOGD("[STILL] is Still: %d", is_Still);
-
-    //------------------------------------------
-    // 折叠后视镜，清空单帧
-    LOGD("[MIRRORFOLD] Flag: %d, singleframeslots.size: %d",mirror_fold_flag,singleframeslots.size());
-    if (mirror_fold_flag == 1){
-        rd_info.frameTimeStampNs = 0;
-        rd_info.quadParkingSlotList.clear();
-        singleframeslots.clear();
-        singleframeslotsID = 0;
-    }
-
-    //------------------------------------------
-    // check
-    LOGD("[CHECK SIZE] CHECK singleframeslots size: %d",singleframeslots.size());
-    LOGD("[CHECK SIZE] before update, vis: %d, uss: %d, fused: %d",outputSlot_VIS.slots_in_cur_frame.size()
-                                                ,outputSlot_USS.slots_in_cur_frame.size()
-                                                ,outputSlot_FUSED.slots_in_cur_frame.size());
-
-
-
-
+    
 
 
     // ============================================================Part3 算法
@@ -800,84 +746,51 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LOGD("[APA_SLAM] finish processing slot list");
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
-
-
-    if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
-    }
-
-
     //------------------------------------------
     // get USS
+    UssIf_stPLVOutputInfo_t uss_info;
+    auto uss_info_restruct = uss_info;
     S2S_MCore_Bridge_GetSigUssIf_stPLVOutputInfo(&uss_info);
     fusionslot.fillVisonstruct(uss_info, outputSlot_USS);
     fusionslot.clearInvalidUSSslots(outputSlot_USS);
     fusionslot.postprocessUSSslots(uss_info_restruct);
     fusionslot.mergeSlotLists(outputSlot_USS, outputSlot_VIS, outputSlot_FUSED);
 
-    //------------------------------------------
-    // outputSlot_FUSED优化：统计车位数
-    // outputSlot_FUSED = outputSlot_VIS;
-    LogSlotInfo(outputSlot_USS, "ORIGIN USSSLOTS");
-    slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
-    LOGD("After VIS/USS Merge FUSIONSLOTS:")
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
-    LogWorldSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
 
 
-    // outputSlot_FUSED优化：类型修正
-    LOGD("Without SlotTypeCorrect FUSIONSLOTS:")
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+
+    //============================================================Part4 算法处理
+    // outputSlot_FUSED：类型修正
     PSD_FusionModuleIFrunable.SlotTypeCorrect(outputSlot_FUSED);
-    LOGD("After SlotTypeCorrect FUSIONSLOTS:")
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
-
-    //------------------------------------------
-    // outputSlot_FUSED优化：限位块、地锁、其他障碍物
-    LOGD("Without StopperLockOBS FUSIONSLOTS:")
-    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    // outputSlot_FUSED：限位块、地锁、其他障碍物
     PSD_FusionModuleIFrunable.StopperLockOBS(obs_info_get,outputSlot_FUSED);
-    LOGD("After StopperLockOBS FUSIONSLOTS:")
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
-
-
-    if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
-        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
-        dr_first = true;
-        slotlist_size = 0;
-    }
-
-
-
-
-
-
-    //============================================================Part4 点选目标ID
-
-    // VCU,HMI 双终端接收点选的目标车位
+    // VCU,HMI双终端接收点选的目标车位
     final_select_ID = HMIVCUSelect(HMI_temp_ID,HMI_select_ID,VCU_select_ID_ON);
     LOGD("[HMIVCUSELECT OUT] final_select_id: %d",final_select_ID);
-
-
-    // APAStatus == standby/finish/error时，清零车位ID
-    // Clear, new
-    if (apa_status == 1 || apa_status == 6 || apa_status == 7){
-        ClearSelectRecommendSlot(HMI_temp_ID, HMI_select_ID, VCU_select_ID_ON, final_select_ID, RECOMMEND_ID, final_ID, apa_status);
-        already_has_recommend_slot = false;
-    }
     LOGD("[STATUSSELECT] HMI %d, VCU %d, final select %d",HMI_temp_ID,VCU_select_ID_ON,final_select_ID);
+    // 泊出判断
+    parkout_flag = IsParkOut(apa_status);
+    LOGD("[PARKOUT] flag: %d", parkout_flag);
+    // 静止判断
+    is_Still = IsStill(dr_pose,previous_dr_pose);
+    LOGD("[STILL] is Still: %d", is_Still);
+    // 车位数统计
+    slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
+    LOGD("[SLOTLISTSIZE] slotlist_size: %d", slotlist_size);
 
+    // outputSlot_FUSED：状态机清零
+    if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
+        ClearParkingSlots(singleframeslots, singleframeslotsID, outputSlot_VIS, outputSlot_USS, outputSlot_FUSED, parkout_flag);
+        ClearSelectRecommendSlot(HMI_temp_ID, HMI_select_ID, VCU_select_ID_ON, final_select_ID, RECOMMEND_ID, final_ID, apa_status);
+        already_has_recommend_slot = false;    
+    }
 
-
-
-
-
-
-
-    // ============================================================Part5 输出下游
+    // ============================================================Part6 输出下游
 
     //------------------------------------------
     //目标车位

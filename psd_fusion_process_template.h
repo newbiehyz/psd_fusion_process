@@ -74,7 +74,6 @@ public:
     apaSlotListInfo outputSlot_USS;
     PSD_FusionModuleIF PSD_FusionModuleIFrunable;
     int slotlist_size;
-    bool dr_first = true;
     int dr_cul_x = 0;
     int dr_cul_y = 0;
     float dr_cul_theta = 0.0;

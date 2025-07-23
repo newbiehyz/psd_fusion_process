@@ -176,6 +176,23 @@ void GetInput::GetSearchParkStatus(StatusDecFusionOutput& searchpark_info, int& 
     search_interrupt = searchpark_info.aps_apaSrchInterupt;
 }
 
+void GetInput::GetAllInput() {
+    GetAPAStatus(apastatus_info, apa_status);
+    GetRDInfo(apa_status, rd_info, singleframeslotsID, singleframeslots);
+    GetDRInfo(apa_status, dr_pose, previous_dr_pose, pose_globaldata, is_Still, still_count);
+    GetPerception(obs_info_get);
+    GetSearchParkStatus(searchpark_info, park_request, search_interrupt);
+    ClearExistedInput(singleframeslotsID, singleframeslots, pose_globaldata, apa_status);
+}
+
+void GetInput::ClearAllInput() {
+    rd_info = rd::QuadParkingSlots{};
+    dr_pose = Loc::App2emap_DR{};       
+    pose_globaldata = padVehiclePose{};  
+    obs_info_get = Fus::PkEmapObs{};
+}
+
+
 
 void GetInput::ClearExistedInput(unsigned long long& singleframeslotsID, std::vector<padVisionSlotCoord>& singleframeslots, padVehiclePose& pose_globaldata, int& apa_status) {
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7) {
@@ -190,11 +207,3 @@ void GetInput::ClearExistedInput(unsigned long long& singleframeslotsID, std::ve
 
 //@TODO GET USS
 
-void GetInput::GetAllInput() {
-    GetAPAStatus(apastatus_info, apa_status);
-    GetRDInfo(apa_status, rd_info, singleframeslotsID, singleframeslots);
-    GetDRInfo(apa_status, dr_pose, previous_dr_pose, pose_globaldata, is_Still, still_count);
-    GetPerception(obs_info_get);
-    GetSearchParkStatus(searchpark_info, park_request, search_interrupt);
-    ClearExistedInput(singleframeslotsID, singleframeslots, pose_globaldata, apa_status);
-}

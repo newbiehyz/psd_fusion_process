@@ -22,6 +22,7 @@ void ClearUSS(UssIf_stPLVOutputInfo_t& uss_info, UssIf_stPLVOutputInfo_t& uss_re
     LOGD("CLEAR uss_info");
 }
 
+
 void ClearParkingSlots(std::vector<padVisionSlotCoord>& singleframeslots, unsigned long long& singleframeslotsID, apaSlotListInfo& outputSlot_VIS, apaSlotListInfo& outputSlot_USS, apaSlotListInfo& outputSlot_FUSED, int& parkout_flag) {
     singleframeslots.clear();
     singleframeslotsID = 0;
@@ -31,6 +32,7 @@ void ClearParkingSlots(std::vector<padVisionSlotCoord>& singleframeslots, unsign
     parkout_flag = 0;
     LOGD("CLEAR singleframeslots, size: %d, parkout_flag = %d", singleframeslots.size(), parkout_flag);
 }
+
 
 bool CheckTimeSync(uint64_t current1970_ms, uint64_t rd_timestamp, uint64_t dr_timestamp) {
     if (std::llabs(current1970_ms - rd_timestamp) > 1500 || std::llabs(current1970_ms - dr_timestamp) > 1500) {

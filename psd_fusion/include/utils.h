@@ -25,6 +25,19 @@ void ClearParkingSlots(std::vector<padVisionSlotCoord>& singleframeslots,
                        apaSlotListInfo& outputSlot_FUSED, 
                        int& parkout_flag);
 
+void ClearAllData(rd::QuadParkingSlots& rd_info,
+                  Loc::App2emap_DR& dr_pose,
+                  padVehiclePose& pose_globaldata,
+                  Fus::PkEmapObs& obs_info_get,
+                  UssIf_stPLVOutputInfo_t& uss_info,
+                  UssIf_stPLVOutputInfo_t& uss_restruct,
+                  std::vector<padVisionSlotCoord>& singleframeslots,
+                  unsigned long long& singleframeslotsID,
+                  apaSlotListInfo& outputSlot_VIS,
+                  apaSlotListInfo& outputSlot_USS,
+                  apaSlotListInfo& outputSlot_FUSED,
+                  int& parkout_flag);
+
 void LogSlotInfo(const apaSlotListInfo& slots, const std::string& slotType);
 
 void LogWorldSlotInfo(const apaSlotListInfo& slots, const std::string& slotType);

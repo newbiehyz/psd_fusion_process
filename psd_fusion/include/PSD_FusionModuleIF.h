@@ -41,6 +41,7 @@
 #include "kd_tree.hpp"
 #include "Kalman_filter.h"
 #include <unordered_map>
+#include "utils.h"
 
 /**
  * PSD_FusionModuleIF
