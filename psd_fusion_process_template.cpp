@@ -13,69 +13,6 @@
 
 using json = nlohmann::json;
 
-
-// // ***************************标定量
-// #define VEHICLE_LENGTH 5259.9 
-// #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7
-// #define MM_TO_M 1000.0
-
-// // ***************************配置文件修改的参数(@TODO：从配置文件读取后转成const)
-
-// bool FARAWAY_FILTER = false; //距离范围限制车位释放功能开关
-// float FARAWAY_SLOTS_LEFT[2] = {-99999.0,0}; 
-// float FARAWAY_SLOTS_RIGHT[2] = {0,99999.0};
-// float FARAWAY_SLOTS_REAR = -99999.0;
-// float FARAWAY_SLOTS_FRONT = 99999.0;
-// bool ANGEL_FILTER = false;
-// float ANGEL_FILTER_LIMIT = -99999.0;
-// bool VCU_TOO_SMALL_FILTER = false;
-// float VCU_TOO_SMALL = -99999.0;
-// bool PARALLEL_VECTOR_FILTER = false;
-// float PARALLEL_VECTOR_LIMIT = -99999.0;
-// float NARROWSLOT_THRESHOLD = -99999.0;
-
-
-// // ***************************输入的全局变量，用于ON方式获取
-// // 输入的全局变量，用于GET方式获取
-// int apa_status = 0;
-// int park_request = 0;
-// const int search_interrupt = 0; //@TODO VC7 RELEASE
-// int is_Still;
-// Loc::App2emap_DR previous_dr_pose;
-
-
-
-
-// int HMI_select_ID = 0; //HMI只发1s。HMI_select是HMI发的ID，
-// int HMI_temp_ID = 0;  //HMI_temp_ID是存下来的ID
-// int VCU_select_ID_ON = 0; //用ON获取的VCU发送的ID
-// int RECOMMEND_ID = 0; //推荐车位的ID（类似于已点击，点泊车立即泊车）
-// int final_select_ID = 0; //VCU和HMI最终统一的ID
-// int final_ID = 0; //结合选择、推荐后的最终ID
-// bool recommend_exist = false; //推荐车位是否已存在
-// bool already_has_recommend_slot = false;
-
-// int available_slot_flag_to_statemachine = 0; //可用车位数量flag
-// bool isNarrow = false; // 是否为窄车位
-
-
-// int parkout_flag = 0; //当前是否为泊出
-// int mirror_fold_flag_ahead = 0; // 从planning拿的原始折叠flag（存在提前）
-// int mirror_fold_flag = 0; //后视镜是否被折叠（准确值）
-// static bool target_slot_already_updated_once = false; //目标车位已经被更新过一次
-// bool target_slot_in_range = false; //目标车位是否在矩形范围内
-// Sfus::SfusionSlotType slot_type_before_update;
-// POINT_I search_target_center = {0, 0}; // 第一次的目标车位中心点世界坐标
-// POINT_I search_target_center_world = {0, 0}; // 第一次的目标车位中心点世界坐标（用于计算）
-// POINT_I new_target_center = {0, 0}; // 更新的目标车位中心点世界坐标
-// POINT_I new_target_center_world = {0,0}; // 更新的目标车位中心点世界坐标（用于计算）
-// const float MAX_SLOT_MOVE_DIST_MM = 1500.0f; // 最大容忍距离
-
-// POINT_I world_slot_memory[4]; // ABCD角点
-
-
-
-
 // ***************************输出的全局变量
 slotfusion fusionslot;
 StatusDecFusionInput psd2statemachine;
@@ -711,7 +648,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     //============================================================Part4 算法处理
     auto currentState = configManager.getGlobalState();
-    
+
     // outputSlot_FUSED：类型修正
     PSD_FusionModuleIFrunable.SlotTypeCorrect(outputSlot_FUSED);
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
