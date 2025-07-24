@@ -70,7 +70,6 @@ using namespace IOU;
 #define SLANT 2
 #define KF true
 
-extern int final_ID; 
 
 bool PSD_FusionModuleIF::Initialize()
 {
@@ -349,7 +348,7 @@ void PSD_FusionModuleIF::SlotTypeCorrect(apaSlotListInfo &outputSlotVIS) {
 }
 
 
-void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS) {
+void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS, const int final_ID) {
     LOGD("Without StopperLockOBS FUSIONSLOTS:")
     LogSlotInfo(outputSlotVIS, "FUSIONSLOTS");
     for (auto &obs : empobs.pkEmapObs) {

@@ -118,7 +118,7 @@ public:
     
 
     void SlotTypeCorrect(apaSlotListInfo &outputSlotVIS);
-	void StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS);
+	void StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotListInfo &outputSlotVIS, const int final_ID);
     void removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED);
     void markNotToReleaseSlot(apaSlotListInfo& outputSlotFUSED, double ABThreshold, double originDistThreshold);
     void slotinframe2worldoutrect(apaSlotInfo& slot, const float& car_x, const float& car_y, const float& car_yaw_deg);

@@ -6,6 +6,7 @@
 #include "apa_define.h"
 #include "fusion.h"
 #include "PSD_FusionModuleIF.h"
+#include "PSDConfigManager.h"
 
 void mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION); 
 int slottype_uss2rd(UssIf_enmSlotType_t uss_type);
@@ -60,7 +61,6 @@ public:
     virtual tResult TimeTrigger_thread_100ms_1() override;
     
 private:
-    bool LoadFromFile(const std::string& filename);
     int HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select);
     int RecommendSelectID(const int &final_select, const int &recommend);
     int IsParkOut(int apastatus);
