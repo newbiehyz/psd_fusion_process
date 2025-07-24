@@ -206,3 +206,4 @@ float CalcDistance(const POINT_I& a, const POINT_I& b) {
     float dy = static_cast<float>(a.y - b.y);
     return std::sqrt(dx * dx + dy * dy);
 }
+
