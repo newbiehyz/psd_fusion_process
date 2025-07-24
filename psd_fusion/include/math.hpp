@@ -9,19 +9,19 @@
 #define VEHICLE_LENGTH 5259.9
 #define REAR_AXLE_CENTER_VEHICLE_REAR 1136.7
 namespace math{
-    int CalcDistance(POINT_I a, POINT_I b)
+    inline int CalcDistance(POINT_I a, POINT_I b)
     {
         float dis = sqrt((a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y));
         return dis;
     }
 
-    float CalcDistanceF(POINT_F a, POINT_F b)
+    inline float CalcDistanceF(POINT_F a, POINT_F b)
     {
         float dis = sqrt((a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y));
         return dis;
     }
 
-    int CalPointAndLineDistance(const POINT_I& point, const POINT_I& pta, const POINT_I& ptb)
+    inline int CalPointAndLineDistance(const POINT_I& point, const POINT_I& pta, const POINT_I& ptb)
     {
         float threshold = 6000; // in mm
         if((point.x != INVALID_VALUE) && (point.y != INVALID_VALUE) && 
@@ -33,11 +33,11 @@ namespace math{
         return -1;
     }
 
-    bool CompareDistance(const std::pair<Sfus::FusionSlotInfo, float>& p1, const std::pair<Sfus::FusionSlotInfo, float>& p2){
+    inline bool CompareDistance(const std::pair<Sfus::FusionSlotInfo, float>& p1, const std::pair<Sfus::FusionSlotInfo, float>& p2){
         return p1.second < p2.second;
     }
 
-    std::vector<Sfus::FusionSlotInfo> findClosesParkingSpots(const POINT_F& car_position, const std::vector<Sfus::FusionSlotInfo>& parking_spots, int num_closest){
+    inline std::vector<Sfus::FusionSlotInfo> findClosesParkingSpots(const POINT_F& car_position, const std::vector<Sfus::FusionSlotInfo>& parking_spots, int num_closest){
         
         std::vector<std::pair<Sfus::FusionSlotInfo, float>> distances;
 
@@ -106,7 +106,7 @@ namespace math{
         return closest_spots;
     }
 
-    POINT_F coordConvert_car_center(const POINT_F& slot)
+    inline POINT_F coordConvert_car_center(const POINT_F& slot)
     {
         POINT_F grand;
 
@@ -121,7 +121,7 @@ namespace math{
         return grand;
     }
 
-    POINT_I coordConvert_car_center_to_pixel(const POINT_I& car_center)
+    inline POINT_I coordConvert_car_center_to_pixel(const POINT_I& car_center)
     {
         POINT_I pixel;
 
@@ -139,7 +139,7 @@ namespace math{
     }
 
 
-    apaSlotListInfo ConvertSingeleframe2Local(const std::vector<padVisionSlotCoord> &singleframeslot){
+    inline apaSlotListInfo ConvertSingeleframe2Local(const std::vector<padVisionSlotCoord> &singleframeslot){
         apaSlotListInfo local_slots;
         apaSlotInfo rect_local;
         int singleframe_size = singleframeslot.size();
@@ -168,15 +168,6 @@ namespace math{
             rect_local.rectInfo.pt[2].y = coordConvert_car_center(slot_c_pt).y;
             rect_local.rectInfo.pt[3].x = coordConvert_car_center(slot_d_pt).x;
             rect_local.rectInfo.pt[3].y = coordConvert_car_center(slot_d_pt).y;
-            // // 0428 origin
-            // rect_local.rectInfo.pt[0].x = coordConvert_car_center(slot_a_pt).x;
-            // rect_local.rectInfo.pt[0].y = coordConvert_car_center(slot_a_pt).y;
-            // rect_local.rectInfo.pt[1].x = coordConvert_car_center(slot_b_pt).x;
-            // rect_local.rectInfo.pt[1].y = coordConvert_car_center(slot_b_pt).y;
-            // rect_local.rectInfo.pt[2].x = coordConvert_car_center(slot_c_pt).x;
-            // rect_local.rectInfo.pt[2].y = coordConvert_car_center(slot_c_pt).y;
-            // rect_local.rectInfo.pt[3].x = coordConvert_car_center(slot_d_pt).x;
-            // rect_local.rectInfo.pt[3].y = coordConvert_car_center(slot_d_pt).y;
 
             rect_local.rectInfo.PStype = singleframeslot[icnt].bayType;
 
@@ -185,7 +176,7 @@ namespace math{
         return local_slots;
     }
 
-    bool isNeedSingleframe2Update(apaSlotInfo slot_list_a, apaSlotInfo slot_list_b){
+    inline bool isNeedSingleframe2Update(apaSlotInfo slot_list_a, apaSlotInfo slot_list_b){
         // 中心点x计算
         int center_x = 0;
         for (int i = 0; i < 4; ++i) {
@@ -227,36 +218,7 @@ namespace math{
         return ((distance1 + distance2) / 2 < 800);
     }
 
-
-    // // 0417 before optimization, original
-    // bool isNeedSingleframe2Update(apaSlotInfo slot_list_a, apaSlotInfo slot_list_b){
-    //     POINT_I slot_a, slot_b, single_slot_a, single_slot_b;
-
-    //     slot_a.x = slot_list_a.rectInfo.pt[0].x;
-    //     slot_a.y = slot_list_a.rectInfo.pt[0].y;
-    //     slot_b.x = slot_list_a.rectInfo.pt[1].x;
-    //     slot_b.y = slot_list_a.rectInfo.pt[1].y;
-
-    //     single_slot_a.x = slot_list_b.rectInfo.pt[0].x;
-    //     single_slot_a.y = slot_list_b.rectInfo.pt[0].y;
-    //     single_slot_b.x = slot_list_b.rectInfo.pt[1].x;
-    //     single_slot_b.y = slot_list_b.rectInfo.pt[1].y;
-    //     LOGD("single_frame slot compare: outputSlot_FUSED: (%d, %d), (%d, %d)",slot_a.x,slot_a.y,slot_b.x,slot_b.y);
-    //     LOGD("single_frame slot compare: singleframe_local: (%d, %d), (%d, %d)",single_slot_a.x,single_slot_a.y,single_slot_b.x,single_slot_b.y);
-
-    //     int threadhole_a = CalcDistance(slot_a, single_slot_a);
-    //     int threadhole_b = CalcDistance(slot_b, single_slot_b);
-    //     LOGD("single_frame slot compare: threadhole_a: %d, threadhole_b: %d",threadhole_a, threadhole_b);
-
-    //     // same slot
-    //     if ((threadhole_a + threadhole_b) / 2 < 800){
-    //         return true;
-    //     }else{
-    //         return false;
-    //     }
-    // }
-
-    void adjustOutputSlotRectOrder(apaSlotListInfo& slot_list_info)
+    inline void adjustOutputSlotRectOrder(apaSlotListInfo& slot_list_info)
     {
         for (auto& slot : slot_list_info.slots_in_cur_frame) {
             // 将 rectInfo 的 4 个点转换为 Eigen::Vector3f

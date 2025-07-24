@@ -7,6 +7,7 @@
 #include "fusion.h"
 #include "PSD_FusionModuleIF.h"
 #include "PSDConfigManager.h"
+#include "PSDOutputManager.h"
 
 void mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION); 
 int slottype_uss2rd(UssIf_enmSlotType_t uss_type);
@@ -80,6 +81,10 @@ public:
 
     std::mutex _dr_mutex;
     std::mutex _map_mutex;
+
+
+private:
+    PSDOutputManager outputManager_;
     
 };
 
