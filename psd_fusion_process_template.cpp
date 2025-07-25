@@ -33,29 +33,6 @@ cpsd_fusion_process::~cpsd_fusion_process()
 
 }
 
-void load_image_from_csv(const std::string& filename, std::vector<std::vector<int>>& image) {
-    std::ifstream file(filename);
-    std::string line;
-    int row = 0;
-    
-    if (file.is_open()) {
-        while (getline(file, line) && row < image.size()) {
-            std::stringstream ss(line);
-            std::string value;
-            int col = 0;
-            while (getline(ss, value, ',')) {
-                image[row][col] = stoi(value); // 将字符串转换为整数
-                ++col;
-            }
-            ++row;
-        }
-        file.close();
-        LOGD("Load ipm camera id image success!");
-    } else {
-        LOGE("Load ipm camera id image false!");
-    }
-}
-
 tResult cpsd_fusion_process::Init()
 {
     LOGW("PSD Process Start Success!");
@@ -67,9 +44,11 @@ tResult cpsd_fusion_process::Init()
         LOGD("Load config failed!");
     }
 
-    // 读取ipm相机id图
+    // 使用重构后的函数读取ipm相机id图
     ipm_camera_id_image.resize(896, std::vector<int>(896, 0));
-    load_image_from_csv("/app/neo/ipm_camera_id.csv", ipm_camera_id_image);
+    if (!PSDInputManager::loadIPMCameraIdFromCSV("/app/neo/ipm_camera_id.csv", ipm_camera_id_image)) {
+        LOGW("Failed to load IPM camera ID image, using default values");
+    }
 
     static int init_flag = 0;
     if(init_flag == 0){
@@ -116,131 +95,6 @@ tResult cpsd_fusion_process::Start()
 tResult cpsd_fusion_process::Stop()
 {
     RETURN_NOERROR;
-}
-
-int cpsd_fusion_process::HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select)
-{
-    auto& configManager = PSDConfigManager::getInstance();
-    
-    LOGD("[HMIVCUSELECT IN] HMI:%d HMI temp:%d VCU:%d", hmi_select, hmi_temp, vcu_select);
-
-    //HMI 部分
-    //中间变量保存HMI发送的 [0 - ID - 0]，一秒内发送五次
-    if (hmi_select) {
-        hmi_temp = hmi_select;
-        configManager.setHMISelectID(hmi_select);
-    }
-    
-    //VCU 部分，已从GET获取
-    if (vcu_select != 0) {
-        configManager.setVCUSelectID(vcu_select);
-    }
-    
-    int final_select_ID = 0;
-    //VCU接收的点选车位 与 HMI接收的点选车位 二选一。优先选择VCU接收的点选车位
-    if (vcu_select != 0 && hmi_temp == 0) {
-        final_select_ID = vcu_select; 
-    } 
-    else if (vcu_select == 0 && hmi_temp != 0) {
-        final_select_ID = hmi_temp;
-    } 
-    else if (vcu_select != 0 && hmi_temp != 0 && (vcu_select == hmi_temp)) {
-        final_select_ID = hmi_temp;
-    }
-    else if (vcu_select == 0 && hmi_temp == 0) {
-        final_select_ID = 0;
-    }
-    else {
-        final_select_ID = vcu_select;
-    }
-    
-    configManager.setFinalSelectID(final_select_ID);
-
-    return final_select_ID;
-}
-
-int cpsd_fusion_process::RecommendSelectID(const int &final_select, const int &recommend)
-{
-    auto& configManager = PSDConfigManager::getInstance();
-    
-    int result = 0;
-    if (final_select) {
-        result = final_select;
-    } else {
-        result = recommend;
-    }
-    
-    configManager.setFinalID(result);
-    
-    return result;
-}
-
-int cpsd_fusion_process::IsParkOut(int apastatus)
-{
-    auto& configManager = PSDConfigManager::getInstance();
-    auto state = configManager.getGlobalState();
-    
-    if (apastatus == 3) {
-        state.parkout_flag = 1;
-    } else if (apastatus == 2) {
-        state.parkout_flag = 0;
-    }
-    
-    configManager.updateGlobalState(state);
-    
-    return state.parkout_flag;
-}
-
-int cpsd_fusion_process::IsStill(const Loc::App2emap_DR drpose, Loc::App2emap_DR& previous_drpose)
-{
-    auto& configManager = PSDConfigManager::getInstance();
-    previous_drpose = configManager.getPreviousDRPose();
-    
-    static int no_change_count = 0;
-    float epsilon = 30.0; // 设置阈值，可以根据需要调整
-    bool has_changed = false; // 比较 drpose 和 previous_drpose 是否变化
-    int still_threshold = 5; //静止阈值，连续多少次没有变化算静止
-    
-    LOGD("[STILL] dr: x:%f, y:%f, yaw: %f,previous: x:%f, y:%f, yaw:%f",
-        drpose.x, drpose.y, drpose.canAng,
-        previous_drpose.x, previous_drpose.y, previous_drpose.canAng);
-
-    if (fabs(drpose.x - previous_drpose.x) > epsilon ||
-        fabs(drpose.y - previous_drpose.y) > epsilon ||
-        fabs(drpose.canAng - previous_drpose.canAng) > epsilon)
-    {
-        has_changed = true;
-    }
-    
-    LOGD("[STILL] has_changed:%d", has_changed);
-
-    // 如果没有变化，增加连续无变化计数
-    if (!has_changed) {
-        no_change_count++;
-    } else {
-        no_change_count = 0;  // 有变化时重置计数器
-    }
-    
-    LOGD("[STILL] no_change_count:%d", no_change_count);
-
-    int is_still_result = 0;
-    // 如果连续still_threshold次没有变化，则认为是静止状态
-    if (no_change_count >= still_threshold) {
-        is_still_result = 1;  // is_Still = 1
-    } else {
-        is_still_result = 0;  // is_Still = 0
-    }
-    
-    // 更新previous_drpose到配置管理器
-    configManager.setPreviousDRPose(drpose);
-    previous_drpose = drpose; // 同时更新传入的引用
-    
-    // 更新is_Still状态
-    auto state = configManager.getGlobalState();
-    state.is_Still = is_still_result;
-    configManager.updateGlobalState(state);
-    
-    return is_still_result;
 }
 
 tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
@@ -462,7 +316,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 {
     auto& configManager = PSDConfigManager::getInstance();
 
-    // ============================================================Part0 行泊切换
+    // ------------------------------------------------------------
+    // 行泊切换
+    // ------------------------------------------------------------
 	static kbd::sm::StateClient state_client;
     if (state_client.parking_stop()){
         // 行泊切换清零，输出发送空值
@@ -481,7 +337,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LOGD("PSD Version: 07241359 emos10.0.1 [LYK] REBUILD");
 
 
-    // ============================================================Part1 GET获取输入
+    // ------------------------------------------------------------
+    // Get Input
+    // ------------------------------------------------------------
     GetInput inputData;
     inputData.GetAllInput();
 
@@ -498,7 +356,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
 
-    // ============================================================Part2 校验输入
+    // ------------------------------------------------------------
+    // Input Check
+    // ------------------------------------------------------------
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){
         inputData.ClearAllInput();
         has_cleared_for_SEARCH_once = false; //flag重置
@@ -518,8 +378,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     
 
 
-    // ============================================================Part3 算法
-    // Yukan: Convert Slot using Mapinfo
+    // ------------------------------------------------------------
+    // VIS/USS Fusion
+    // ------------------------------------------------------------
+    //Yukan: Convert Slot using Mapinfo
     Loc::MapInfo latest_map_info;
     {
        LOGD("[APA_SLAM] Acquiring latest map info");
@@ -598,8 +460,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LOGD("[APA_SLAM] finish processing slot list");
     LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
-    //------------------------------------------
-    // get USS
+    //USS
     UssIf_stPLVOutputInfo_t uss_info;
     auto uss_info_restruct = uss_info;
     S2S_MCore_Bridge_GetSigUssIf_stPLVOutputInfo(&uss_info);
@@ -610,9 +471,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
 
-
-
-    //============================================================Part4 算法处理
+    // ------------------------------------------------------------
+    // Slot Process
+    // ------------------------------------------------------------
     auto currentState = configManager.getGlobalState();
 
     // outputSlot_FUSED：类型修正
@@ -623,21 +484,28 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     PSD_FusionModuleIFrunable.StopperLockOBS(obs_info_get,outputSlot_FUSED, currentState.final_ID);
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
-    
 
-
-    // VCU,HMI双终端接收点选的目标车位
-    int final_select_ID = HMIVCUSelect(currentState.HMI_temp_ID, currentState.HMI_select_ID, currentState.VCU_select_ID_ON);
+    // ------------------------------------------------------------
+    // Target Slot Selection Logic
+    // ------------------------------------------------------------
+    int final_select_ID = inputManager_.processHMIVCUSelection(
+        currentState.HMI_temp_ID, 
+        currentState.HMI_select_ID, 
+        currentState.VCU_select_ID_ON
+    );
     LOGD("[HMIVCUSELECT OUT] final_select_id: %d", final_select_ID);
-    LOGD("[STATUSSELECT] HMI %d, VCU %d, final select %d", currentState.HMI_temp_ID, currentState.VCU_select_ID_ON, final_select_ID);
 
-    // 泊出判断
-    int parkout_flag = IsParkOut(apa_status);
+    // 使用重构后的推荐选择处理
+    int final_ID = inputManager_.processRecommendSelection(final_select_ID, currentState.RECOMMEND_ID);
+    LOGD("[RECOMMEND SELECT] final_ID: %d", final_ID);
+
+    // 使用重构后的泊出判断
+    int parkout_flag = inputManager_.determineParkOutFlag(apa_status);
     LOGD("[PARKOUT] flag: %d", parkout_flag);
 
-    // 静止判断
+    // 使用重构后的静止判断
     Loc::App2emap_DR previous_dr_pose = configManager.getPreviousDRPose();
-    int is_Still = IsStill(dr_pose, previous_dr_pose);
+    int is_Still = inputManager_.detectVehicleStillState(dr_pose, previous_dr_pose);
     LOGD("[STILL] is Still: %d", is_Still);
 
     // 车位数统计
@@ -657,7 +525,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         configManager.updateGlobalState(currentState);  
     }
 
-    // ============================================================Part6 输出下游
+    // ------------------------------------------------------------
+    // Output
+    // ------------------------------------------------------------ 
 
     //***********************************VCU 发送车位列表
     outputManager_.sendVCUSlotList(outputSlot_FUSED, apa_status, currentState, is_Still, current1970_ms);

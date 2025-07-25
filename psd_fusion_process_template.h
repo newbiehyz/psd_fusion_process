@@ -7,6 +7,7 @@
 #include "fusion.h"
 #include "PSD_FusionModuleIF.h"
 #include "PSDConfigManager.h"
+#include "PSDInputManager.h"
 #include "PSDOutputManager.h"
 
 void mergeSlotLists(const apaSlotListInfo &outputSlot_USS,const apaSlotListInfo &outputSlot_VIS,apaSlotListInfo &outputSlot_FUSION); 
@@ -60,12 +61,6 @@ public:
     virtual tResult OnDecPlan2Emap(const Pla::DecPlan2Emap& userData) override;
     virtual tResult OnPlan2Psd(const Pla::Plan2Psd& userData) override;
     virtual tResult TimeTrigger_thread_100ms_1() override;
-    
-private:
-    int HMIVCUSelect(int &hmi_temp, const int &hmi_select, const int &vcu_select);
-    int RecommendSelectID(const int &final_select, const int &recommend);
-    int IsParkOut(int apastatus);
-    int IsStill(const Loc::App2emap_DR dr_pose, Loc::App2emap_DR& previous_dr_pose);
 
 public:
     apaSlotListInfo outputSlot_FUSED;
@@ -84,6 +79,7 @@ public:
 
 
 private:
+    PSDInputManager inputManager_;
     PSDOutputManager outputManager_;
     static Sfus::Sfsuion2DecPlan psd2planning_;
     
