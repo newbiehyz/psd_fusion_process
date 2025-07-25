@@ -334,7 +334,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count();
     auto start = std::chrono::steady_clock::now(); // 计算TIMECOST
 
-    LOGD("PSD Version: 07241359 emos10.0.1 [LYK] REBUILD");
+    LOGD("PSD Version: 07271525 emos10.0.1 [LYK] REBUILD");
 
 
     // ------------------------------------------------------------
