@@ -95,7 +95,7 @@ void PSDOutputManager::handleSearchPhaseVCU(const apaSlotListInfo& outputSlot_FU
         // 输出日志
         for (int i = 0; i < slotlist_size; ++i) {
             LOGD("[PSD2VCUSLOTLIST] apa_status: 2, slotsize: %d, TYPE: %d, STATUS: %d, ID: %d, displayID: %d, SelectedFlag: %d (%f,%f) (%f,%f) (%f,%f) (%f,%f), timestamp: %llu",
-                2, slotlist_size,
+                slotlist_size,
                 vcuSlotOutput_.FusionSlotInfo[i].slotType,
                 vcuSlotOutput_.FusionSlotInfo[i].slotStatusType,
                 vcuSlotOutput_.FusionSlotInfo[i].slotLabel,
