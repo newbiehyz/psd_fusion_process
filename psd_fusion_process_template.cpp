@@ -4,7 +4,7 @@
 #include <iostream>
 #include <typeinfo>
 #include "math.hpp"
-#include "GetInput.hpp"
+#include "GetInput.h"
 #include "utils.h"
 #include <float.h>
 #include <fstream>

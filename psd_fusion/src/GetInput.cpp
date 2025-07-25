@@ -1,4 +1,4 @@
-#include "GetInput.hpp"
+#include "GetInput.h"
 #include "psd_fusion_process_header.h"
 #include "psd_fusion_process_template.h"
 #include "apa_define.h"
