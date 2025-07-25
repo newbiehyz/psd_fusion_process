@@ -85,6 +85,8 @@ public:
 
 private:
     PSDOutputManager outputManager_;
+    static Sfus::Sfsuion2DecPlan psd2planning_;
+    
     
 };
 

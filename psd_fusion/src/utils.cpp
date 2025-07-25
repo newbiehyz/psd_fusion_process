@@ -201,7 +201,7 @@ void ClearSelectRecommendSlot(int& HMI_temp_ID, int& HMI_select_ID, int& VCU_sel
 
 
 
-float CalcDistance(const POINT_I& a, const POINT_I& b) {
+inline float CalcDistance(const POINT_I& a, const POINT_I& b) {
     float dx = static_cast<float>(a.x - b.x);
     float dy = static_cast<float>(a.y - b.y);
     return std::sqrt(dx * dx + dy * dy);
