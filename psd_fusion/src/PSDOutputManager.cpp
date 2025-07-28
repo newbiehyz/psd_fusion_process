@@ -125,9 +125,9 @@ void PSDOutputManager::handleNonSearchPhaseVCU(const apaSlotListInfo& outputSlot
             vcuSlot.displayLabel = 0;
 
             // 使用配置管理器中的车辆参数
-            float vehicle_length = PSDConfigManager::getVehicleLength();
-            float rear_axle_center = PSDConfigManager::getRearAxleCenterVehicleRear();
-            float mm_to_m = PSDConfigManager::getMmToM();
+            float vehicle_length = PSDConfigGlobalManager::getVehicleLength();
+            float rear_axle_center = PSDConfigGlobalManager::getRearAxleCenterVehicleRear();
+            float mm_to_m = PSDConfigGlobalManager::getMmToM();
 
             // 角点转换
             for (int j = 0; j < 4; ++j) {
@@ -190,9 +190,9 @@ void PSDOutputManager::fillBasicSlotInfo(const apaSlotInfo& slot,
     vcuSlot.slotType = slot.rectInfo.PStype;
 
     // 角点转换 - 使用配置管理器中的车辆参数
-    float vehicle_length = PSDConfigManager::getVehicleLength();
-    float rear_axle_center = PSDConfigManager::getRearAxleCenterVehicleRear();
-    float mm_to_m = PSDConfigManager::getMmToM();
+    float vehicle_length = PSDConfigGlobalManager::getVehicleLength();
+    float rear_axle_center = PSDConfigGlobalManager::getRearAxleCenterVehicleRear();
+    float mm_to_m = PSDConfigGlobalManager::getMmToM();
 
     for (int j = 0; j < 4; ++j) {
         vcuSlot.pt[j].x = (slot.rectInfo.pt[j].y - (vehicle_length - rear_axle_center)) / mm_to_m;
@@ -256,7 +256,7 @@ void PSDOutputManager::applySlotReleaseFilters(const apaSlotInfo& slot,
 
 void PSDOutputManager::applyDistanceFilter(const Sfus::FusionSlotInfo& vcuSlot,
                                           Sfus::FusionSlotInfo& filteredSlot) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     auto config = configManager.getConfig();
     
     LOGD("[VCU NOTRELEASE1 range] FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left: [%f, %f], Right:[%f, %f]",
@@ -306,7 +306,7 @@ void PSDOutputManager::applyDistanceFilter(const Sfus::FusionSlotInfo& vcuSlot,
 void PSDOutputManager::applyAngleFilter(const apaSlotInfo& slot,
                                        const Sfus::FusionSlotInfo& vcuSlot,
                                        Sfus::FusionSlotInfo& filteredSlot) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     auto config = configManager.getConfig();
     
     LOGD("[VCU NOTRELEASE2 anglelimit] ANGLE_FILTER: %d, ANGEL_FILTER_LIMIT:%f", 
@@ -341,7 +341,7 @@ void PSDOutputManager::applyAngleFilter(const apaSlotInfo& slot,
 
 void PSDOutputManager::applyWidthFilter(const Sfus::FusionSlotInfo& vcuSlot,
                                        Sfus::FusionSlotInfo& filteredSlot) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     auto config = configManager.getConfig();
     
     LOGD("[VCU NOTRELEASE3 abnarrow] VCU_TOO_SMALL_FILTER: %d, VCU_TOO_SMALL: %.3f", 
@@ -365,7 +365,7 @@ void PSDOutputManager::applyWidthFilter(const Sfus::FusionSlotInfo& vcuSlot,
 void PSDOutputManager::applyParallelVectorFilter(const apaSlotInfo& slot,
                                                 const Sfus::FusionSlotInfo& vcuSlot,
                                                 Sfus::FusionSlotInfo& filteredSlot) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     auto config = configManager.getConfig();
     
     LOGD("[VCU NOTRELEASE4 parallel] PARALLEL_VECTOR_FILTER: %d, PARALLEL_VECTOR_LIMIT: %f", 
@@ -425,7 +425,7 @@ void PSDOutputManager::SlotRecommend(int final_select_ID,
     LOGD("vcu_available_slots size: %d", vcu_available_slots.size());
 
     // 更新全局状态中的available_slot_flag_to_statemachine
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     auto currentState = configManager.getGlobalState();
     if (vcu_available_slots.size() > 0) {
         currentState.available_slot_flag_to_statemachine = 1;
@@ -449,7 +449,7 @@ void PSDOutputManager::SlotRecommend(int final_select_ID,
             int targetLabel = closest_slots[0].slotLabel;
             
             // 更新RECOMMEND_ID到配置管理器
-            auto& configManager = PSDConfigManager::getInstance();
+            auto& configManager = PSDConfigGlobalManager::getInstance();
             auto currentState = configManager.getGlobalState();
             currentState.RECOMMEND_ID = targetLabel;
             
@@ -480,7 +480,7 @@ void PSDOutputManager::SlotRecommend(int final_select_ID,
         LOGD("RECOMMEND2: not still, NO Recommend!");
         
         // 清除所有状态
-        auto& configManager = PSDConfigManager::getInstance();
+        auto& configManager = PSDConfigGlobalManager::getInstance();
         auto currentState = configManager.getGlobalState();
         currentState.RECOMMEND_ID = 0;
         currentState.final_select_ID = 0;
@@ -497,7 +497,7 @@ void PSDOutputManager::SlotRecommend(int final_select_ID,
         LOGD("RECOMMEND3: still, Select!");
         
         // 设置final_ID为点选ID
-        auto& configManager = PSDConfigManager::getInstance();
+        auto& configManager = PSDConfigGlobalManager::getInstance();
         auto currentState = configManager.getGlobalState();
         currentState.RECOMMEND_ID = 0;
         currentState.final_ID = final_select_ID;
@@ -523,7 +523,7 @@ void PSDOutputManager::SlotRecommend(int final_select_ID,
         LOGD("RECOMMEND4: no still, no recommend, no select");
         
         // 清除所有状态
-        auto& configManager = PSDConfigManager::getInstance();
+        auto& configManager = PSDConfigGlobalManager::getInstance();
         auto currentState = configManager.getGlobalState();
         currentState.HMI_temp_ID = 0;
         currentState.HMI_select_ID = 0;
@@ -645,7 +645,7 @@ void PSDOutputManager::sendPlanningAndPerceptionTargetSlot(const apaSlotListInfo
                                                           unsigned long long current1970_ms,
                                                           const std::vector<std::vector<int>>& imp_camera_id_image,
                                                           Sfus::Sfsuion2DecPlan& psd2planning) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     
     int target_slot_fusionSlotType = 0;
     auto targetMemory = configManager.getTargetMemory();
@@ -704,7 +704,7 @@ Sfus::_tSfusionSlotType PSDOutputManager::calculateSlotTypeFromCorners(const apa
 }
 
 bool PSDOutputManager::isNarrowSlot(const POINT_I& cornerA, const POINT_I& cornerB) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     auto config = configManager.getConfig();
     
     double dx = cornerB.x - cornerA.x;
@@ -837,7 +837,7 @@ void PSDOutputManager::processGuidancePhaseTargetSlot(const apaSlotListInfo& out
          targetMemory.world_slot_memory[2].x, targetMemory.world_slot_memory[2].y,
          targetMemory.world_slot_memory[3].x, targetMemory.world_slot_memory[3].y);
     
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     
     for (size_t i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size(); ++i) {
         if (currentState.final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label) {
@@ -915,7 +915,7 @@ void PSDOutputManager::sendPlanningTargetSlot(Sfus::Sfsuion2DecPlan& psd2plannin
                                              const PSDGlobalState& currentState,
                                              const padVehiclePose& pose_globaldata,
                                              int target_slot_fusionSlotType) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     
     if (parkout_flag != 1) {
         if (apa_status == 1 || apa_status == 6 || apa_status == 7 || apa_status == 0) {
@@ -1036,7 +1036,7 @@ void PSDOutputManager::sendStateMachineInfo(int slotlist_size,
                                            int apa_status,
                                            PSDGlobalState& currentState,
                                            Sfus::_tSfusionSlotType target_slot_type) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     
     // 设置车位数量
     stateMachineOutput_.aps_apaParkPlaceNum = slotlist_size;

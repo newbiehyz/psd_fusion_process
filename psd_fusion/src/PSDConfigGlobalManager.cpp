@@ -1,11 +1,11 @@
-#include "PSDConfigManager.h"
+#include "PSDConfigGlobalManager.h"
 #include "json.hpp"
 #include <fstream>
 #include <iostream>
 
 using json = nlohmann::json;
 
-bool PSDConfigManager::loadConfigFromFile(const std::string& filename) {
+bool PSDConfigGlobalManager::loadConfigFromFile(const std::string& filename) {
     std::lock_guard<std::mutex> lock(config_mutex_);
     
     std::ifstream inFile(filename);
@@ -48,127 +48,127 @@ bool PSDConfigManager::loadConfigFromFile(const std::string& filename) {
     return true;
 }
 
-PSDConfig PSDConfigManager::getConfig() const {
+PSDConfig PSDConfigGlobalManager::getConfig() const {
     std::lock_guard<std::mutex> lock(config_mutex_);
     return config_;
 }
 
-void PSDConfigManager::updateConfig(const PSDConfig& config) {
+void PSDConfigGlobalManager::updateConfig(const PSDConfig& config) {
     std::lock_guard<std::mutex> lock(config_mutex_);
     config_ = config;
 }
 
-PSDGlobalState PSDConfigManager::getGlobalState() const {
+PSDGlobalState PSDConfigGlobalManager::getGlobalState() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return global_state_;
 }
 
-void PSDConfigManager::updateGlobalState(const PSDGlobalState& state) {
+void PSDConfigGlobalManager::updateGlobalState(const PSDGlobalState& state) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     global_state_ = state;
 }
 
-void PSDConfigManager::setApaStatus(int status) {
+void PSDConfigGlobalManager::setApaStatus(int status) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     global_state_.apa_status = status;
 }
 
-int PSDConfigManager::getApaStatus() const {
+int PSDConfigGlobalManager::getApaStatus() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return global_state_.apa_status;
 }
 
-void PSDConfigManager::setHMISelectID(int id) {
+void PSDConfigGlobalManager::setHMISelectID(int id) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     global_state_.HMI_select_ID = id;
 }
 
-int PSDConfigManager::getHMISelectID() const {
+int PSDConfigGlobalManager::getHMISelectID() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return global_state_.HMI_select_ID;
 }
 
-void PSDConfigManager::setVCUSelectID(int id) {
+void PSDConfigGlobalManager::setVCUSelectID(int id) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     global_state_.VCU_select_ID_ON = id;
 }
 
-int PSDConfigManager::getVCUSelectID() const {
+int PSDConfigGlobalManager::getVCUSelectID() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return global_state_.VCU_select_ID_ON;
 }
 
-void PSDConfigManager::setFinalSelectID(int id) {
+void PSDConfigGlobalManager::setFinalSelectID(int id) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     global_state_.final_select_ID = id;
 }
 
-int PSDConfigManager::getFinalSelectID() const {
+int PSDConfigGlobalManager::getFinalSelectID() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return global_state_.final_select_ID;
 }
 
-void PSDConfigManager::setRecommendID(int id) {
+void PSDConfigGlobalManager::setRecommendID(int id) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     global_state_.RECOMMEND_ID = id;
 }
 
-int PSDConfigManager::getRecommendID() const {
+int PSDConfigGlobalManager::getRecommendID() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return global_state_.RECOMMEND_ID;
 }
 
-void PSDConfigManager::setFinalID(int id) {
+void PSDConfigGlobalManager::setFinalID(int id) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     global_state_.final_ID = id;
 }
 
-int PSDConfigManager::getFinalID() const {
+int PSDConfigGlobalManager::getFinalID() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return global_state_.final_ID;
 }
 
-TargetSlotMemory PSDConfigManager::getTargetMemory() const {
+TargetSlotMemory PSDConfigGlobalManager::getTargetMemory() const {
     std::lock_guard<std::mutex> lock(memory_mutex_);
     return target_memory_;
 }
 
-void PSDConfigManager::updateTargetMemory(const TargetSlotMemory& memory) {
+void PSDConfigGlobalManager::updateTargetMemory(const TargetSlotMemory& memory) {
     std::lock_guard<std::mutex> lock(memory_mutex_);
     target_memory_ = memory;
 }
 
-void PSDConfigManager::setTargetSlotUpdatedOnce(bool updated) {
+void PSDConfigGlobalManager::setTargetSlotUpdatedOnce(bool updated) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     global_state_.target_slot_already_updated_once = updated;
 }
 
-bool PSDConfigManager::isTargetSlotUpdatedOnce() const {
+bool PSDConfigGlobalManager::isTargetSlotUpdatedOnce() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return global_state_.target_slot_already_updated_once;
 }
 
-void PSDConfigManager::setPreviousDRPose(const Loc::App2emap_DR& pose) {
+void PSDConfigGlobalManager::setPreviousDRPose(const Loc::App2emap_DR& pose) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     previous_dr_pose_ = pose;
 }
 
-Loc::App2emap_DR PSDConfigManager::getPreviousDRPose() const {
+Loc::App2emap_DR PSDConfigGlobalManager::getPreviousDRPose() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return previous_dr_pose_;
 }
 
-void PSDConfigManager::resetState() {
+void PSDConfigGlobalManager::resetState() {
     std::lock_guard<std::mutex> lock(state_mutex_);
     global_state_ = PSDGlobalState{}; // 重置为默认值
 }
 
-void PSDConfigManager::resetTargetMemory() {
+void PSDConfigGlobalManager::resetTargetMemory() {
     std::lock_guard<std::mutex> lock(memory_mutex_);
     target_memory_ = TargetSlotMemory{}; // 重置为默认值
 }
 
-void PSDConfigManager::resetForNewSession() {
+void PSDConfigGlobalManager::resetForNewSession() {
     resetState();
     resetTargetMemory();
 }

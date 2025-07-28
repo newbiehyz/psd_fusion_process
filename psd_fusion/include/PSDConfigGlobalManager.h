@@ -78,9 +78,9 @@ struct TargetSlotMemory {
 };
 
 // 单例
-class PSDConfigManager {
+class PSDConfigGlobalManager {
 private:
-    PSDConfigManager() = default;
+    PSDConfigGlobalManager() = default;
     
     mutable std::mutex config_mutex_;
     mutable std::mutex state_mutex_;
@@ -93,14 +93,14 @@ private:
     
 public:
     // 单例模式
-    static PSDConfigManager& getInstance() {
-        static PSDConfigManager instance;
+    static PSDConfigGlobalManager& getInstance() {
+        static PSDConfigGlobalManager instance;
         return instance;
     }
     
     // 禁用拷贝构造和赋值
-    PSDConfigManager(const PSDConfigManager&) = delete;
-    PSDConfigManager& operator=(const PSDConfigManager&) = delete;
+    PSDConfigGlobalManager(const PSDConfigGlobalManager&) = delete;
+    PSDConfigGlobalManager& operator=(const PSDConfigGlobalManager&) = delete;
     
     // 配置相关方法
     bool loadConfigFromFile(const std::string& filename);

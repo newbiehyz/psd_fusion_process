@@ -43,7 +43,7 @@ bool PSDInputManager::loadIPMCameraIdFromCSV(const std::string& filename,
 int PSDInputManager::processHMIVCUSelection(int& hmi_temp, 
                                            const int& hmi_select, 
                                            const int& vcu_select) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     
     LOGD("[INPUT SELECTION] HMI select: %d, HMI temp: %d, VCU select: %d", 
          hmi_select, hmi_temp, vcu_select);
@@ -89,7 +89,7 @@ int PSDInputManager::processHMIVCUSelection(int& hmi_temp,
 }
 
 int PSDInputManager::processRecommendSelection(const int& final_select, const int& recommend) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     
     int result = (final_select != 0) ? final_select : recommend;
     
@@ -102,7 +102,7 @@ int PSDInputManager::processRecommendSelection(const int& final_select, const in
 }
 
 int PSDInputManager::determineParkOutFlag(int apa_status) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     auto state = configManager.getGlobalState();
     
     // 根据APA状态判断泊出标志
@@ -121,7 +121,7 @@ int PSDInputManager::determineParkOutFlag(int apa_status) {
 
 int PSDInputManager::detectVehicleStillState(const Loc::App2emap_DR& current_dr_pose, 
                                             Loc::App2emap_DR& previous_dr_pose) {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     previous_dr_pose = configManager.getPreviousDRPose();
     
     bool has_significant_change = false;

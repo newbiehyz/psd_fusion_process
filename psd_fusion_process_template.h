@@ -6,7 +6,7 @@
 #include "apa_define.h"
 #include "fusion.h"
 #include "PSD_FusionModuleIF.h"
-#include "PSDConfigManager.h"
+#include "PSDConfigGlobalManager.h"
 #include "PSDInputManager.h"
 #include "PSDOutputManager.h"
 

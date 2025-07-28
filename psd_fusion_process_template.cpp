@@ -37,7 +37,7 @@ tResult cpsd_fusion_process::Init()
 {
     LOGW("PSD Process Start Success!");
     
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     
     // 读取配置文件
     if (!configManager.loadConfigFromFile("/app/neo/psd_config.json")) {
@@ -205,7 +205,7 @@ tResult cpsd_fusion_process::OnHMI_InputInfo(const HMI_InputInfo& userData)
 
 tResult cpsd_fusion_process::OnSelectSlot(const Sfus::SelectSlot& userData)
 {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     
     // 更新VCU选择ID到配置管理器
     configManager.setVCUSelectID(userData.SelectSlotID);
@@ -221,7 +221,7 @@ tResult cpsd_fusion_process::OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch
 
 tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
 {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     
     // 更新HMI选择ID到配置管理器
     configManager.setHMISelectID(userData.SelectSlotID);
@@ -282,7 +282,7 @@ tResult cpsd_fusion_process::OnDecPlan2Emap(const Pla::DecPlan2Emap& userData)
 
 tResult cpsd_fusion_process::OnPlan2Psd(const Pla::Plan2Psd& userData)
 {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
     auto state = configManager.getGlobalState();
     int apa_status = state.apa_status;
     
@@ -314,7 +314,7 @@ tResult cpsd_fusion_process::OnPlan2Psd(const Pla::Plan2Psd& userData)
 
 tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 {
-    auto& configManager = PSDConfigManager::getInstance();
+    auto& configManager = PSDConfigGlobalManager::getInstance();
 
     // ------------------------------------------------------------
     // 行泊切换

@@ -2,7 +2,7 @@
 
 #include "psd_fusion_process_header.h"
 #include "apa_define.h"
-#include "PSDConfigManager.h"
+#include "PSDConfigGlobalManager.h"
 #include <vector>
 #include <string>
 

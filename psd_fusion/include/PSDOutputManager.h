@@ -2,7 +2,7 @@
 
 #include "psd_fusion_process_header.h"
 #include "apa_define.h"
-#include "PSDConfigManager.h"
+#include "PSDConfigGlobalManager.h"
 
 POINT_I Local2Global(const POINT_I& pt_local, const float& x, const float& y, const float& yaw);
 float CalcDistance(const POINT_I& a, const POINT_I& b);
