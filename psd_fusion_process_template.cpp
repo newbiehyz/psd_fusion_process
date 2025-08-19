@@ -69,6 +69,7 @@ Sfus::Sfsuion2DecPlan psd2planning; //动态车位列表
 Sfus::FusionSlotInfovector psd2vcu;
 Fsm::FusionSlotInfo2Location psd2location;
 APAControlBumpInput psd2control;
+Fusion2StatusDecDebug psd2debug;
 
 
 int HMI_select_ID = 0; //HMI只发1s。HMI_select是HMI发的ID，
@@ -598,8 +599,8 @@ tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
     } else {
         HMI_select_ID = userData.SelectSlotID;
         LOGD("[SELECTID] OnSelectSlot2 HMI ID: %d !!!!",HMI_select_ID);
-        RETURN_NOERROR;
     }
+    RETURN_NOERROR;
 }
 
 tResult cpsd_fusion_process::OnEmapWorkMode(const Fus::EmapWorkMode& userData)
@@ -701,9 +702,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             hpp2statemachine_is_active = false;
             LOGD("[HPP2STATEMACHINE] hpp2statemachine reset to 0 after 500ms");
         } else {
-            LOGD("[HPP2STATEMACHINE] hpp2statemachine = %d, remaining time: %d ms", hpp2statemachine_start_time, hpp2statemachine_duration - elapsed_time.count());
+            LOGD("[HPP2STATEMACHINE] hpp2statemachine = %d, remaining time: %d ms", hpp2statemachine, hpp2statemachine_duration - elapsed_time.count());
         }
     }
+    psd2debug.aps_HMIDebug1 = hpp2statemachine;
+    S2S_MCore_Bridge_SetSigFusion2StatusDecDebug(&psd2debug);
 
 
     // ============================================================Part1 初始化、获取输入
@@ -713,7 +716,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 08191104 emos10.0.1 [LYK]: add hpp2statemachine");
+    LOGD("PSD Version: 08191116 emos10.0.1 [LYK]: add hpp2statemachine");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
