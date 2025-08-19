@@ -104,6 +104,13 @@ const float MAX_SLOT_MOVE_DIST_MM = 1500.0f; // 最大容忍距离
 POINT_I world_slot_memory[4]; // ABCD角点
 
 
+// ***************************HPP适配上位机
+int hpp2statemachine = 0;
+std::chrono::steady_clock::time_point hpp2statemachine_start_time;
+bool hpp2statemachine_is_active = false;
+int hpp2statemachine_duration = 500; // HPP状态机持续时间
+
+
 
 
 CDT_PSD_FUSION_PROCESS_TEMPLATE(cpsd_fusion_process)
@@ -564,9 +571,35 @@ tResult cpsd_fusion_process::OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch
 
 tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
 {
-    HMI_select_ID = userData.SelectSlotID;
-    LOGD("[SELECTID] OnSelectSlot2 HMI ID: %d !!!!",HMI_select_ID);
-    RETURN_NOERROR;
+    // HPP适配上位机
+    if (userData.SelectSlotID > 0 && userData.SelectSlotID <= 999) {
+        hpp2statemachine_start_time = std::chrono::steady_clock::now();
+        hpp2statemachine_is_active = true;
+
+        if (userData.SelectSlotID == 11) {
+            hpp2statemachine = 1;
+            LOGD("[SELECTID] OnSelectSlot2 Special ID: %d, set hpp2statemachine = %d", userData.SelectSlotID, hpp2statemachine);
+        } else if (userData.SelectSlotID == 22) {
+            hpp2statemachine = 2;
+            LOGD("[SELECTID] OnSelectSlot2 Special ID: %d, set hpp2statemachine = %d", userData.SelectSlotID, hpp2statemachine);
+        } else if (userData.SelectSlotID == 33) {
+            hpp2statemachine = 3;
+            LOGD("[SELECTID] OnSelectSlot2 Special ID: %d, set hpp2statemachine = %d", userData.SelectSlotID, hpp2statemachine);
+        } else if (userData.SelectSlotID == 44) {
+            hpp2statemachine = 4;
+            LOGD("[SELECTID] OnSelectSlot2 Special ID: %d, set hpp2statemachine = %d", userData.SelectSlotID, hpp2statemachine);
+        } else if (userData.SelectSlotID == 55) {
+            hpp2statemachine = 5;
+            LOGD("[SELECTID] OnSelectSlot2 Special ID: %d, set hpp2statemachine = %d", userData.SelectSlotID, hpp2statemachine);
+        } else {
+            LOGD("[SELECTID] OnSelectSlot2 Special ID: %d, no action taken", userData.SelectSlotID);
+        }
+
+    } else {
+        HMI_select_ID = userData.SelectSlotID;
+        LOGD("[SELECTID] OnSelectSlot2 HMI ID: %d !!!!",HMI_select_ID);
+        RETURN_NOERROR;
+    }
 }
 
 tResult cpsd_fusion_process::OnEmapWorkMode(const Fus::EmapWorkMode& userData)
@@ -658,6 +691,20 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     }
 
 
+    // ============================================================Part0.5 HPP适配上位机
+    if (hpp2statemachine_is_active) {
+        auto current_time = std::chrono::steady_clock::now();
+        auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - hpp2statemachine_start_time);
+        
+        if (elapsed_time.count() >= hpp2statemachine_duration) {
+            hpp2statemachine = 0;
+            hpp2statemachine_is_active = false;
+            LOGD("[HPP2STATEMACHINE] hpp2statemachine reset to 0 after 500ms");
+        } else {
+            LOGD("[HPP2STATEMACHINE] hpp2statemachine = %d, remaining time: %d ms", hpp2statemachine_start_time, hpp2statemachine_duration - elapsed_time.count());
+        }
+    }
+
 
     // ============================================================Part1 初始化、获取输入
 
@@ -666,7 +713,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 07171125 emos10.0.1 [LYK]: 0717 release add dignoal slot");
+    LOGD("PSD Version: 08191104 emos10.0.1 [LYK]: add hpp2statemachine");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
