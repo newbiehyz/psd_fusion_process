@@ -573,7 +573,7 @@ tResult cpsd_fusion_process::OnParkInHeadInSwitch(const Sfus::ParkInHeadInSwitch
 tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
 {
     // HPP适配上位机
-    if (userData.SelectSlotID > 0 && userData.SelectSlotID <= 999) {
+    if (userData.SelectSlotID >= 0 && userData.SelectSlotID <= 999) {
         hpp2statemachine_start_time = std::chrono::steady_clock::now();
         hpp2statemachine_is_active = true;
 
@@ -592,11 +592,12 @@ tResult cpsd_fusion_process::OnSelectSlot2(const Sfus::SelectSlot& userData)
         } else if (userData.SelectSlotID == 55) {
             hpp2statemachine = 5;
             LOGD("[SELECTID] OnSelectSlot2 Special ID: %d, set hpp2statemachine = %d", userData.SelectSlotID, hpp2statemachine);
-        } else {
-            LOGD("[SELECTID] OnSelectSlot2 Special ID: %d, no action taken", userData.SelectSlotID);
+        } else if (userData.SelectSlotID == 0) {
+            hpp2statemachine = 0;
+            LOGD("[SELECTID] OnSelectSlot2 Special ID: %d, set hpp2statemachine = %d", userData.SelectSlotID, hpp2statemachine);
         }
 
-    } else {
+    } else  {
         HMI_select_ID = userData.SelectSlotID;
         LOGD("[SELECTID] OnSelectSlot2 HMI ID: %d !!!!",HMI_select_ID);
     }
@@ -693,18 +694,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
     // ============================================================Part0.5 HPP适配上位机
-    if (hpp2statemachine_is_active) {
-        auto current_time = std::chrono::steady_clock::now();
-        auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - hpp2statemachine_start_time);
-        
-        if (elapsed_time.count() >= hpp2statemachine_duration) {
-            hpp2statemachine = 0;
-            hpp2statemachine_is_active = false;
-            LOGD("[HPP2STATEMACHINE] hpp2statemachine reset to 0 after 500ms");
-        } else {
-            LOGD("[HPP2STATEMACHINE] hpp2statemachine = %d, remaining time: %d ms", hpp2statemachine, hpp2statemachine_duration - elapsed_time.count());
-        }
-    }
     psd2debug.aps_HMIDebug1 = hpp2statemachine;
     S2S_MCore_Bridge_SetSigFusion2StatusDecDebug(&psd2debug);
 
