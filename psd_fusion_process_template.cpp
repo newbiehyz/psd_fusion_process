@@ -705,7 +705,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 08191116 emos10.0.1 [LYK]: add hpp2statemachine");
+    LOGD("PSD Version: 08281408 emos10.0.1 [LYK]: add psd2planning.targetslot id");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1902,6 +1902,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         if (apa_status != 5){ 
             for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
                 if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label){ // 找到目标车位
+
+                    psd2planning.targetSlot.slotID = final_ID;
     
                     // *******************正逆鱼骨，车位类型*******************
                     double ABx = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[1].x - outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[0].x;
@@ -2008,6 +2010,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
             for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
                 if ((final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label)){ // 找到目标车位
+
+                    psd2planning.targetSlot.slotID = final_ID;
 
                     //********************限位块距离******************
                     psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
