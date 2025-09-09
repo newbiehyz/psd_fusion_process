@@ -860,7 +860,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         info_cur.rectInfo.pt[3].y = pt2_b.x() * 1000;
         info_cur.rectInfo.pt[2].x = -pt3_b.y() * 1000;
         info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
-        PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
+        // PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
         info_cur.rectInfo.label = id;
         info_cur.rectInfo.PStype = type;
         info_cur.rectInfo.iSodType = sodtype;
@@ -1950,7 +1950,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             has_saved_target_slot = false;
         }
         else{
-            LOGD("TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
+            LOGD("[PSD2PLANNING TARGETSLOT]TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
             psd2planning.timeStamp,
             apa_status,
             psd2planning.targetSlot.slotType,
