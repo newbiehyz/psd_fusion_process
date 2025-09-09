@@ -1945,6 +1945,9 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         if (apa_status == 1 || apa_status == 6 || apa_status == 7 || apa_status == 0){
             memset(&psd2planning, 0, sizeof(Sfus::Sfsuion2DecPlan));
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
+            memset(&saved_target_slot, 0, sizeof(saved_target_slot));
+            saved_target_slot_fusionSlotType = 0;
+            has_saved_target_slot = false;
         }
         else{
             LOGD("TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
