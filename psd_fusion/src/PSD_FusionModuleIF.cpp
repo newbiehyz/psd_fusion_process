@@ -961,6 +961,46 @@ void PSD_FusionModuleIF::adjustRectOrder_KF(bool isleft, std::array<Eigen::Vecto
 }
 
 
+void PSD_FusionModuleIF::printSlotInfo(const apaSlotInfo& info_cur) {
+    // // 打印车位类型
+    // std::string slotTypeStr;
+    // switch (info_cur.rectInfo.PStype) {
+    //     case 0:
+    //         slotTypeStr = "VERTICAL";
+    //         break;
+    //     case 1:
+    //         slotTypeStr = "PARALLEL";
+    //         break;
+    //     case 2:
+    //         slotTypeStr = "DIAGONAL";
+    //         break;
+    //     default:
+    //         slotTypeStr = "UNKNOWN";
+    //         break;
+    // }
+    
+    // // 打印占用状态
+    // std::string occupancyStr;
+    // switch (info_cur.rectInfo.iSodType) {
+    //     case 0:
+    //         occupancyStr = "FREE";
+    //         break;
+    //     case 1:
+    //         occupancyStr = "OCCUPIED";
+    //         break;
+    //     default:
+    //         occupancyStr = "UNKNOWN";
+    //         break;
+    // }
+    
+    LOGD("pt0(%.1f, %.1f) pt1(%.1f, %.1f) pt2(%.1f, %.1f) pt3(%.1f, %.1f)", 
+        info_cur.rectInfo.pt[0].x, info_cur.rectInfo.pt[0].y,
+        info_cur.rectInfo.pt[1].x, info_cur.rectInfo.pt[1].y, 
+        info_cur.rectInfo.pt[2].x, info_cur.rectInfo.pt[2].y,
+        info_cur.rectInfo.pt[3].x, info_cur.rectInfo.pt[3].y);
+}
+
+
 void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
 {
     bool leftSide = isLeftOfOrigin(rect);

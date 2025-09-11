@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "psd2vcu.h"
 #include <float.h>
+#include <cmath>
 
 
 // ***************************标定量
@@ -669,7 +670,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 09091935 emos10.0.1 [LYK]: no more target slot update");
+    LOGD("PSD Version: 09111349 emos10.0.1 [LYK]: add unusual vehicle-slot pose notrelease logic");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -860,7 +861,26 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         info_cur.rectInfo.pt[3].y = pt2_b.x() * 1000;
         info_cur.rectInfo.pt[2].x = -pt3_b.y() * 1000;
         info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
-        // PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
+        PSD_FusionModuleIFrunable.printSlotInfo(info_cur);
+
+        // //假设slam已有顺序，只需要分左右
+        // if (pt0_b.x() <= 0){
+        //     info_cur.rectInfo.pt[1].x = -pt0_b.y() * 1000;
+        //     info_cur.rectInfo.pt[1].y = pt0_b.x() * 1000;
+        //     info_cur.rectInfo.pt[0].x = -pt1_b.y() * 1000;
+        //     info_cur.rectInfo.pt[0].y = pt1_b.x() * 1000;
+        //     info_cur.rectInfo.pt[3].x = -pt2_b.y() * 1000;
+        //     info_cur.rectInfo.pt[3].y = pt2_b.x() * 1000;
+        //     info_cur.rectInfo.pt[2].x = -pt3_b.y() * 1000;
+        //     info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
+        // }
+        // else{
+
+        // }
+        // PSD_FusionModuleIFrunable.printSlotInfo(info_cur);
+        
+
+        PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
         info_cur.rectInfo.label = id;
         info_cur.rectInfo.PStype = type;
         info_cur.rectInfo.iSodType = sodtype;
@@ -1295,6 +1315,31 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                         LOGD("[VCU NOTRELEASE4 parallel] NOT PARALLEL SLOT.")
                     }
                 }
+
+                // ***************************5 垂直车位水平姿态，水平车位垂直姿态不释放
+                if (psd_m_output.rectInfo.PStype == 0) {
+                    LOGD("[VCU NOTRELEASE5 unusual pose] ID: %d, Before status: %d",psd2vcu.FusionSlotInfo[i].slotLabel,psd2vcu.FusionSlotInfo[i].slotStatusType);
+
+                    if ((psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x) * 
+                    (psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x) 
+                        + (psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y) * 
+                        (psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y)  >= 25 ){
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                        }
+                }
+                else if (psd_m_output.rectInfo.PStype == 1){
+                    LOGD("[VCU NOTRELEASE5 unusual pose] ID: %d, Before status: %d",psd2vcu.FusionSlotInfo[i].slotLabel,psd2vcu.FusionSlotInfo[i].slotStatusType);
+
+                    if ((psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x) * 
+                    (psd2vcu.FusionSlotInfo[i].pt[0].x - psd2vcu.FusionSlotInfo[i].pt[1].x) 
+                        + (psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y) * 
+                        (psd2vcu.FusionSlotInfo[i].pt[0].y - psd2vcu.FusionSlotInfo[i].pt[1].y)  <= 25 ){
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                        }
+                }
+                LOGD("[VCU NOTRELEASE5 unusual pose] ID: %d, After status: %d",psd2vcu.FusionSlotInfo[i].slotLabel,psd2vcu.FusionSlotInfo[i].slotStatusType);
+
+                
                 
 
                 // 障碍物属性
