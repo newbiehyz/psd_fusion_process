@@ -666,7 +666,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 07171125 emos10.0.1 [LYK]: 0717 release add dignoal slot");
+    LOGD("PSD Version: 09221934 emos10.0.1 [LYK]: default stopper -20000");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -2296,38 +2296,37 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
 
+
     //***********************************Control 发送限位块信息
     memset(&psd2control, 0, sizeof(APAControlBumpInput));
+
+    psd2control.apc_LimitBarX[0] = -20000;
+    psd2control.apc_LimitBarY[0] = -20000;
+    psd2control.apc_LimitBarX[1] = -20000;
+    psd2control.apc_LimitBarY[1] = -20000;
+
     if (final_ID != 0){
         for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size();++i){
             if (outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label == final_ID){
+                // 只有当获取到有效的Stopper坐标时才更新
                 for (int j = 0; j < 2; ++j) {
-                    psd2control.apc_LimitBarX[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperX[j]);
-                    psd2control.apc_LimitBarY[j] = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperY[j]);
+                    tInt16 stopperX = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperX[j]);
+                    tInt16 stopperY = static_cast<tInt16>(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperY[j]);
+                    
+                    // 如果StopperX和StopperY不同时为0，则使用这些值
+                    if (stopperX != 0 || stopperY != 0) {
+                        psd2control.apc_LimitBarX[j] = stopperX;
+                        psd2control.apc_LimitBarY[j] = stopperY;
+                    }
                 }
-
-                // 若限位块均为(0,0)，则设置为(-20000,-20000)
-                if (psd2control.apc_LimitBarX[0] == 0 && psd2control.apc_LimitBarY[0] == 0 &&
-                    psd2control.apc_LimitBarX[1] == 0 && psd2control.apc_LimitBarY[1] == 0) {
-                    psd2control.apc_LimitBarX[0] = -20000;
-                    psd2control.apc_LimitBarY[0] = -20000;
-                    psd2control.apc_LimitBarX[1] = -20000;
-                    psd2control.apc_LimitBarY[1] = -20000;
-                }
-
                 break;
             }
         }
     }
-    else if (parkout_flag == 1) { // 泊出时，限位块设置为(-20000,-20000)
-        psd2control.apc_LimitBarX[0] = -20000;
-        psd2control.apc_LimitBarY[0] = -20000;
-        psd2control.apc_LimitBarX[1] = -20000;
-        psd2control.apc_LimitBarY[1] = -20000;
-    }
+
     LOGD("[PSD2CONTROL]LimitBar for target slot: (%d, %d), (%d, %d)", 
-       psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
-       psd2control.apc_LimitBarX[1], psd2control.apc_LimitBarY[1]);
+    psd2control.apc_LimitBarX[0], psd2control.apc_LimitBarY[0],
+    psd2control.apc_LimitBarX[1], psd2control.apc_LimitBarY[1]);
 
     S2S_MCore_Bridge_SetSigAPAControlBumpInput(&psd2control);
 
