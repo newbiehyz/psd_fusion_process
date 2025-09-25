@@ -839,90 +839,90 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
     // ============================================================Part3 算法
-    // PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
-    // PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
-    // outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
+    PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
+    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
+    outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
 
-    // Yukan: Convert Slot using Mapinfo
-    Loc::MapInfo latest_map_info;
-    {
-       LOGD("[APA_SLAM] Acquiring latest map info");
-       std::lock_guard<std::mutex> lock(_map_mutex);
-       if (map_info_buffer.size() == 0){
-        RETURN_NOERROR;
-       }
-       latest_map_info = map_info_buffer.back();
-       LOGD("[APA_SLAM] Acquiring latest map info Done");
-    }
-    outputSlot_VIS.slots_in_cur_frame.clear();
-    outputSlot_VIS.WorldoutRect.clear();
-    LOGD("[APA_SLAM] start processing slot list");
-    double pose_x = static_cast<double>(pose_globaldata.coord.x) * 0.001;
-    double pose_y = static_cast<double>(pose_globaldata.coord.y) * 0.001;
-    double theta = pose_globaldata.yaw / 180.0 * M_PI;
-    Eigen::Vector2d twb(pose_x, pose_y);
-    // Eigen::Rotation2Dd rot(theta);
-    // Eigen::Matrix2d Rwb = rot.toRotationMatrix();
-    Eigen::Matrix2d Rwb;
-    Rwb << std::cos(theta), -std::sin(theta),
-           std::sin(theta), std::cos(theta);
-    LOGD("[APA_SLAM] latest_map_info.ParkingSlot.size(): %d", latest_map_info.ParkingSlot.size());
-    for (size_t i = 0; i < latest_map_info.ParkingSlot.size(); ++i) {
-        const auto& id = latest_map_info.ParkingSlot.at(i).id;
-        const auto& type = latest_map_info.ParkingSlot.at(i).psType;
-        const auto& sodtype = latest_map_info.ParkingSlot.at(i).isOccupancy;
-        Eigen::Vector2d c_b(latest_map_info.ParkingSlot.at(i).center.x, latest_map_info.ParkingSlot.at(i).center.y);
-        Eigen::Vector2d lon_dir(latest_map_info.ParkingSlot.at(i).longDirection.x, latest_map_info.ParkingSlot.at(i).longDirection.y);
-        Eigen::Vector2d w_dir(latest_map_info.ParkingSlot.at(i).wideDirection.x, latest_map_info.ParkingSlot.at(i).wideDirection.y);
+    // // Yukan: Convert Slot using Mapinfo
+    // Loc::MapInfo latest_map_info;
+    // {
+    //    LOGD("[APA_SLAM] Acquiring latest map info");
+    //    std::lock_guard<std::mutex> lock(_map_mutex);
+    //    if (map_info_buffer.size() == 0){
+    //     RETURN_NOERROR;
+    //    }
+    //    latest_map_info = map_info_buffer.back();
+    //    LOGD("[APA_SLAM] Acquiring latest map info Done");
+    // }
+    // outputSlot_VIS.slots_in_cur_frame.clear();
+    // outputSlot_VIS.WorldoutRect.clear();
+    // LOGD("[APA_SLAM] start processing slot list");
+    // double pose_x = static_cast<double>(pose_globaldata.coord.x) * 0.001;
+    // double pose_y = static_cast<double>(pose_globaldata.coord.y) * 0.001;
+    // double theta = pose_globaldata.yaw / 180.0 * M_PI;
+    // Eigen::Vector2d twb(pose_x, pose_y);
+    // // Eigen::Rotation2Dd rot(theta);
+    // // Eigen::Matrix2d Rwb = rot.toRotationMatrix();
+    // Eigen::Matrix2d Rwb;
+    // Rwb << std::cos(theta), -std::sin(theta),
+    //        std::sin(theta), std::cos(theta);
+    // LOGD("[APA_SLAM] latest_map_info.ParkingSlot.size(): %d", latest_map_info.ParkingSlot.size());
+    // for (size_t i = 0; i < latest_map_info.ParkingSlot.size(); ++i) {
+    //     const auto& id = latest_map_info.ParkingSlot.at(i).id;
+    //     const auto& type = latest_map_info.ParkingSlot.at(i).psType;
+    //     const auto& sodtype = latest_map_info.ParkingSlot.at(i).isOccupancy;
+    //     Eigen::Vector2d c_b(latest_map_info.ParkingSlot.at(i).center.x, latest_map_info.ParkingSlot.at(i).center.y);
+    //     Eigen::Vector2d lon_dir(latest_map_info.ParkingSlot.at(i).longDirection.x, latest_map_info.ParkingSlot.at(i).longDirection.y);
+    //     Eigen::Vector2d w_dir(latest_map_info.ParkingSlot.at(i).wideDirection.x, latest_map_info.ParkingSlot.at(i).wideDirection.y);
         
-        Eigen::Vector2d pt0_b = c_b + lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f - w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
-        Eigen::Vector2d pt1_b = c_b + lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f + w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
-        Eigen::Vector2d pt2_b = c_b - lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f + w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
-        Eigen::Vector2d pt3_b = c_b - lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f - w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
-        auto test1 = lon_dir.dot(w_dir);
-        LOGD("test1 : %f",test1);
+    //     Eigen::Vector2d pt0_b = c_b + lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f - w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
+    //     Eigen::Vector2d pt1_b = c_b + lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f + w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
+    //     Eigen::Vector2d pt2_b = c_b - lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f + w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
+    //     Eigen::Vector2d pt3_b = c_b - lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f - w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
+    //     auto test1 = lon_dir.dot(w_dir);
+    //     LOGD("test1 : %f",test1);
 
-        Eigen::Vector2d pt0_w = Rwb * pt0_b + twb;
-        Eigen::Vector2d pt1_w = Rwb * pt1_b + twb;
-        Eigen::Vector2d pt2_w = Rwb * pt2_b + twb;
-        Eigen::Vector2d pt3_w = Rwb * pt3_b + twb;
+    //     Eigen::Vector2d pt0_w = Rwb * pt0_b + twb;
+    //     Eigen::Vector2d pt1_w = Rwb * pt1_b + twb;
+    //     Eigen::Vector2d pt2_w = Rwb * pt2_b + twb;
+    //     Eigen::Vector2d pt3_w = Rwb * pt3_b + twb;
 
-        apaSlotInfo info_cur, info_w;
+    //     apaSlotInfo info_cur, info_w;
 
-        info_cur.rectInfo.pt[1].x = -pt0_b.y() * 1000;
-        info_cur.rectInfo.pt[1].y = pt0_b.x() * 1000;
-        info_cur.rectInfo.pt[0].x = -pt1_b.y() * 1000;
-        info_cur.rectInfo.pt[0].y = pt1_b.x() * 1000;
-        info_cur.rectInfo.pt[3].x = -pt2_b.y() * 1000;
-        info_cur.rectInfo.pt[3].y = pt2_b.x() * 1000;
-        info_cur.rectInfo.pt[2].x = -pt3_b.y() * 1000;
-        info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
-        PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
-        info_cur.rectInfo.label = id;
-        info_cur.rectInfo.PStype = type;
-        info_cur.rectInfo.iSodType = sodtype;
+    //     info_cur.rectInfo.pt[1].x = -pt0_b.y() * 1000;
+    //     info_cur.rectInfo.pt[1].y = pt0_b.x() * 1000;
+    //     info_cur.rectInfo.pt[0].x = -pt1_b.y() * 1000;
+    //     info_cur.rectInfo.pt[0].y = pt1_b.x() * 1000;
+    //     info_cur.rectInfo.pt[3].x = -pt2_b.y() * 1000;
+    //     info_cur.rectInfo.pt[3].y = pt2_b.x() * 1000;
+    //     info_cur.rectInfo.pt[2].x = -pt3_b.y() * 1000;
+    //     info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
+    //     PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
+    //     info_cur.rectInfo.label = id;
+    //     info_cur.rectInfo.PStype = type;
+    //     info_cur.rectInfo.iSodType = sodtype;
 
 
 
-        info_w.rectInfo.pt[0].x = pt0_w.x() * 1000;
-        info_w.rectInfo.pt[0].y = pt0_w.y() * 1000;
-        info_w.rectInfo.pt[1].x = pt1_w.x() * 1000;
-        info_w.rectInfo.pt[1].y = pt1_w.y() * 1000;
-        info_w.rectInfo.pt[2].x = pt2_w.x() * 1000;
-        info_w.rectInfo.pt[2].y = pt2_w.y() * 1000;
-        info_w.rectInfo.pt[3].x = pt3_w.x() * 1000;
-        info_w.rectInfo.pt[3].y = pt3_w.y() * 1000;
-        info_w.rectInfo.label = id;
-        info_w.rectInfo.PStype = type;
-        info_w.rectInfo.iSodType = sodtype;
+    //     info_w.rectInfo.pt[0].x = pt0_w.x() * 1000;
+    //     info_w.rectInfo.pt[0].y = pt0_w.y() * 1000;
+    //     info_w.rectInfo.pt[1].x = pt1_w.x() * 1000;
+    //     info_w.rectInfo.pt[1].y = pt1_w.y() * 1000;
+    //     info_w.rectInfo.pt[2].x = pt2_w.x() * 1000;
+    //     info_w.rectInfo.pt[2].y = pt2_w.y() * 1000;
+    //     info_w.rectInfo.pt[3].x = pt3_w.x() * 1000;
+    //     info_w.rectInfo.pt[3].y = pt3_w.y() * 1000;
+    //     info_w.rectInfo.label = id;
+    //     info_w.rectInfo.PStype = type;
+    //     info_w.rectInfo.iSodType = sodtype;
 
-        outputSlot_VIS.slots_in_cur_frame.push_back(info_cur);
-        outputSlot_VIS.WorldoutRect.push_back(info_w);
+    //     outputSlot_VIS.slots_in_cur_frame.push_back(info_cur);
+    //     outputSlot_VIS.WorldoutRect.push_back(info_w);
 
-    }
+    // }
     
-    LOGD("[APA_SLAM] finish processing slot list");
-    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+    // LOGD("[APA_SLAM] finish processing slot list");
+    // LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
     //------------------------------------------
     // outputSlot_VIS优化：类型修正
