@@ -109,9 +109,6 @@ POINT_I world_slot_memory[4]; // ABCD角点
 int hpp2statemachine = 0;
 std::chrono::steady_clock::time_point hpp2statemachine_start_time;
 bool hpp2statemachine_is_active = false;
-int hpp2statemachine_duration = 500; // HPP状态机持续时间
-
-
 
 
 CDT_PSD_FUSION_PROCESS_TEMPLATE(cpsd_fusion_process)
@@ -441,29 +438,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
 {
-    auto CANcurrent = std::chrono::system_clock::now(); 
-    auto CANcurrent1970 = CANcurrent.time_since_epoch();
-    auto CANcurrent1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(CANcurrent1970).count(); //用于J5时间同步
-    LOGD("[CANData] timestamp: %llu, WhlDistEdgeCntrLRHigFreq: %d, WhlDistEdgeCntrRRHigFreq: %d, WhlDistEdgeCntrRFHigFreq: %d, WhlDistEdgeCntrLFHigFreq: %d, WhlAngVelRFrtAuth: %f, WhlAngVelLFrtAuth: %f, WhlAngVelRRrAuth: %f, WhlAngVelLRrAuth: %f, IMULonAccPri: %f, IMULonAccSec: %f, IMULatAccPrim: %f, IMULatACCSec: %f, IMUYawRtPri: %f, IMUYawRtSec: %f, StrWhAng: %f, VehSpdAvgNDrvn: %f, TARS_TransActRng: %d",
-        static_cast<uint64_t>(CANcurrent1970_ms),
-        userData.WhlDistEdgeCntrLRHigFreq,
-        userData.WhlDistEdgeCntrRRHigFreq,
-        userData.WhlDistEdgeCntrRFHigFreq,
-        userData.WhlDistEdgeCntrLFHigFreq,
-        userData.WhlAngVelRFrtAuth,
-        userData.WhlAngVelLFrtAuth,
-        userData.WhlAngVelRRrAuth,
-        userData.WhlAngVelLRrAuth,
-        userData.IMULonAccPri,
-        userData.IMULonAccSec,
-        userData.IMULatAccPrim,
-        userData.IMULatACCSec,
-        userData.IMUYawRtPri,
-        userData.IMUYawRtSec,
-        userData.StrWhAng,
-        userData.VehSpdAvgNDrvn,
-        userData.TARS_TransActRng);
-        
     RETURN_NOERROR;
 }
 
@@ -705,7 +679,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 09021536 emos10.0.1 [LYK]: all slots available");
+    LOGD("PSD Version: 10111352 emos10.0.1 [LYK]: hpp slot from mapinfo");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -839,90 +813,90 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
 
     // ============================================================Part3 算法
-    PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
-    PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
-    outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
+    // PSD_FusionModuleIFrunable.UpdateVechiclePose(pose_globaldata);
+    // PSD_FusionModuleIFrunable.UpdateVisionSlots(singleframeslotsID, singleframeslots, apa_status, search_interrupt);
+    // outputSlot_VIS = PSD_FusionModuleIFrunable.GetOutputSlot();
 
-    // // Yukan: Convert Slot using Mapinfo
-    // Loc::MapInfo latest_map_info;
-    // {
-    //    LOGD("[APA_SLAM] Acquiring latest map info");
-    //    std::lock_guard<std::mutex> lock(_map_mutex);
-    //    if (map_info_buffer.size() == 0){
-    //     RETURN_NOERROR;
-    //    }
-    //    latest_map_info = map_info_buffer.back();
-    //    LOGD("[APA_SLAM] Acquiring latest map info Done");
-    // }
-    // outputSlot_VIS.slots_in_cur_frame.clear();
-    // outputSlot_VIS.WorldoutRect.clear();
-    // LOGD("[APA_SLAM] start processing slot list");
-    // double pose_x = static_cast<double>(pose_globaldata.coord.x) * 0.001;
-    // double pose_y = static_cast<double>(pose_globaldata.coord.y) * 0.001;
-    // double theta = pose_globaldata.yaw / 180.0 * M_PI;
-    // Eigen::Vector2d twb(pose_x, pose_y);
-    // // Eigen::Rotation2Dd rot(theta);
-    // // Eigen::Matrix2d Rwb = rot.toRotationMatrix();
-    // Eigen::Matrix2d Rwb;
-    // Rwb << std::cos(theta), -std::sin(theta),
-    //        std::sin(theta), std::cos(theta);
-    // LOGD("[APA_SLAM] latest_map_info.ParkingSlot.size(): %d", latest_map_info.ParkingSlot.size());
-    // for (size_t i = 0; i < latest_map_info.ParkingSlot.size(); ++i) {
-    //     const auto& id = latest_map_info.ParkingSlot.at(i).id;
-    //     const auto& type = latest_map_info.ParkingSlot.at(i).psType;
-    //     const auto& sodtype = latest_map_info.ParkingSlot.at(i).isOccupancy;
-    //     Eigen::Vector2d c_b(latest_map_info.ParkingSlot.at(i).center.x, latest_map_info.ParkingSlot.at(i).center.y);
-    //     Eigen::Vector2d lon_dir(latest_map_info.ParkingSlot.at(i).longDirection.x, latest_map_info.ParkingSlot.at(i).longDirection.y);
-    //     Eigen::Vector2d w_dir(latest_map_info.ParkingSlot.at(i).wideDirection.x, latest_map_info.ParkingSlot.at(i).wideDirection.y);
+    // Yukan: Convert Slot using Mapinfo
+    Loc::MapInfo latest_map_info;
+    {
+       LOGD("[APA_SLAM] Acquiring latest map info");
+       std::lock_guard<std::mutex> lock(_map_mutex);
+       if (map_info_buffer.size() == 0){
+        RETURN_NOERROR;
+       }
+       latest_map_info = map_info_buffer.back();
+       LOGD("[APA_SLAM] Acquiring latest map info Done");
+    }
+    outputSlot_VIS.slots_in_cur_frame.clear();
+    outputSlot_VIS.WorldoutRect.clear();
+    LOGD("[APA_SLAM] start processing slot list");
+    double pose_x = static_cast<double>(pose_globaldata.coord.x) * 0.001;
+    double pose_y = static_cast<double>(pose_globaldata.coord.y) * 0.001;
+    double theta = pose_globaldata.yaw / 180.0 * M_PI;
+    Eigen::Vector2d twb(pose_x, pose_y);
+    // Eigen::Rotation2Dd rot(theta);
+    // Eigen::Matrix2d Rwb = rot.toRotationMatrix();
+    Eigen::Matrix2d Rwb;
+    Rwb << std::cos(theta), -std::sin(theta),
+           std::sin(theta), std::cos(theta);
+    LOGD("[APA_SLAM] latest_map_info.ParkingSlot.size(): %d", latest_map_info.ParkingSlot.size());
+    for (size_t i = 0; i < latest_map_info.ParkingSlot.size(); ++i) {
+        const auto& id = latest_map_info.ParkingSlot.at(i).id;
+        const auto& type = latest_map_info.ParkingSlot.at(i).psType;
+        const auto& sodtype = latest_map_info.ParkingSlot.at(i).isOccupancy;
+        Eigen::Vector2d c_b(latest_map_info.ParkingSlot.at(i).center.x, latest_map_info.ParkingSlot.at(i).center.y);
+        Eigen::Vector2d lon_dir(latest_map_info.ParkingSlot.at(i).longDirection.x, latest_map_info.ParkingSlot.at(i).longDirection.y);
+        Eigen::Vector2d w_dir(latest_map_info.ParkingSlot.at(i).wideDirection.x, latest_map_info.ParkingSlot.at(i).wideDirection.y);
         
-    //     Eigen::Vector2d pt0_b = c_b + lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f - w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
-    //     Eigen::Vector2d pt1_b = c_b + lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f + w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
-    //     Eigen::Vector2d pt2_b = c_b - lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f + w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
-    //     Eigen::Vector2d pt3_b = c_b - lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f - w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
-    //     auto test1 = lon_dir.dot(w_dir);
-    //     LOGD("test1 : %f",test1);
+        Eigen::Vector2d pt0_b = c_b + lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f - w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
+        Eigen::Vector2d pt1_b = c_b + lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f + w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
+        Eigen::Vector2d pt2_b = c_b - lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f + w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
+        Eigen::Vector2d pt3_b = c_b - lon_dir * latest_map_info.ParkingSlot.at(i).length * .5f - w_dir * latest_map_info.ParkingSlot.at(i).width * .5f;
+        auto test1 = lon_dir.dot(w_dir);
+        LOGD("test1 : %f",test1);
 
-    //     Eigen::Vector2d pt0_w = Rwb * pt0_b + twb;
-    //     Eigen::Vector2d pt1_w = Rwb * pt1_b + twb;
-    //     Eigen::Vector2d pt2_w = Rwb * pt2_b + twb;
-    //     Eigen::Vector2d pt3_w = Rwb * pt3_b + twb;
+        Eigen::Vector2d pt0_w = Rwb * pt0_b + twb;
+        Eigen::Vector2d pt1_w = Rwb * pt1_b + twb;
+        Eigen::Vector2d pt2_w = Rwb * pt2_b + twb;
+        Eigen::Vector2d pt3_w = Rwb * pt3_b + twb;
 
-    //     apaSlotInfo info_cur, info_w;
+        apaSlotInfo info_cur, info_w;
 
-    //     info_cur.rectInfo.pt[1].x = -pt0_b.y() * 1000;
-    //     info_cur.rectInfo.pt[1].y = pt0_b.x() * 1000;
-    //     info_cur.rectInfo.pt[0].x = -pt1_b.y() * 1000;
-    //     info_cur.rectInfo.pt[0].y = pt1_b.x() * 1000;
-    //     info_cur.rectInfo.pt[3].x = -pt2_b.y() * 1000;
-    //     info_cur.rectInfo.pt[3].y = pt2_b.x() * 1000;
-    //     info_cur.rectInfo.pt[2].x = -pt3_b.y() * 1000;
-    //     info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
-    //     PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
-    //     info_cur.rectInfo.label = id;
-    //     info_cur.rectInfo.PStype = type;
-    //     info_cur.rectInfo.iSodType = sodtype;
+        info_cur.rectInfo.pt[1].x = -pt0_b.y() * 1000;
+        info_cur.rectInfo.pt[1].y = pt0_b.x() * 1000;
+        info_cur.rectInfo.pt[0].x = -pt1_b.y() * 1000;
+        info_cur.rectInfo.pt[0].y = pt1_b.x() * 1000;
+        info_cur.rectInfo.pt[3].x = -pt2_b.y() * 1000;
+        info_cur.rectInfo.pt[3].y = pt2_b.x() * 1000;
+        info_cur.rectInfo.pt[2].x = -pt3_b.y() * 1000;
+        info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
+        PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
+        info_cur.rectInfo.label = id;
+        info_cur.rectInfo.PStype = type;
+        info_cur.rectInfo.iSodType = sodtype;
 
 
 
-    //     info_w.rectInfo.pt[0].x = pt0_w.x() * 1000;
-    //     info_w.rectInfo.pt[0].y = pt0_w.y() * 1000;
-    //     info_w.rectInfo.pt[1].x = pt1_w.x() * 1000;
-    //     info_w.rectInfo.pt[1].y = pt1_w.y() * 1000;
-    //     info_w.rectInfo.pt[2].x = pt2_w.x() * 1000;
-    //     info_w.rectInfo.pt[2].y = pt2_w.y() * 1000;
-    //     info_w.rectInfo.pt[3].x = pt3_w.x() * 1000;
-    //     info_w.rectInfo.pt[3].y = pt3_w.y() * 1000;
-    //     info_w.rectInfo.label = id;
-    //     info_w.rectInfo.PStype = type;
-    //     info_w.rectInfo.iSodType = sodtype;
+        info_w.rectInfo.pt[0].x = pt0_w.x() * 1000;
+        info_w.rectInfo.pt[0].y = pt0_w.y() * 1000;
+        info_w.rectInfo.pt[1].x = pt1_w.x() * 1000;
+        info_w.rectInfo.pt[1].y = pt1_w.y() * 1000;
+        info_w.rectInfo.pt[2].x = pt2_w.x() * 1000;
+        info_w.rectInfo.pt[2].y = pt2_w.y() * 1000;
+        info_w.rectInfo.pt[3].x = pt3_w.x() * 1000;
+        info_w.rectInfo.pt[3].y = pt3_w.y() * 1000;
+        info_w.rectInfo.label = id;
+        info_w.rectInfo.PStype = type;
+        info_w.rectInfo.iSodType = sodtype;
 
-    //     outputSlot_VIS.slots_in_cur_frame.push_back(info_cur);
-    //     outputSlot_VIS.WorldoutRect.push_back(info_w);
+        outputSlot_VIS.slots_in_cur_frame.push_back(info_cur);
+        outputSlot_VIS.WorldoutRect.push_back(info_w);
 
-    // }
+    }
     
-    // LOGD("[APA_SLAM] finish processing slot list");
-    // LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
+    LOGD("[APA_SLAM] finish processing slot list");
+    LogSlotInfo(outputSlot_VIS, "ORIGIN VISSLOTS");
 
     //------------------------------------------
     // outputSlot_VIS优化：类型修正
@@ -1118,7 +1092,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     //------------------------------------------
     //VCU 发送车位列表
-    if (apa_status == 2){
+    if (apa_status == 2 || apa_status == 11 || apa_status == 14){
         LOGD("VCU display for SEARCH");
 
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector)); //displayLabel 会被重置
@@ -1591,7 +1565,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         }
     }
 
-    else { //泊入过程中显示所有车位
+    else if (apa_status == 5) { //泊入过程中显示所有车位
         LOGD("VCU display For NON-SEARCH");
         memset(&psd2vcu, 0, sizeof(Sfus::FusionSlotInfovector));
         psd2vcu.slotNum = slotlist_size;
