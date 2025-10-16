@@ -9,6 +9,8 @@
 #include "psd2vcu.h"
 #include <float.h>
 
+#include "s32g_hpp/can_sender/can_sender.h"
+#include "s32g_hpp/can_sender/can_data_decl.h"
 
 // ***************************标定量
 #define VEHICLE_LENGTH 5259.9 
@@ -110,6 +112,8 @@ int hpp2statemachine = 0;
 std::chrono::steady_clock::time_point hpp2statemachine_start_time;
 bool hpp2statemachine_is_active = false;
 
+// *****************HPP发送VehicleCanData*********
+static patac::psd::aux::UdpSender s_udp_sender;
 
 CDT_PSD_FUSION_PROCESS_TEMPLATE(cpsd_fusion_process)
 
@@ -184,6 +188,12 @@ tResult cpsd_fusion_process::Init()
         psd2planning.targetSlot.slotCorners.cornerC.y = 0;
         psd2planning.targetSlot.slotCorners.cornerD.x = 0;
         psd2planning.targetSlot.slotCorners.cornerD.y = 0;
+    }
+
+    {
+        patac::psd::aux::UdpErrorNo err_no;
+        s_udp_sender.Initialize("127.0.0.1", 1234, err_no);
+        LOGI("[ Psd UdpSender ]: Init Stat %d", static_cast<int>(err_no));
     }
 
     RETURN_NOERROR;
@@ -438,6 +448,39 @@ tResult cpsd_fusion_process::TimeTrigger_thread_50ms_2()
 
 tResult cpsd_fusion_process::OnVehicleCanData(const VehicleCanData& userData)
 {
+    auto CANcurrent = std::chrono::system_clock::now(); 
+    auto CANcurrent1970 = CANcurrent.time_since_epoch();
+    auto CANcurrent1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(CANcurrent1970).count(); //用于J5时间同步
+    LOGD("[CANData] timestamp: %llu, WhlDistEdgeCntrLRHigFreq: %d, WhlDistEdgeCntrRRHigFreq: %d, WhlDistEdgeCntrRFHigFreq: %d, WhlDistEdgeCntrLFHigFreq: %d, WhlAngVelRFrtAuth: %f, WhlAngVelLFrtAuth: %f, WhlAngVelRRrAuth: %f, WhlAngVelLRrAuth: %f, IMULonAccPri: %f, IMULonAccSec: %f, IMULatAccPrim: %f, IMULatACCSec: %f, IMUYawRtPri: %f, IMUYawRtSec: %f, StrWhAng: %f, VehSpdAvgNDrvn: %f, TARS_TransActRng: %d",
+        static_cast<uint64_t>(CANcurrent1970_ms),
+        userData.WhlDistEdgeCntrLRHigFreq,
+        userData.WhlDistEdgeCntrRRHigFreq,
+        userData.WhlDistEdgeCntrRFHigFreq,
+        userData.WhlDistEdgeCntrLFHigFreq,
+        userData.WhlAngVelRFrtAuth,
+        userData.WhlAngVelLFrtAuth,
+        userData.WhlAngVelRRrAuth,
+        userData.WhlAngVelLRrAuth,
+        userData.IMULonAccPri,
+        userData.IMULonAccSec,
+        userData.IMULatAccPrim,
+        userData.IMULatACCSec,
+        userData.IMUYawRtPri,
+        userData.IMUYawRtSec,
+        userData.StrWhAng,
+        userData.VehSpdAvgNDrvn,
+        userData.TARS_TransActRng);
+    
+    patac::psd::HppVehicleCanData vehicle_can_data;
+    vehicle_can_data.micro = patac::psd::aux::UdpSender::get_microseconds_timestamp();
+    vehicle_can_data.can_data = userData;
+
+    patac::psd::aux::UdpErrorNo err_no = patac::psd::aux::UdpErrorNo::UDP_STAT_DEFAULT;
+    bool send_res = s_udp_sender.SendNonBlock((char*)&vehicle_can_data, sizeof(vehicle_can_data), err_no);
+    if (!send_res) {
+      LOGW("[ Psd UdpSender ]: Send Stat %d", static_cast<int>(err_no));
+    }
+        
     RETURN_NOERROR;
 }
 
@@ -679,7 +722,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 10111352 emos10.0.1 [LYK]: hpp slot from mapinfo");
+    LOGD("PSD Version: 10161017 emos10.0.1 [LYK]: hpp slot from mapinfo, add udpCANsend");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
