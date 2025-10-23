@@ -483,11 +483,34 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                     }
                 }
                 else{// 水平
+                    // // 计算距离
+                    // float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
+                    // float temp_dis2 = CalPointAndLineDistance(wheelstop_dis, point_a, point_d);
+                    // outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperDistance = std::max(temp_dis1,temp_dis2);
+                    // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperDistance = std::max(temp_dis1,temp_dis2);
+                    // // 根据位置判断占用
+                    // if (temp_dis1 > temp_dis2){
+                    //     outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_DA;
+                    //     outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_DA;
+                    // }
+                    // else if(temp_dis1 < temp_dis2){
+                    //     outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_BC;
+                    //     outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_BC;
+                    //     outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
+                    //     outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
+                    // }
+                    // else{
+                    //     outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
+                    //     outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
+                    // }
+
+
+                    // 支持反向限位块：释放，stopdis输出小的
                     // 计算距离
                     float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
                     float temp_dis2 = CalPointAndLineDistance(wheelstop_dis, point_a, point_d);
-                    outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperDistance = std::max(temp_dis1,temp_dis2);
-                    outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperDistance = std::max(temp_dis1,temp_dis2);
+                    outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperDistance = temp_dis1;
+                    outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperDistance = temp_dis1;
                     // 根据位置判断占用
                     if (temp_dis1 > temp_dis2){
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_DA;
@@ -496,13 +519,15 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                     else if(temp_dis1 < temp_dis2){
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_BC;
                         outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_BC;
-                        outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
+                        // outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
                     }
                     else{
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
                         outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
                     }
+
+
                 }
             }
             LOGD("Updated stopdis: %f, stoploc: %d, SOD: %d",
@@ -958,46 +983,6 @@ void PSD_FusionModuleIF::adjustRectOrder_KF(bool isleft, std::array<Eigen::Vecto
         // 当长方形位于原点右侧
         cornerswolrd = {left[1], left[0], right[0], right[1]}; // A, B, C, D
     }
-}
-
-
-void PSD_FusionModuleIF::printSlotInfo(const apaSlotInfo& info_cur) {
-    // // 打印车位类型
-    // std::string slotTypeStr;
-    // switch (info_cur.rectInfo.PStype) {
-    //     case 0:
-    //         slotTypeStr = "VERTICAL";
-    //         break;
-    //     case 1:
-    //         slotTypeStr = "PARALLEL";
-    //         break;
-    //     case 2:
-    //         slotTypeStr = "DIAGONAL";
-    //         break;
-    //     default:
-    //         slotTypeStr = "UNKNOWN";
-    //         break;
-    // }
-    
-    // // 打印占用状态
-    // std::string occupancyStr;
-    // switch (info_cur.rectInfo.iSodType) {
-    //     case 0:
-    //         occupancyStr = "FREE";
-    //         break;
-    //     case 1:
-    //         occupancyStr = "OCCUPIED";
-    //         break;
-    //     default:
-    //         occupancyStr = "UNKNOWN";
-    //         break;
-    // }
-    
-    LOGD("pt0(%.1f, %.1f) pt1(%.1f, %.1f) pt2(%.1f, %.1f) pt3(%.1f, %.1f)", 
-        info_cur.rectInfo.pt[0].x, info_cur.rectInfo.pt[0].y,
-        info_cur.rectInfo.pt[1].x, info_cur.rectInfo.pt[1].y, 
-        info_cur.rectInfo.pt[2].x, info_cur.rectInfo.pt[2].y,
-        info_cur.rectInfo.pt[3].x, info_cur.rectInfo.pt[3].y);
 }
 
 

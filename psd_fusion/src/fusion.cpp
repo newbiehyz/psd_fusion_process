@@ -344,6 +344,7 @@ void slotfusion::fillVisonstruct(const UssIf_stPLVOutputInfo_t &total_uss_slot, 
                 rectInfo.iDownSlotSOD = slotProperty.enmDownSlotSODType;
                 rectInfo.iMinOtherSideDist = slotProperty.u16UssOppositeSpace;
                 rectInfo.iRoadEdgeDist = slotProperty.u16ObjDistanceBetweenLineABToSlotBottom;
+                rectInfo.iBottomType = slotProperty.enmSlotBottomType;
                 
                 uss_slots.slots_in_cur_frame.push_back(slotInfo);
             }
