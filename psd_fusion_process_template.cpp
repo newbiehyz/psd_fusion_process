@@ -1376,6 +1376,13 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 i++;
             }
 
+            // ================= 新增逻辑：apa_status为11时，SLAM只发一个车位则自动选择 =================
+            if (apa_status == 11 && outputSlot_VIS.slots_in_cur_frame.size() == 1) {
+                LOGD("[APA_STATUS_11_SINGLE_SLOT] Only one slot detected, auto-selecting slot ID: %d", psd2vcu.FusionSlotInfo[0].slotLabel);
+                final_ID = psd2vcu.FusionSlotInfo[0].slotLabel;
+                psd2vcu.FusionSlotInfo[0].slotStatusType = 5; // 设置为SELECTED状态
+            }
+
             // ================= 推荐逻辑 =================
             // 认为自车的位置
             POINT_F VCU_car_pose = { -4.0, 0.0 };
@@ -2402,5 +2409,3 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     RETURN_NOERROR;
 }
-
-
