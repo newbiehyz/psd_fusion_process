@@ -722,7 +722,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 10161017 emos10.0.1 [LYK]: hpp slot from mapinfo, add udpCANsend");
+    LOGD("PSD Version: 10281607 emos10.0.1 [LYK]: PSD2VCU size control");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -993,7 +993,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     // outputSlot_FUSED优化：统计车位数
     // outputSlot_FUSED = outputSlot_VIS;
     LogSlotInfo(outputSlot_USS, "ORIGIN USSSLOTS");
-    slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
     LOGD("After VIS/USS Merge FUSIONSLOTS:")
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
     LogWorldSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
@@ -1080,6 +1079,14 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     LOGD("After StopperLockOBS FUSIONSLOTS:")
     LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
 
+    //------------------------------------------
+    // outputSlot_FUSED优化：SIZE控制50
+    LOGD("Without SIZECONTROL FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    PSD_FusionModuleIFrunable.SizeControl(outputSlot_FUSED);
+    LOGD("After SIZECONTROL FUSIONSLOTS:")
+    LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+    slotlist_size = outputSlot_FUSED.slots_in_cur_frame.size();
 
 
     if (apa_status == 0 || apa_status == 1 || apa_status == 6 || apa_status == 7){

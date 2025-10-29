@@ -674,6 +674,35 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
     }
 }
 
+void PSD_FusionModuleIF::SizeControl(apaSlotListInfo &outputSlotFUS) {
+    // 车位数如果>50，只取用最近的50个车位
+    if (outputSlotFUS.slots_in_cur_frame.size() >= 50) {
+        std::vector<apaSlotInfo> sorted_slots = outputSlotFUS.slots_in_cur_frame;
+        
+        // 按与自车距离排序
+        std::sort(sorted_slots.begin(), sorted_slots.end(),
+                  [this](const apaSlotInfo &a, const apaSlotInfo &b) {
+                      float dist_a = std::hypot(
+                          (a.rectInfo.pt[0].x + a.rectInfo.pt[1].x + a.rectInfo.pt[2].x + a.rectInfo.pt[3].x) / 4.0 ,
+                          (a.rectInfo.pt[0].y + a.rectInfo.pt[1].y + a.rectInfo.pt[2].y + a.rectInfo.pt[3].y) / 4.0 );
+                      float dist_b = std::hypot(
+                          (b.rectInfo.pt[0].x + b.rectInfo.pt[1].x + b.rectInfo.pt[2].x + b.rectInfo.pt[3].x) / 4.0,
+                          (b.rectInfo.pt[0].y + b.rectInfo.pt[1].y + b.rectInfo.pt[2].y + b.rectInfo.pt[3].y) / 4.0);
+                      return dist_a < dist_b;
+                  });
+
+        // 只保留前50个车位
+        sorted_slots.resize(50);
+
+        // 更新 outputSlotFUS
+        outputSlotFUS.slots_in_cur_frame = sorted_slots;
+        // for (const auto &slot : sorted_slots) {
+        //     outputSlotFUS.slots_in_cur_frame.push_back(slot);
+        // }
+    }
+}
+
+
 
 
 void PSD_FusionModuleIF::UpdateVisionSlots(uint64_t frameid, std::vector<padVisionSlotCoord> slots, int status, int search_interrupt)
