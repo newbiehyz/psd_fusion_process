@@ -496,8 +496,8 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                     else if(temp_dis1 < temp_dis2){
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_BC;
                         outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_BC;
-                        outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
+                        // outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
                     }
                     else{
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
