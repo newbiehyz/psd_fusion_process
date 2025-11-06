@@ -110,7 +110,6 @@ public:
 
     virtual bool Destroy();
 
-    void printSlotInfo(const apaSlotInfo& info_cur);
     bool point_in_rect(const Eigen::Vector3f &point, const apaSlotInfo &slot);
     bool isLeftOfOrigin(const apaSlotInfo rect);
     void adjustRectOrder(apaSlotInfo &rect);

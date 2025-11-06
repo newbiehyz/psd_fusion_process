@@ -642,7 +642,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 11051012 emos10.0.1 fix stopperOBS VISandUSS dump");
+    LOGD("PSD Version: 11061355 emos10.0.1 FOR 1114 RELEASE. release all para, bottomtype, fix coredump, keep original slottype");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -833,7 +833,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         info_cur.rectInfo.pt[3].y = pt2_b.x() * 1000;
         info_cur.rectInfo.pt[2].x = -pt3_b.y() * 1000;
         info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
-        // PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
+        PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
         info_cur.rectInfo.label = id;
         info_cur.rectInfo.PStype = type;
         info_cur.rectInfo.iSodType = sodtype;
