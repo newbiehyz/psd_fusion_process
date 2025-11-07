@@ -1389,206 +1389,207 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 final_ID = psd2vcu.FusionSlotInfo[0].slotLabel;
                 psd2vcu.FusionSlotInfo[0].slotStatusType = 5; // 设置为SELECTED状态
             }
+            else{
+                // ================= 推荐逻辑 =================
+                // 认为自车的位置
+                POINT_F VCU_car_pose = { -4.0, 0.0 };
 
-            // ================= 推荐逻辑 =================
-            // 认为自车的位置
-            POINT_F VCU_car_pose = { -4.0, 0.0 };
-
-            // Step 0: 清除旧的推荐信息
-            for (int i = 0; i < psd2vcu.slotNum; ++i) {
-                if (psd2vcu.FusionSlotInfo[i].slotStatusType == 7) {
-                    psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
-                }
-                psd2vcu.FusionSlotInfo[i].displayLabel = 0;
-            }
-
-            std::vector<Sfus::FusionSlotInfo> vcu_available_slots; //找出available车位
-            std::vector<Sfus::FusionSlotInfo> cloest_slots; // 从psd2vcu拿到,找出available里的closet车位
-            for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
-                if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
-                    Sfus::FusionSlotInfo vcu_slot;
-                    for (int jcnt = 0; jcnt < 4; ++jcnt){
-                        vcu_slot.pt[jcnt].x = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].x;
-                        vcu_slot.pt[jcnt].y = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].y;
+                // Step 0: 清除旧的推荐信息
+                for (int i = 0; i < psd2vcu.slotNum; ++i) {
+                    if (psd2vcu.FusionSlotInfo[i].slotStatusType == 7) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
                     }
-                    vcu_slot.slotLabel = psd2vcu.FusionSlotInfo[icnt].slotLabel;
-                    vcu_slot.slotStatusType = psd2vcu.FusionSlotInfo[icnt].slotStatusType;
-                    vcu_slot.slotType = psd2vcu.FusionSlotInfo[icnt].slotType;
-
-                    vcu_available_slots.push_back(vcu_slot);
+                    psd2vcu.FusionSlotInfo[i].displayLabel = 0;
                 }
-            }
-            LOGD("vcu_available_slots size: %d",vcu_available_slots.size());
-            if (vcu_available_slots.size() > 0){
-                available_slot_flag_to_statemachine = 1;
-            }else{
-                available_slot_flag_to_statemachine = 0;
-            }
-            cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_available_slots ,10); //距离排序后的slots
-            LOGD("cloest_slots size: %d",cloest_slots.size());
+
+                std::vector<Sfus::FusionSlotInfo> vcu_available_slots; //找出available车位
+                std::vector<Sfus::FusionSlotInfo> cloest_slots; // 从psd2vcu拿到,找出available里的closet车位
+                for (int icnt = 0; icnt < psd2vcu.slotNum; ++icnt){
+                    if (psd2vcu.FusionSlotInfo[icnt].slotStatusType == 3){
+                        Sfus::FusionSlotInfo vcu_slot;
+                        for (int jcnt = 0; jcnt < 4; ++jcnt){
+                            vcu_slot.pt[jcnt].x = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].x;
+                            vcu_slot.pt[jcnt].y = psd2vcu.FusionSlotInfo[icnt].pt[jcnt].y;
+                        }
+                        vcu_slot.slotLabel = psd2vcu.FusionSlotInfo[icnt].slotLabel;
+                        vcu_slot.slotStatusType = psd2vcu.FusionSlotInfo[icnt].slotStatusType;
+                        vcu_slot.slotType = psd2vcu.FusionSlotInfo[icnt].slotType;
+
+                        vcu_available_slots.push_back(vcu_slot);
+                    }
+                }
+                LOGD("vcu_available_slots size: %d",vcu_available_slots.size());
+                if (vcu_available_slots.size() > 0){
+                    available_slot_flag_to_statemachine = 1;
+                }else{
+                    available_slot_flag_to_statemachine = 0;
+                }
+                cloest_slots = math::findClosesParkingSpots(VCU_car_pose,vcu_available_slots ,10); //距离排序后的slots
+                LOGD("cloest_slots size: %d",cloest_slots.size());
 
 
-            if (final_select_ID == 0 && is_Still) { //状态1：当没有点选ID且静止，使用推荐ID
-                LOGD("RECOMMEND1: still, Start Recommend!")
-                const int max_recommend_num = 3; //display设置为1，2，3
+                if (final_select_ID == 0 && is_Still) { //状态1：当没有点选ID且静止，使用推荐ID
+                    LOGD("RECOMMEND1: still, Start Recommend!")
+                    const int max_recommend_num = 3; //display设置为1，2，3
 
-                // Step 1：设置 cloest_slots[0] 对应 slot 的 slotStatusType 为 7
-                if (!cloest_slots.empty()) {
-                    int targetLabel = cloest_slots[0].slotLabel;
-                    RECOMMEND_ID = targetLabel;
-                    for (int i = 0; i < psd2vcu.slotNum; ++i) {
-                        if (psd2vcu.FusionSlotInfo[i].slotLabel == targetLabel) {
-                            psd2vcu.FusionSlotInfo[i].slotStatusType = 7;
-                            break; // 只设置第一个推荐车位
+                    // Step 1：设置 cloest_slots[0] 对应 slot 的 slotStatusType 为 7
+                    if (!cloest_slots.empty()) {
+                        int targetLabel = cloest_slots[0].slotLabel;
+                        RECOMMEND_ID = targetLabel;
+                        for (int i = 0; i < psd2vcu.slotNum; ++i) {
+                            if (psd2vcu.FusionSlotInfo[i].slotLabel == targetLabel) {
+                                psd2vcu.FusionSlotInfo[i].slotStatusType = 7;
+                                break; // 只设置第一个推荐车位
+                            }
+                        }
+                    }
+                    // Step 2：设置推荐车位的 displayLabel 从 1 到 max_recommend_num
+                    for (int idx = 1; idx <= max_recommend_num && idx < cloest_slots.size(); ++idx) {
+                        int targetLabel = cloest_slots[idx].slotLabel;
+
+                        for (int i = 0; i < psd2vcu.slotNum; ++i) {
+                            if (psd2vcu.FusionSlotInfo[i].slotLabel == targetLabel) {
+                                psd2vcu.FusionSlotInfo[i].displayLabel = idx; // 从1开始编号
+                                break;
+                            }
+                        }
+                    }
+                    // 推荐车位作为final_ID
+                    final_ID = RecommendSelectID(final_select_ID,RECOMMEND_ID);
+                }
+
+                else if (final_select_ID == 0 && !is_Still) { //状态2：当没有点选ID且运动，保留RD原状态
+                    LOGD("RECOMMEND2: not still, NO Recommend!")
+                    // saved_RECOMMEND_ID = -1;
+                    RECOMMEND_ID = 0;
+                    final_select_ID = 0;
+                    final_ID = 0;
+                    recommend_exist = false;
+                    already_has_recommend_slot = false;
+                    for (int i = 0; i < slotlist_size; i++) {
+                        psd2vcu.FusionSlotInfo[i].displayLabel = 0;
+                        if (psd2vcu.FusionSlotInfo[i].slotStatusType == 4) { //占用的保持占用
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
+                        }
+                        else if (psd2vcu.FusionSlotInfo[i].slotStatusType == 6){ //unavailable的保持unavailable
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
+                        }
+                        else { //剩下的回到available
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
+                        }
+                    }
+                    memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
+                }
+
+                else if (final_select_ID != 0 && is_Still) { //状态3：当有点选车位且静止，使用点选ID
+                    LOGD("RECOMMEND3: still, Select!")
+                    // saved_RECOMMEND_ID = -1;
+                    RECOMMEND_ID = 0;
+                    final_ID = final_select_ID;
+                    already_has_recommend_slot = false;
+                    for (int i = 0; i < slotlist_size; i++) {
+                        psd2vcu.FusionSlotInfo[i].displayLabel = 0;
+                        //找到目标车位ID 且 非占用
+                        if (psd2vcu.FusionSlotInfo[i].slotLabel == final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 5; // 设置为SELECTED状态
+                        } 
+                        //找到目标车位ID 且 占用
+                        if (psd2vcu.FusionSlotInfo[i].slotLabel == final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
+                        } 
+                        //剩下的非选中车位，占用的保持占用
+                        else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
+                        }
+                        //剩下的非选中车位，unavailable的保持unavailable
+                        else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 6) {
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 6; // 设置为unavailable状态
+                        }
+                        //剩下的非选中车位，不占用,不unavailable的回到available
+                        else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                         }
                     }
                 }
-                // Step 2：设置推荐车位的 displayLabel 从 1 到 max_recommend_num
-                for (int idx = 1; idx <= max_recommend_num && idx < cloest_slots.size(); ++idx) {
-                    int targetLabel = cloest_slots[idx].slotLabel;
 
-                    for (int i = 0; i < psd2vcu.slotNum; ++i) {
-                        if (psd2vcu.FusionSlotInfo[i].slotLabel == targetLabel) {
-                            psd2vcu.FusionSlotInfo[i].displayLabel = idx; // 从1开始编号
-                            break;
+                else{ //状态4：当有点选车位且运动，清除所有ID。@TODO 前后距离超过一定值
+                    LOGD("RECOMMEND4: no still, no recommend, no select")
+                    // saved_RECOMMEND_ID = -1;
+                    HMI_temp_ID = 0;
+                    HMI_select_ID = 0;
+                    VCU_select_ID_ON = 0;
+                    final_select_ID = 0;
+                    RECOMMEND_ID = 0;
+                    final_ID = 0;
+                    recommend_exist = false;
+                    already_has_recommend_slot = false;
+                    for (int i = 0; i < slotlist_size; i++) {
+                        psd2vcu.FusionSlotInfo[i].displayLabel = 0;
+                        if (psd2vcu.FusionSlotInfo[i].slotStatusType == 4) { //占用的保持占用
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
+                        }
+                        else if (psd2vcu.FusionSlotInfo[i].slotStatusType == 6){ //unavailable的保持unavailable
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
+                        }
+                        else { //不占用的回到available
+                            psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
                         }
                     }
-                }
-                // 推荐车位作为final_ID
-                final_ID = RecommendSelectID(final_select_ID,RECOMMEND_ID);
-            }
+                    memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
+                    memset(&psd2planning.targetSlot, 0, sizeof(Sfus::SfusionSlots));
 
-            else if (final_select_ID == 0 && !is_Still) { //状态2：当没有点选ID且运动，保留RD原状态
-                LOGD("RECOMMEND2: not still, NO Recommend!")
-                // saved_RECOMMEND_ID = -1;
-                RECOMMEND_ID = 0;
-                final_select_ID = 0;
-                final_ID = 0;
-                recommend_exist = false;
-                already_has_recommend_slot = false;
-                for (int i = 0; i < slotlist_size; i++) {
-                    psd2vcu.FusionSlotInfo[i].displayLabel = 0;
-                    if (psd2vcu.FusionSlotInfo[i].slotStatusType == 4) { //占用的保持占用
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
-                    }
-                    else if (psd2vcu.FusionSlotInfo[i].slotStatusType == 6){ //unavailable的保持unavailable
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
-                    }
-                    else { //剩下的回到available
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
+                }
+
+                //final_ID 已记忆，每次清零全列表，并mark此车位。必须search时打标记
+                PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED,final_ID);
+                LOGD("After markParkInSlot FUSIONSLOTS:")
+                LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
+
+                // 设置 slotSelectedFlag
+                int selected_label = -1;
+                for (const auto& slot : outputSlot_FUSED.slots_in_cur_frame) {
+                    if (slot.rectInfo.ParkInSlot == 1) {
+                        selected_label = slot.rectInfo.label;
+                        break;
                     }
                 }
-                memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
-            }
-
-            else if (final_select_ID != 0 && is_Still) { //状态3：当有点选车位且静止，使用点选ID
-                LOGD("RECOMMEND3: still, Select!")
-                // saved_RECOMMEND_ID = -1;
-                RECOMMEND_ID = 0;
-                final_ID = final_select_ID;
-                already_has_recommend_slot = false;
-                for (int i = 0; i < slotlist_size; i++) {
-                    psd2vcu.FusionSlotInfo[i].displayLabel = 0;
-                    //找到目标车位ID 且 非占用
-                    if (psd2vcu.FusionSlotInfo[i].slotLabel == final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 5; // 设置为SELECTED状态
-                    } 
-                    //找到目标车位ID 且 占用
-                    if (psd2vcu.FusionSlotInfo[i].slotLabel == final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
-                    } 
-                    //剩下的非选中车位，占用的保持占用
-                    else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 4) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
-                    }
-                    //剩下的非选中车位，unavailable的保持unavailable
-                    else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType == 6) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6; // 设置为unavailable状态
-                    }
-                    //剩下的非选中车位，不占用,不unavailable的回到available
-                    else if (psd2vcu.FusionSlotInfo[i].slotLabel != final_ID && psd2vcu.FusionSlotInfo[i].slotStatusType != 4) {
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
+                for (int i = 0; i < psd2vcu.slotNum; ++i) {
+                    if (psd2vcu.FusionSlotInfo[i].slotLabel == selected_label) {
+                        psd2vcu.FusionSlotInfo[i].slotSelectedFlag = 1;
+                    } else {
+                        psd2vcu.FusionSlotInfo[i].slotSelectedFlag = 0;
                     }
                 }
-            }
 
-            else{ //状态4：当有点选车位且运动，清除所有ID。@TODO 前后距离超过一定值
-                LOGD("RECOMMEND4: no still, no recommend, no select")
-                // saved_RECOMMEND_ID = -1;
-                HMI_temp_ID = 0;
-                HMI_select_ID = 0;
-                VCU_select_ID_ON = 0;
-                final_select_ID = 0;
-                RECOMMEND_ID = 0;
-                final_ID = 0;
-                recommend_exist = false;
-                already_has_recommend_slot = false;
-                for (int i = 0; i < slotlist_size; i++) {
-                    psd2vcu.FusionSlotInfo[i].displayLabel = 0;
-                    if (psd2vcu.FusionSlotInfo[i].slotStatusType == 4) { //占用的保持占用
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 4; // 设置为OCCUPIED状态
-                    }
-                    else if (psd2vcu.FusionSlotInfo[i].slotStatusType == 6){ //unavailable的保持unavailable
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 6;
-                    }
-                    else { //不占用的回到available
-                        psd2vcu.FusionSlotInfo[i].slotStatusType = 3; // 设置为AVAILABLE状态
+                // 目标车位记忆
+                // 遍历 outputSlot_FUSED.WorldoutRect 找到 final_ID 对应的车位
+                for (const auto& slot : outputSlot_FUSED.WorldoutRect) {
+                    if (slot.rectInfo.label == final_ID) {
+                        selected_slot_in_world = slot; 
+                        break;
                     }
                 }
-                memset(&psd2statemachine, 0, sizeof(StatusDecFusionInput));
-                memset(&psd2planning.targetSlot, 0, sizeof(Sfus::SfusionSlots));
 
+                // selected_slot_in_world 为世界坐标下的目标车位
+                LOGD("[TARGET SLOT WORLD] final_ID: %d. (%.2f, %.2f) (%.2f, %.2f) (%.2f, %.2f) (%.2f, %.2f)",
+                    final_ID,
+                    selected_slot_in_world.rectInfo.pt[0].x,
+                    selected_slot_in_world.rectInfo.pt[0].y,
+                    selected_slot_in_world.rectInfo.pt[1].x,
+                    selected_slot_in_world.rectInfo.pt[1].y,
+                    selected_slot_in_world.rectInfo.pt[2].x,
+                    selected_slot_in_world.rectInfo.pt[2].y,
+                    selected_slot_in_world.rectInfo.pt[3].x,
+                    selected_slot_in_world.rectInfo.pt[3].y)
+
+                // // 2. 如果找到了目标车位，调用 slotinframe2worldoutrect 转换
+                // if (selected_slot_in_world.rectInfo.label == final_ID) {
+                //     PSD_FusionModuleIFrunable.slotinframe2worldoutrect(selected_slot_in_world,
+                //                                         pose_globaldata.coord.x,
+                //                                         pose_globaldata.coord.y,
+                //                                         pose_globaldata.yaw);
+                // }
             }
-
-            //final_ID 已记忆，每次清零全列表，并mark此车位。必须search时打标记
-            PSD_FusionModuleIFrunable.markParkInSlot(outputSlot_FUSED,final_ID);
-            LOGD("After markParkInSlot FUSIONSLOTS:")
-            LogSlotInfo(outputSlot_FUSED, "FUSIONSLOTS");
-
-            // 设置 slotSelectedFlag
-            int selected_label = -1;
-            for (const auto& slot : outputSlot_FUSED.slots_in_cur_frame) {
-                if (slot.rectInfo.ParkInSlot == 1) {
-                    selected_label = slot.rectInfo.label;
-                    break;
-                }
-            }
-            for (int i = 0; i < psd2vcu.slotNum; ++i) {
-                if (psd2vcu.FusionSlotInfo[i].slotLabel == selected_label) {
-                    psd2vcu.FusionSlotInfo[i].slotSelectedFlag = 1;
-                } else {
-                    psd2vcu.FusionSlotInfo[i].slotSelectedFlag = 0;
-                }
-            }
-
-            // 目标车位记忆
-            // 遍历 outputSlot_FUSED.WorldoutRect 找到 final_ID 对应的车位
-            for (const auto& slot : outputSlot_FUSED.WorldoutRect) {
-                if (slot.rectInfo.label == final_ID) {
-                    selected_slot_in_world = slot; 
-                    break;
-                }
-            }
-
-            // selected_slot_in_world 为世界坐标下的目标车位
-            LOGD("[TARGET SLOT WORLD] final_ID: %d. (%.2f, %.2f) (%.2f, %.2f) (%.2f, %.2f) (%.2f, %.2f)",
-                final_ID,
-                selected_slot_in_world.rectInfo.pt[0].x,
-                selected_slot_in_world.rectInfo.pt[0].y,
-                selected_slot_in_world.rectInfo.pt[1].x,
-                selected_slot_in_world.rectInfo.pt[1].y,
-                selected_slot_in_world.rectInfo.pt[2].x,
-                selected_slot_in_world.rectInfo.pt[2].y,
-                selected_slot_in_world.rectInfo.pt[3].x,
-                selected_slot_in_world.rectInfo.pt[3].y)
-
-            // // 2. 如果找到了目标车位，调用 slotinframe2worldoutrect 转换
-            // if (selected_slot_in_world.rectInfo.label == final_ID) {
-            //     PSD_FusionModuleIFrunable.slotinframe2worldoutrect(selected_slot_in_world,
-            //                                         pose_globaldata.coord.x,
-            //                                         pose_globaldata.coord.y,
-            //                                         pose_globaldata.yaw);
-            // }
         }
 
         // For Test VCU slot lists
