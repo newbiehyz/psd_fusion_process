@@ -69,6 +69,7 @@ private:
     int RecommendSelectID(const int &final_select, const int &recommend);
     int IsParkOut(int apastatus);
     int IsStill(const Loc::App2emap_DR dr_pose, Loc::App2emap_DR& previous_dr_pose);
+    void adjustPSD2PLANNINGRectOrder(Sfus::SlotCorners &slotCorners);
 
 public:
     apaSlotListInfo outputSlot_FUSED;

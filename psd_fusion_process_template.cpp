@@ -417,6 +417,82 @@ int cpsd_fusion_process::IsStill(const Loc::App2emap_DR drpose, Loc::App2emap_DR
     return 0;  // is_Still = 0
 }
 
+void cpsd_fusion_process::adjustPSD2PLANNINGRectOrder(Sfus::SlotCorners &slotCorners)
+{
+    // 获取四个角点
+    float pt[4][2] = {
+        {slotCorners.cornerA.x, slotCorners.cornerA.y},
+        {slotCorners.cornerB.x, slotCorners.cornerB.y},
+        {slotCorners.cornerC.x, slotCorners.cornerC.y},
+        {slotCorners.cornerD.x, slotCorners.cornerD.y}
+    };
+
+    // 步骤1: 找出[0]和[1]中距离原点最近的点作为A
+    float dist0 = sqrt(pt[0][0] * pt[0][0] + pt[0][1] * pt[0][1]);
+    float dist1 = sqrt(pt[1][0] * pt[1][0] + pt[1][1] * pt[1][1]);
+    
+    int idx_A, idx_B;
+    if (dist0 <= dist1) {
+        idx_A = 0;
+        idx_B = 1;
+    } else {
+        idx_A = 1;
+        idx_B = 0;
+    }
+
+    // 步骤2: 确定C和D的索引（另外两个点）
+    int idx_CD[2];
+    int cd_count = 0;
+    for (int i = 0; i < 4; i++) {
+        if (i != idx_A && i != idx_B) {
+            idx_CD[cd_count++] = i;
+        }
+    }
+
+    // 步骤3: 判断C和D的顺序（相对于A和B，顺时针或逆时针）
+    // 计算向量AB
+    float AB_x = pt[idx_B][0] - pt[idx_A][0];
+    float AB_y = pt[idx_B][1] - pt[idx_A][1];
+    
+    // 计算两个候选点相对于A的向量
+    float AC1_x = pt[idx_CD[0]][0] - pt[idx_A][0];
+    float AC1_y = pt[idx_CD[0]][1] - pt[idx_A][1];
+    
+    // 使用叉积判断点的相对位置
+    // 如果叉积 > 0，点在AB的左侧（逆时针）
+    // 如果叉积 < 0，点在AB的右侧（顺时针）
+    float cross = AB_x * AC1_y - AB_y * AC1_x;
+    
+    int idx_C, idx_D;
+    if (cross > 0) {
+        // 第一个候选点在AB左侧，按逆时针排列：A->B->第一个候选点->第二个候选点
+        idx_C = idx_CD[1];
+        idx_D = idx_CD[0];
+    } else {
+        // 第一个候选点在AB右侧，按顺时针排列：A->B->第一个候选点->第二个候选点
+        idx_C = idx_CD[0];
+        idx_D = idx_CD[1];
+    }
+
+    // 步骤4: 重新赋值角点
+    slotCorners.cornerA.x = pt[idx_A][0];
+    slotCorners.cornerA.y = pt[idx_A][1];
+    slotCorners.cornerB.x = pt[idx_B][0];
+    slotCorners.cornerB.y = pt[idx_B][1];
+    slotCorners.cornerC.x = pt[idx_C][0];
+    slotCorners.cornerC.y = pt[idx_C][1];
+    slotCorners.cornerD.x = pt[idx_D][0];
+    slotCorners.cornerD.y = pt[idx_D][1];
+
+    LOGD("[ADJUST_RECT_ORDER] Original order: [0]=(%f,%f) [1]=(%f,%f) [2]=(%f,%f) [3]=(%f,%f)",
+        pt[0][0], pt[0][1], pt[1][0], pt[1][1], pt[2][0], pt[2][1], pt[3][0], pt[3][1]);
+    LOGD("[ADJUST_RECT_ORDER] Adjusted order: A=(%f,%f) B=(%f,%f) C=(%f,%f) D=(%f,%f)",
+        slotCorners.cornerA.x, slotCorners.cornerA.y,
+        slotCorners.cornerB.x, slotCorners.cornerB.y,
+        slotCorners.cornerC.x, slotCorners.cornerC.y,
+        slotCorners.cornerD.x, slotCorners.cornerD.y);
+}
+
 tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
 {
     // auto start50 = std::chrono::steady_clock::now();
@@ -642,7 +718,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 11061355 emos10.0.1 FOR 1114 RELEASE. release all para, bottomtype, fix coredump, keep original slottype");
+    LOGD("PSD Version: 11071101 emos10.0.1 adjustPSD2PLANNINGRectOrder");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1925,6 +2001,8 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
         }
         else{
+            adjustPSD2PLANNINGRectOrder(psd2planning.targetSlot.slotCorners);
+
             LOGD("[PSD2PLANNING TARGETSLOT] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, bottomtype: %d, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
             psd2planning.timeStamp,
             apa_status,
