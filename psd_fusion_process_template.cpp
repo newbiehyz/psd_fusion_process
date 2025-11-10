@@ -62,6 +62,100 @@ std::vector<apaSlotInfo> g_singleframe_locked_slots;
 
 SaveFileToJson filetojson;
 
+
+void transformCoordinate_OldToNew(float old_x, float old_y, float& new_x, float& new_y) {
+    new_x = old_y;   // 原坐标系的y轴(向前) -> 新坐标系的x轴(向前)
+    new_y = -old_x;  // 原坐标系的x轴(向右) -> 新坐标系的y轴(向左,取负)
+}
+
+// 1. 转换psd2location的fusionSlotInfo(整数坐标)
+void transformAPAHANDLE(const APA_SPACE::SApaPSRect& input, Fsm::FusionSlotInfo& output) {
+    float new_x, new_y;
+    
+    // 转换4个角点
+    transformCoordinate_OldToNew(input.pt[0].x, input.pt[0].y, new_x, new_y);
+    output.pt[0].x = static_cast<int>(new_x);
+    output.pt[0].y = static_cast<int>(new_y);
+    
+    transformCoordinate_OldToNew(input.pt[1].x, input.pt[1].y, new_x, new_y);
+    output.pt[1].x = static_cast<int>(new_x);
+    output.pt[1].y = static_cast<int>(new_y);
+    
+    transformCoordinate_OldToNew(input.pt[2].x, input.pt[2].y, new_x, new_y);
+    output.pt[2].x = static_cast<int>(new_x);
+    output.pt[2].y = static_cast<int>(new_y);
+    
+    transformCoordinate_OldToNew(input.pt[3].x, input.pt[3].y, new_x, new_y);
+    output.pt[3].x = static_cast<int>(new_x);
+    output.pt[3].y = static_cast<int>(new_y);
+}
+
+// 2. 转换psd2planning的SfusionSrchSlots(浮点坐标)
+void transformPLANNINGSLOTLIST(const APA_SPACE::SApaPSRect& input, Sfus::SfusionSlots& output) {
+    float new_x, new_y;
+    
+    // 转换4个角点
+    transformCoordinate_OldToNew(input.pt[0].x, input.pt[0].y, new_x, new_y);
+    output.slotCorners.cornerA.x = new_x;
+    output.slotCorners.cornerA.y = new_y;
+    
+    transformCoordinate_OldToNew(input.pt[1].x, input.pt[1].y, new_x, new_y);
+    output.slotCorners.cornerB.x = new_x;
+    output.slotCorners.cornerB.y = new_y;
+    
+    transformCoordinate_OldToNew(input.pt[2].x, input.pt[2].y, new_x, new_y);
+    output.slotCorners.cornerC.x = new_x;
+    output.slotCorners.cornerC.y = new_y;
+    
+    transformCoordinate_OldToNew(input.pt[3].x, input.pt[3].y, new_x, new_y);
+    output.slotCorners.cornerD.x = new_x;
+    output.slotCorners.cornerD.y = new_y;
+}
+
+// 3. 转换psd2planning的targetSlot(浮点坐标)
+void transformPLANNINGTARGETSLOT(const APA_SPACE::SApaPSRect& input, Sfus::SfusionSlots& output) {
+    float new_x, new_y;
+    
+    // 转换4个角点
+    transformCoordinate_OldToNew(input.pt[0].x, input.pt[0].y, new_x, new_y);
+    output.slotCorners.cornerA.x = new_x;
+    output.slotCorners.cornerA.y = new_y;
+    
+    transformCoordinate_OldToNew(input.pt[1].x, input.pt[1].y, new_x, new_y);
+    output.slotCorners.cornerB.x = new_x;
+    output.slotCorners.cornerB.y = new_y;
+    
+    transformCoordinate_OldToNew(input.pt[2].x, input.pt[2].y, new_x, new_y);
+    output.slotCorners.cornerC.x = new_x;
+    output.slotCorners.cornerC.y = new_y;
+    
+    transformCoordinate_OldToNew(input.pt[3].x, input.pt[3].y, new_x, new_y);
+    output.slotCorners.cornerD.x = new_x;
+    output.slotCorners.cornerD.y = new_y;
+}
+
+// 4. 转换psd2perception的slotCorners(从已转换的数据再次转换)
+void transformPERCEPTION(const Sfus::SlotCorners& input, Sfus::SlotCorners& output) {
+    float new_x, new_y;
+    
+    // 转换4个角点
+    transformCoordinate_OldToNew(input.cornerA.x, input.cornerA.y, new_x, new_y);
+    output.cornerA.x = new_x;
+    output.cornerA.y = new_y;
+    
+    transformCoordinate_OldToNew(input.cornerB.x, input.cornerB.y, new_x, new_y);
+    output.cornerB.x = new_x;
+    output.cornerB.y = new_y;
+    
+    transformCoordinate_OldToNew(input.cornerC.x, input.cornerC.y, new_x, new_y);
+    output.cornerC.x = new_x;
+    output.cornerC.y = new_y;
+    
+    transformCoordinate_OldToNew(input.cornerD.x, input.cornerD.y, new_x, new_y);
+    output.cornerD.x = new_x;
+    output.cornerD.y = new_y;
+}
+
 // ***************************输出的全局变量
 slotfusion fusionslot;
 StatusDecFusionInput psd2statemachine;
@@ -718,7 +812,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 11071101 emos10.0.1 adjustPSD2PLANNINGRectOrder");
+    LOGD("PSD Version: 11101053 emos10.0.1 transformCoordinate");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1954,6 +2048,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
                     psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
                     psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
+                    transformPLANNINGTARGETSLOT(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo, psd2planning.targetSlot);
                 
                     //********************车位来源******************
                     psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
@@ -2037,6 +2132,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2perception.slotCorners.cornerC.y = psd2planning.targetSlot.slotCorners.cornerC.y;
             psd2perception.slotCorners.cornerD.x = psd2planning.targetSlot.slotCorners.cornerD.x;
             psd2perception.slotCorners.cornerD.y = psd2planning.targetSlot.slotCorners.cornerD.y;
+            transformPERCEPTION(psd2planning.targetSlot.slotCorners, psd2perception.slotCorners);
             psd2perception.slotType = psd2planning.targetSlot.slotType;
 
             //*****************无车位材质接口，借用，0视觉1超声波3草砖*********************
