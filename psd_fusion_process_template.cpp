@@ -722,7 +722,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 10281607 emos10.0.1 [LYK]: PSD2VCU size control");
+    LOGD("PSD Version: 11100938 emos10.0.1 [LYK]: HPP with targetslot all shown");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1383,11 +1383,11 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 i++;
             }
 
-            // ================= 新增逻辑：apa_status为11时，SLAM只发一个车位则自动选择 =================
-            if (apa_status == 11 && outputSlot_VIS.slots_in_cur_frame.size() == 1) {
-                LOGD("[APA_STATUS_11_SINGLE_SLOT] Only one slot detected, auto-selecting slot ID: %d", psd2vcu.FusionSlotInfo[0].slotLabel);
+            // ================= 新增逻辑：apa_status为11时，SLAM第一个车位的id判断是否有目标车位,非-1自动选择 =================
+            if (apa_status == 11 && psd2vcu.slotNum > 0 && psd2vcu.FusionSlotInfo[0].slotLabel != -1) {
+                LOGD("[HPP TARGET SLOT] Target slot detected (first slot ID: %d), auto-selecting", psd2vcu.FusionSlotInfo[0].slotLabel);
                 final_ID = psd2vcu.FusionSlotInfo[0].slotLabel;
-                psd2vcu.FusionSlotInfo[0].slotStatusType = 5; // 设置为SELECTED状态
+                psd2vcu.FusionSlotInfo[0].slotStatusType = 5;
             }
             else{
                 // ================= 推荐逻辑 =================
