@@ -722,7 +722,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 11100938 emos10.0.1 [LYK]: HPP with targetslot all shown");
+    LOGD("PSD Version: 11101532 emos10.0.1 [LYK]: HPP with targetslot all shown");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1154,6 +1154,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             
             // ================= 匹配显示 =================
             for (auto& psd_m_output : outputSlot_FUSED.slots_in_cur_frame){
+                if (psd_m_output.rectInfo.label == -1){
+                    continue;
+                }
+
                 if (i >= slotlist_size || i >= 50){
                     LOGD("die in VCU and size is:",slotlist_size);
                     break;
@@ -1384,10 +1388,17 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
 
             // ================= 新增逻辑：apa_status为11时，SLAM第一个车位的id判断是否有目标车位,非-1自动选择 =================
-            if (apa_status == 11 && psd2vcu.slotNum > 0 && psd2vcu.FusionSlotInfo[0].slotLabel != -1) {
-                LOGD("[HPP TARGET SLOT] Target slot detected (first slot ID: %d), auto-selecting", psd2vcu.FusionSlotInfo[0].slotLabel);
-                final_ID = psd2vcu.FusionSlotInfo[0].slotLabel;
-                psd2vcu.FusionSlotInfo[0].slotStatusType = 5;
+            if ((apa_status == 11 || apa_status == 14) && psd2vcu.slotNum > 0 && outputSlot_VIS.slots_in_cur_frame[0].rectInfo.label != -1) {
+                LOGD("[HPP TARGET SLOT] Target slot detected (first slot ID: %d), auto-selecting", outputSlot_VIS.slots_in_cur_frame[0].rectInfo.label);
+                final_ID = outputSlot_VIS.slots_in_cur_frame[0].rectInfo.label;
+                // psd2vcu.FusionSlotInfo[final_ID].slotStatusType = 5;
+                // Find matching slot in psd2vcu and set its status
+                for (int i = 0; i < psd2vcu.slotNum; i++) {
+                    if (psd2vcu.FusionSlotInfo[i].slotLabel == final_ID) {
+                        psd2vcu.FusionSlotInfo[i].slotStatusType = 5;
+                        break;
+                    }
+                }
             }
             else{
                 // ================= 推荐逻辑 =================
