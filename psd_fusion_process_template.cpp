@@ -557,16 +557,8 @@ void cpsd_fusion_process::adjustPSD2PLANNINGRectOrder(Sfus::SlotCorners &slotCor
     // 如果叉积 < 0，点在AB的右侧（顺时针）
     float cross = AB_x * AC1_y - AB_y * AC1_x;
     
-    int idx_C, idx_D;
-    if (cross > 0) {
-        // 第一个候选点在AB左侧，按逆时针排列：A->B->第一个候选点->第二个候选点
-        idx_C = idx_CD[1];
-        idx_D = idx_CD[0];
-    } else {
-        // 第一个候选点在AB右侧，按顺时针排列：A->B->第一个候选点->第二个候选点
-        idx_C = idx_CD[0];
-        idx_D = idx_CD[1];
-    }
+    int idx_C = idx_CD[0];
+    int idx_D = idx_CD[1];
 
     // 步骤4: 重新赋值角点
     slotCorners.cornerA.x = pt[idx_A][0];
