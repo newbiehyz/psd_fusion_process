@@ -642,7 +642,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 11061355 emos10.0.1 FOR 1114 RELEASE. release all para, bottomtype, fix coredump, keep original slottype");
+    LOGD("PSD Version: 11121928 emos10.0.1 FOR 1114 RELEASE. no-angle-limit, release all para, bottomtype, fix coredump, keep original slottype");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1154,6 +1154,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
                 // ***************************2 车位与自车夹角是否在允许释放的角度范围内
                 // 仅限制垂直水平车位，车位AB与自车中轴线 (0,45度)以内才释放
+                ANGEL_FILTER = 0; // 适配斜列车位，关闭角度限制
                 LOGD("[VCU NOTRELEASE2 anglelimit] ANGLE_FILTER: %d, ANGEL_FILTER_LIMIT:%f",ANGEL_FILTER,ANGEL_FILTER_LIMIT);
                 if (ANGEL_FILTER){
                     if (psd_m_output.rectInfo.PStype != 2){
