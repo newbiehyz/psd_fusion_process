@@ -434,18 +434,18 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                 }
 
                 // 同步更新到 WorldoutRect
-                auto& worldRectInfo = outputSlotVIS.WorldoutRect[nearest_index].rectInfo;
-                for (int i = 0; i < 2; ++i) {
-                    worldRectInfo.StopperID[i] = rectInfo.StopperID[i];
-                    worldRectInfo.StopperX[i] = rectInfo.StopperX[i];
-                    worldRectInfo.StopperY[i] = rectInfo.StopperY[i];
-                }
-                worldRectInfo.StopperCount = rectInfo.StopperCount;
+                // auto& worldRectInfo = outputSlotVIS.WorldoutRect[nearest_index].rectInfo;
+                // for (int i = 0; i < 2; ++i) {
+                //     worldRectInfo.StopperID[i] = rectInfo.StopperID[i];
+                //     worldRectInfo.StopperX[i] = rectInfo.StopperX[i];
+                //     worldRectInfo.StopperY[i] = rectInfo.StopperY[i];
+                // }
+                // worldRectInfo.StopperCount = rectInfo.StopperCount;
                 // ************************************************************************************
 
 
                 outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperInSlot = 1;
-                outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperInSlot = 1;
+                // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperInSlot = 1;
 
 
                 wheelstop_dis.x = obs_point3f.x();
@@ -465,21 +465,21 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                     float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_a, point_b);
                     float temp_dis2 = CalPointAndLineDistance(wheelstop_dis, point_c, point_d);
                     outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperDistance = std::max(temp_dis1,temp_dis2);
-                    outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperDistance = std::max(temp_dis1,temp_dis2);
+                    // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperDistance = std::max(temp_dis1,temp_dis2);
                     // 根据位置判断占用
                     if (temp_dis1 > temp_dis2){
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_CD;
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_CD;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_CD;
                     }
                     else if(temp_dis1 < temp_dis2){
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_AB;
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_AB;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_AB;
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
                     }
                     else{
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
                     }
                 }
                 else{// 水平
@@ -510,22 +510,24 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                     float temp_dis1 = CalPointAndLineDistance(wheelstop_dis, point_b, point_c);
                     float temp_dis2 = CalPointAndLineDistance(wheelstop_dis, point_a, point_d);
                     outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperDistance = temp_dis1;
-                    outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperDistance = temp_dis1;
+                    // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperDistance = temp_dis1;
                     // 根据位置判断占用
                     if (temp_dis1 > temp_dis2){
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_DA;
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_DA;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_DA;
                     }
                     else if(temp_dis1 < temp_dis2){
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_BC;
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_BC;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_BC;
                         // outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
                         // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
                     }
                     else{
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.StopperLocation = SOD_LOCATION_NO;
                     }
+
+
                 }
             }
             LOGD("Updated stopdis: %f, stoploc: %d, SOD: %d",
@@ -607,24 +609,24 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
                     // 计算距离
                     float temp_dis1 = CalPointAndLineDistance(lock_dis, point_a, point_b);
                     if (temp_dis1 >= VEHICLE_LENGTH / 2.0){
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot = 0;
-                        outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 0;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot = 0;
+                        // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 0;
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.LockInSlot = 0;
                         outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 0;
                     }
                 }
                 else{// 水平
                     // 更新 WorldoutRect 和 slots_in_cur_frame
-                    outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot = 1;
-                    outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
+                    // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot = 1;
+                    // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
                     outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.LockInSlot = 1;
                     outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
                 }
             }
 
 
-            LOGD("Updated LockInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot);
-            LOGD("Updated iSodInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType);
+            // LOGD("Updated LockInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.LockInSlot);
+            // LOGD("Updated iSodInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType);
             LOGD("Updated LockInSlot: %d", outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.LockInSlot);
             LOGD("Updated iSodInSlot: %d", outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType);
         }
@@ -683,14 +685,14 @@ void PSD_FusionModuleIF::StopperLockOBS(const Fus::PkEmapObs &empobs, apaSlotLis
 
             if (is_in_slot) {
                 // 更新 WorldoutRect 和 slots_in_cur_frame
-                outputSlotVIS.WorldoutRect[nearest_index].rectInfo.OBSInSlot = 1;
-                outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
+                // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.OBSInSlot = 1;
+                // outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType = 1;
                 outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.OBSInSlot = 1;
                 outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType = 1;
             }
 
-            LOGD("Updated OBSInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.OBSInSlot);
-            LOGD("Updated iSodInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType);
+            // LOGD("Updated OBSInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.OBSInSlot);
+            // LOGD("Updated iSodInSlot: %d", outputSlotVIS.WorldoutRect[nearest_index].rectInfo.iSodType);
             LOGD("Updated OBSInSlot: %d", outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.OBSInSlot);
             LOGD("Updated iSodInSlot: %d", outputSlotVIS.slots_in_cur_frame[nearest_index].rectInfo.iSodType);
         }
