@@ -513,7 +513,7 @@ int cpsd_fusion_process::IsStill(const Loc::App2emap_DR drpose, Loc::App2emap_DR
 
 void cpsd_fusion_process::adjustPSD2PLANNINGRectOrder(Sfus::SlotCorners &slotCorners)
 {
-    // 获取四个角点
+    // 四个角点
     float pt[4][2] = {
         {slotCorners.cornerA.x, slotCorners.cornerA.y},
         {slotCorners.cornerB.x, slotCorners.cornerB.y},
@@ -521,62 +521,87 @@ void cpsd_fusion_process::adjustPSD2PLANNINGRectOrder(Sfus::SlotCorners &slotCor
         {slotCorners.cornerD.x, slotCorners.cornerD.y}
     };
 
-    // 步骤1: 找出[0]和[1]中距离原点最近的点作为A
-    float dist0 = sqrt(pt[0][0] * pt[0][0] + pt[0][1] * pt[0][1]);
-    float dist1 = sqrt(pt[1][0] * pt[1][0] + pt[1][1] * pt[1][1]);
-    
-    int idx_A, idx_B;
-    if (dist0 <= dist1) {
-        idx_A = 0;
-        idx_B = 1;
-    } else {
+    // =========================
+    // 步骤1：从原始 A/B 中选出新的 a/b
+    // =========================
+    float dist0_sq = pt[0][0] * pt[0][0] + pt[0][1] * pt[0][1];
+    float dist1_sq = pt[1][0] * pt[1][0] + pt[1][1] * pt[1][1];
+
+    int idx_A = 0;
+    int idx_B = 1;
+    if (dist1_sq < dist0_sq)
+    {
         idx_A = 1;
         idx_B = 0;
     }
 
-    // 步骤2: 确定C和D的索引（另外两个点）
+    // =========================
+    // 步骤2：找到剩下的两个点（候选 C / D）
+    // =========================
     int idx_CD[2];
     int cd_count = 0;
-    for (int i = 0; i < 4; i++) {
-        if (i != idx_A && i != idx_B) {
+    for (int i = 0; i < 4; ++i)
+    {
+        if (i != idx_A && i != idx_B)
+        {
             idx_CD[cd_count++] = i;
         }
     }
 
-    // 步骤3: 判断C和D的顺序（相对于A和B，顺时针或逆时针）
-    // 计算向量AB
-    float AB_x = pt[idx_B][0] - pt[idx_A][0];
-    float AB_y = pt[idx_B][1] - pt[idx_A][1];
-    
-    // 计算两个候选点相对于A的向量
-    float AC1_x = pt[idx_CD[0]][0] - pt[idx_A][0];
-    float AC1_y = pt[idx_CD[0]][1] - pt[idx_A][1];
-    
-    // 使用叉积判断点的相对位置
-    // 如果叉积 > 0，点在AB的左侧（逆时针）
-    // 如果叉积 < 0，点在AB的右侧（顺时针）
-    float cross = AB_x * AC1_y - AB_y * AC1_x;
-    
+    if (cd_count != 2)
+    {
+        LOGD("[ADJUST_RECT_ORDER] Unexpected cd_count = %d, skip adjust.", cd_count);
+        return;
+    }
+
+    // =========================
+    // 步骤3：决定 C / D 顺序
+    // =========================
+    auto dist_sq = [&](int i, int j) {
+        float dx = pt[i][0] - pt[j][0];
+        float dy = pt[i][1] - pt[j][1];
+        return dx * dx + dy * dy;
+    };
+
     int idx_C = idx_CD[0];
     int idx_D = idx_CD[1];
 
-    // 步骤4: 重新赋值角点
-    slotCorners.cornerA.x = pt[idx_A][0];
-    slotCorners.cornerA.y = pt[idx_A][1];
-    slotCorners.cornerB.x = pt[idx_B][0];
-    slotCorners.cornerB.y = pt[idx_B][1];
-    slotCorners.cornerC.x = pt[idx_C][0];
-    slotCorners.cornerC.y = pt[idx_C][1];
-    slotCorners.cornerD.x = pt[idx_D][0];
-    slotCorners.cornerD.y = pt[idx_D][1];
+    float dBC0 = dist_sq(idx_B, idx_CD[0]);
+    float dBC1 = dist_sq(idx_B, idx_CD[1]);
 
-    LOGD("[ADJUST_RECT_ORDER] Original order: [0]=(%f,%f) [1]=(%f,%f) [2]=(%f,%f) [3]=(%f,%f)",
-        pt[0][0], pt[0][1], pt[1][0], pt[1][1], pt[2][0], pt[2][1], pt[3][0], pt[3][1]);
-    LOGD("[ADJUST_RECT_ORDER] Adjusted order: A=(%f,%f) B=(%f,%f) C=(%f,%f) D=(%f,%f)",
-        slotCorners.cornerA.x, slotCorners.cornerA.y,
-        slotCorners.cornerB.x, slotCorners.cornerB.y,
-        slotCorners.cornerC.x, slotCorners.cornerC.y,
-        slotCorners.cornerD.x, slotCorners.cornerD.y);
+    // 让 C 是离 B 更近的点
+    if (dBC1 < dBC0)
+    {
+        idx_C = idx_CD[1];
+        idx_D = idx_CD[0];
+    }
+
+    // =========================
+    // 步骤4：回写到 slotCorners
+    // =========================
+    Sfus::Point newA{pt[idx_A][0], pt[idx_A][1]};
+    Sfus::Point newB{pt[idx_B][0], pt[idx_B][1]};
+    Sfus::Point newC{pt[idx_C][0], pt[idx_C][1]};
+    Sfus::Point newD{pt[idx_D][0], pt[idx_D][1]};
+
+    LOGD("[ADJUST_RECT_ORDER] Original order: "
+         "[0]=(%f,%f) [1]=(%f,%f) [2]=(%f,%f) [3]=(%f,%f)",
+         pt[0][0], pt[0][1],
+         pt[1][0], pt[1][1],
+         pt[2][0], pt[2][1],
+         pt[3][0], pt[3][1]);
+
+    slotCorners.cornerA = newA;
+    slotCorners.cornerB = newB;
+    slotCorners.cornerC = newC;
+    slotCorners.cornerD = newD;
+
+    LOGD("[ADJUST_RECT_ORDER] Adjusted order: "
+         "A=(%f,%f) B=(%f,%f) C=(%f,%f) D=(%f,%f)",
+         slotCorners.cornerA.x, slotCorners.cornerA.y,
+         slotCorners.cornerB.x, slotCorners.cornerB.y,
+         slotCorners.cornerC.x, slotCorners.cornerC.y,
+         slotCorners.cornerD.x, slotCorners.cornerD.y);
 }
 
 tResult cpsd_fusion_process::TimeTrigger_thread_50ms_1()
@@ -804,7 +829,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 11101053 emos10.0.1 transformCoordinate");
+    LOGD("PSD Version: 11202044 emos10.0.1 fix psd2planning/perception rectOrder");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -995,7 +1020,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         info_cur.rectInfo.pt[3].y = pt2_b.x() * 1000;
         info_cur.rectInfo.pt[2].x = -pt3_b.y() * 1000;
         info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
-        PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
+        // PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
         info_cur.rectInfo.label = id;
         info_cur.rectInfo.PStype = type;
         info_cur.rectInfo.iSodType = sodtype;
@@ -1317,6 +1342,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 // ***************************2 车位与自车夹角是否在允许释放的角度范围内
                 // 仅限制垂直水平车位，车位AB与自车中轴线 (0,45度)以内才释放
                 LOGD("[VCU NOTRELEASE2 anglelimit] ANGLE_FILTER: %d, ANGEL_FILTER_LIMIT:%f",ANGEL_FILTER,ANGEL_FILTER_LIMIT);
+                ANGEL_FILTER = 0;
                 if (ANGEL_FILTER){
                     if (psd_m_output.rectInfo.PStype != 2){
                         float ax = 4.0f;
@@ -2040,6 +2066,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
                     psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
                     psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
+                    adjustPSD2PLANNINGRectOrder(psd2planning.targetSlot.slotCorners);
                     transformPLANNINGTARGETSLOT(outputSlot_FUSED.slots_in_cur_frame[i].rectInfo, psd2planning.targetSlot);
                 
                     //********************车位来源******************
@@ -2088,8 +2115,6 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             EMC_psd_fusion_process_SetFieldSfsuion2DecPlan(psd2planning);
         }
         else{
-            adjustPSD2PLANNINGRectOrder(psd2planning.targetSlot.slotCorners);
-
             LOGD("[PSD2PLANNING TARGETSLOT] TIMESTAMP: %llu, APASTATUS: %d, TARGET SLOT type: %d, source: %d, stopper dis: %f, bottomtype: %d, (%f,%f) (%f,%f) (%f,%f) (%f,%f)",
             psd2planning.timeStamp,
             apa_status,
@@ -2124,7 +2149,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             psd2perception.slotCorners.cornerC.y = psd2planning.targetSlot.slotCorners.cornerC.y;
             psd2perception.slotCorners.cornerD.x = psd2planning.targetSlot.slotCorners.cornerD.x;
             psd2perception.slotCorners.cornerD.y = psd2planning.targetSlot.slotCorners.cornerD.y;
-            transformPERCEPTION(psd2planning.targetSlot.slotCorners, psd2perception.slotCorners);
+            // transformPERCEPTION(psd2planning.targetSlot.slotCorners, psd2perception.slotCorners);
             psd2perception.slotType = psd2planning.targetSlot.slotType;
 
             //*****************无车位材质接口，借用，0视觉1超声波3草砖*********************
