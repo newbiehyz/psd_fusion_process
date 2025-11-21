@@ -15,11 +15,7 @@ Sfus::_tSfusionSlotType slottype_rd2decplan(int rd_type);
 int slottype_decplan2statemachine(Sfus::_tSfusionSlotType decplan_type);
 Sfus::SlotBottomType slotbottomtype_uss2decplan(int uss_bottom_type);
 
-void transformCoordinate_OldToNew(float old_x, float old_y, float& new_x, float& new_y);
-void transformAPAHANDLE(const APA_SPACE::SApaPSRect& input, Fsm::FusionSlotInfo& output);
-void transformPLANNINGSLOTLIST(const APA_SPACE::SApaPSRect& input, Sfus::SfusionSlots& output);
-void transformPLANNINGTARGETSLOT(const APA_SPACE::SApaPSRect& input, Sfus::SfusionSlots& output);
-void transformPERCEPTION(const Sfus::SlotCorners& input, Sfus::SlotCorners& output);
+void transformPLANNINGTARGETSLOT(Sfus::SlotCorners& slotCorners);
 
 class cpsd_fusion_process: public cpsd_fusion_process_base
 {
