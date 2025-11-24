@@ -761,7 +761,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 11211114 emos10.0.1 fix psd2planning/perception coordinate transform");
+    LOGD("PSD Version: 11241109 emos10.0.1 remove PSD2PLANNING targetslot rectOrder");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -952,7 +952,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
         info_cur.rectInfo.pt[3].y = pt2_b.x() * 1000;
         info_cur.rectInfo.pt[2].x = -pt3_b.y() * 1000;
         info_cur.rectInfo.pt[2].y = pt3_b.x() * 1000;
-        // PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
+        PSD_FusionModuleIFrunable.adjustRectOrder(info_cur);
         info_cur.rectInfo.label = id;
         info_cur.rectInfo.PStype = type;
         info_cur.rectInfo.iSodType = sodtype;
@@ -1998,7 +1998,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                     psd2planning.targetSlot.slotCorners.cornerC.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[2].y;
                     psd2planning.targetSlot.slotCorners.cornerD.x = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].x;
                     psd2planning.targetSlot.slotCorners.cornerD.y = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.pt[3].y;
-                    adjustPSD2PLANNINGRectOrder(psd2planning.targetSlot.slotCorners);
+                    // adjustPSD2PLANNINGRectOrder(psd2planning.targetSlot.slotCorners);
                     transformPLANNINGTARGETSLOT(psd2planning.targetSlot.slotCorners);
                 
                     //********************车位来源******************
