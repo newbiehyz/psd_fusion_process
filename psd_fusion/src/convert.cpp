@@ -74,3 +74,19 @@ int slottype_decplan2statemachine(Sfus::_tSfusionSlotType decplan_type)
             return 3;
     } 
 }
+
+Sfus::SlotBottomType slotbottomtype_uss2decplan(int uss_bottom_type)
+{
+    switch (uss_bottom_type) {
+        case 0:
+            return Sfus::BOTTOM_NULL;
+        case 1:
+            return Sfus::BOTTOM_CURB;
+        case 2:
+            return Sfus::BOTTOM_WALL;
+        case 3:
+            return Sfus::BOTTOM_UNKNOWN;
+        default:
+            return Sfus::BOTTOM_UNKNOWN;
+    }
+}
