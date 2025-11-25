@@ -1252,15 +1252,15 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
                         if (psd2vcu.FusionSlotInfo[i].pt[0].y >= 0){ // 右侧
                             // 右侧：后轴中点在AD边左侧(负方向)超过3米，且在BC边左侧(负方向)超过0.1米
-                            if (vector_carrearaxlecenter2parallelAD <= -AD_THRESHOLD && 
-                                vector_carrearaxlecenter2parallelBC <= -BC_THRESHOLD){
+                            if (vector_carrearaxlecenter2parallelAD >= AD_THRESHOLD && 
+                                vector_carrearaxlecenter2parallelBC >= BC_THRESHOLD){
                                 psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                             }
                         }
                         else{
                             // 左侧：后轴中点在AD边右侧(正方向)超过3米，且在BC边右侧(正方向)超过0.1米
-                            if (vector_carrearaxlecenter2parallelAD >= AD_THRESHOLD && 
-                                vector_carrearaxlecenter2parallelBC >= BC_THRESHOLD){
+                            if (vector_carrearaxlecenter2parallelAD <= -AD_THRESHOLD && 
+                                vector_carrearaxlecenter2parallelBC <= -BC_THRESHOLD){
                                 psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                             }
                         }
