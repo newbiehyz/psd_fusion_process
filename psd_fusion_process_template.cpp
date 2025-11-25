@@ -642,7 +642,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 11121928 emos10.0.1 FOR 1114 RELEASE. no-angle-limit, release all para, bottomtype, fix coredump, keep original slottype");
+    LOGD("PSD Version: 11251025 emos10.0.1 update parallel slot reverse slot release");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1234,37 +1234,53 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                             pow(psd2vcu.FusionSlotInfo[i].pt[3].y - psd2vcu.FusionSlotInfo[i].pt[0].y, 2)
                         + pow(psd2vcu.FusionSlotInfo[i].pt[3].x - psd2vcu.FusionSlotInfo[i].pt[0].x, 2)
                         );
-                        // 死区（0.2m）
-                        const float PARALLEL_VECTOR_DEADZONE = 0.1;
+
+                        float vector_carrearaxlecenter2parallelBC = (
+                            (psd2vcu.FusionSlotInfo[i].pt[2].y - psd2vcu.FusionSlotInfo[i].pt[1].y) * VCU_car_rear_axle_center.x
+                        - (psd2vcu.FusionSlotInfo[i].pt[2].x - psd2vcu.FusionSlotInfo[i].pt[1].x) * VCU_car_rear_axle_center.y
+                        + psd2vcu.FusionSlotInfo[i].pt[2].x * psd2vcu.FusionSlotInfo[i].pt[1].y
+                        - psd2vcu.FusionSlotInfo[i].pt[2].y * psd2vcu.FusionSlotInfo[i].pt[1].x
+                        ) / sqrt(
+                            pow(psd2vcu.FusionSlotInfo[i].pt[2].y - psd2vcu.FusionSlotInfo[i].pt[1].y, 2)
+                        + pow(psd2vcu.FusionSlotInfo[i].pt[2].x - psd2vcu.FusionSlotInfo[i].pt[1].x, 2)
+                        );
+
+
+                        // 新逻辑
+                        const float AD_THRESHOLD = 3.0;  // AD边向后3米
+                        const float BC_THRESHOLD = 0.1;  // BC边向前0.1米
+
                         if (psd2vcu.FusionSlotInfo[i].pt[0].y >= 0){ // 右侧
-                            if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
-                            // if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE ||  // -0.8
-                            //     vector_carrearaxlecenter2parallelAD >= 6 - PARALLEL_VECTOR_DEADZONE){ // 越过6m
+                            // 右侧：后轴中点在AD边左侧(负方向)超过3米，且在BC边左侧(负方向)超过0.1米
+                            if (vector_carrearaxlecenter2parallelAD <= -AD_THRESHOLD && 
+                                vector_carrearaxlecenter2parallelBC <= -BC_THRESHOLD){
                                 psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                             }
-                            // else if (vector_carrearaxlecenter2parallelAD > PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
-                            //     if (psd_m_output.rectInfo.iSodType == 1) {
-                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
-                            //     } else {
-                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
-                            //     }
-                            // }
                         }
                         else{
-                            if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){ // -0.8
-                            // if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE || // -0.8
-                            //     vector_carrearaxlecenter2parallelAD <= -6 - PARALLEL_VECTOR_DEADZONE){ // 越过6m
+                            // 左侧：后轴中点在AD边右侧(正方向)超过3米，且在BC边右侧(正方向)超过0.1米
+                            if (vector_carrearaxlecenter2parallelAD >= AD_THRESHOLD && 
+                                vector_carrearaxlecenter2parallelBC >= BC_THRESHOLD){
                                 psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
                             }
-                            // else if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT - PARALLEL_VECTOR_DEADZONE){
-                            //     if (psd_m_output.rectInfo.iSodType == 1) {
-                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
-                            //     } else {
-                            //         psd2vcu.FusionSlotInfo[i].slotStatusType = 3;
-                            //     }
-                            // }
                         }
-                        LOGD("[VCU NOTRELEASE4 parallel] PARALLEL VECTOR: %f, ID: %d, set to %d", vector_carrearaxlecenter2parallelAD,psd2vcu.FusionSlotInfo[i].slotLabel,psd2vcu.FusionSlotInfo[i].slotStatusType)
+
+                        // // 原来逻辑
+                        // if (psd2vcu.FusionSlotInfo[i].pt[0].y >= 0){ // 右侧
+                        //     if (vector_carrearaxlecenter2parallelAD <= PARALLEL_VECTOR_LIMIT){ // -0.8
+                        //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                        //     }
+                        // }
+                        // else{
+                        //     if (vector_carrearaxlecenter2parallelAD >= PARALLEL_VECTOR_LIMIT){ // -0.8
+                        //         psd2vcu.FusionSlotInfo[i].slotStatusType = 4;
+                        //     }
+                        // }
+
+
+                        LOGD("[VCU NOTRELEASE4 parallel] AD VECTOR: %f, BC VECTOR: %f, ID: %d, set to %d", 
+                            vector_carrearaxlecenter2parallelAD, vector_carrearaxlecenter2parallelBC,
+                            psd2vcu.FusionSlotInfo[i].slotLabel, psd2vcu.FusionSlotInfo[i].slotStatusType);
                     }else{
                         LOGD("[VCU NOTRELEASE4 parallel] NOT PARALLEL SLOT.")
                     }
