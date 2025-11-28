@@ -761,7 +761,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 11262058 emos10.0.1 add psd2apahandle.innerobtype for targetslot existance");
+    LOGD("PSD Version: 11262058 emos10.0.1 FOR 1128 RELEASE. add psd2apahandle.innerobtype for targetslot existance");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
