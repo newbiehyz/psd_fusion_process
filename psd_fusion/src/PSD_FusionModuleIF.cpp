@@ -988,36 +988,144 @@ void PSD_FusionModuleIF::adjustRectOrder_KF(bool isleft, std::array<Eigen::Vecto
 
 void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
 {
-    bool leftSide = isLeftOfOrigin(rect);
+    // 获取corners引用，方便后续操作
+    POINT_I* corners = rect.rectInfo.pt;
 
-    // 复制点到一个 vector 以便排序
-    std::vector<POINT_I> points(rect.rectInfo.pt, rect.rectInfo.pt + 4);
-    // 按 x 轴排序，先排左边的两个点，再排右边的两个点
-    std::sort(points.begin(), points.end(), [](const POINT_I& a, const POINT_I& b) {
-        return a.x < b.x;
-    });
-    // 左侧两个点 (left1, left2)，右侧两个点 (right1, right2)
-    std::vector<POINT_I> left = {points[0], points[1]};
-    std::vector<POINT_I> right = {points[2], points[3]};
-    // 按 y 排序，确保 top 和 bottom
-    std::sort(left.begin(), left.end(), [](const POINT_I& a, const POINT_I& b) {
-        return a.y > b.y; // y 值大的在前
-    });
-    std::sort(right.begin(), right.end(), [](const POINT_I& a, const POINT_I& b) {
-        return a.y > b.y; // y 值大的在前
-    });
-    // 重新设置 A, B, C, D 顺序
-    if (leftSide) {
-        rect.rectInfo.pt[0] = right[1]; // A (右下角)
-        rect.rectInfo.pt[1] = right[0]; // B (右上角)
-        rect.rectInfo.pt[2] = left[0];  // C (左上角)
-        rect.rectInfo.pt[3] = left[1];  // D (左下角)
-    } else {
-        rect.rectInfo.pt[0] = left[1];  // A (左下角)
-        rect.rectInfo.pt[1] = left[0];  // B (左上角)
-        rect.rectInfo.pt[2] = right[0]; // C (右上角)
-        rect.rectInfo.pt[3] = right[1]; // D (右下角)
+    // ------- 工具函数 --------
+    auto signed_area = [&](int i0, int i1, int i2, int i3) -> float {
+        const POINT_I* p[4] = {&corners[i0], &corners[i1], &corners[i2],
+                               &corners[i3]};
+        float area2 = 0.0f;
+        for (int i = 0; i < 4; ++i) {
+            const POINT_I& a = *p[i];
+            const POINT_I& b = *p[(i + 1) & 3];
+            area2 += static_cast<float>(a.x) * static_cast<float>(b.y) - static_cast<float>(b.x) * static_cast<float>(a.y);
+        }
+        return area2;
+    };
+
+    auto cross = [](const POINT_I& a, const POINT_I& b,
+                    const POINT_I& c) -> float {
+        // (b - a) x (c - a)
+        return static_cast<float>(b.x - a.x) * static_cast<float>(c.y - a.y) - static_cast<float>(b.y - a.y) * static_cast<float>(c.x - a.x);
+    };
+
+    auto segments_intersect = [&](const POINT_I& p1, const POINT_I& p2,
+                                  const POINT_I& p3, const POINT_I& p4) -> bool {
+        auto o1 = cross(p1, p2, p3);
+        auto o2 = cross(p1, p2, p4);
+        auto o3 = cross(p3, p4, p1);
+        auto o4 = cross(p3, p4, p2);
+        // 只关心"严格相交"（不是共线重叠那种）
+        return (o1 * o2 < 0.0f) && (o3 * o4 < 0.0f);
+    };
+
+    auto is_hourglass = [&](int i0, int i1, int i2, int i3) -> bool {
+        const POINT_I& A = corners[i0];
+        const POINT_I& B = corners[i1];
+        const POINT_I& C = corners[i2];
+        const POINT_I& D = corners[i3];
+        // 沙漏：非相邻边相交
+        if (segments_intersect(A, B, C, D)) return true;
+        if (segments_intersect(B, C, D, A)) return true;
+        return false;
+    };
+
+    // ------- 判断车位在左还是右 -------
+    float avg_x = 0.0f;
+    for (int i = 0; i < 4; ++i) {
+        avg_x += static_cast<float>(corners[i].x);
     }
+    avg_x *= 0.25f;
+
+    const int kSlotSideUnknown = 0;
+    const int kSlotSideLeft = 1;
+    const int kSlotSideRight = 2;
+
+    int side = kSlotSideUnknown;
+    const float kSideEps = 1e-3f;
+    if (avg_x < -kSideEps) {
+        side = kSlotSideLeft;  // 左侧车位 -> 逆时针
+    } else if (avg_x > kSideEps) {
+        side = kSlotSideRight;  // 右侧车位 -> 顺时针
+    } else {
+        side = kSlotSideUnknown;
+    }
+
+    // ------- 枚举 4 种候选顺序 -------
+    struct Candidate {
+        int idx[4];
+    };
+
+    Candidate candidates[4] = {
+        {{0, 1, 2, 3}},  // A=0,B=1,C=2,D=3
+        {{0, 1, 3, 2}},  // A=0,B=1,C=3,D=2
+        {{1, 0, 2, 3}},  // A=1,B=0,C=2,D=3
+        {{1, 0, 3, 2}}   // A=1,B=0,C=3,D=2
+    };
+
+    int best = 0;
+    bool have_non_hourglass = false;
+    bool have_dir_match = false;
+
+    const float kAreaEps = 1e-5f;
+
+    for (int i = 0; i < 4; ++i) {
+        int i0 = candidates[i].idx[0];
+        int i1 = candidates[i].idx[1];
+        int i2 = candidates[i].idx[2];
+        int i3 = candidates[i].idx[3];
+
+        // 先剔除"沙漏"形状
+        if (is_hourglass(i0, i1, i2, i3)) {
+            continue;
+        }
+
+        if (!have_non_hourglass) {
+            best = i;
+            have_non_hourglass = true;
+        }
+
+        float area2 = signed_area(i0, i1, i2, i3);
+        if (std::fabs(area2) < kAreaEps) {
+            continue;
+        }
+
+        bool dir_ok = false;
+        if (side == kSlotSideLeft && area2 > 0.0f) {
+            // 左侧车位 -> 逆时针
+            dir_ok = true;
+        } else if (side == kSlotSideRight && area2 < 0.0f) {
+            // 右侧车位 -> 顺时针
+            dir_ok = true;
+        } else if (side == kSlotSideUnknown) {
+            // 不知道左右，就不强制方向
+            dir_ok = true;
+        }
+
+        if (dir_ok) {
+            best = i;
+            have_dir_match = true;
+            if (side != kSlotSideUnknown) {
+                // 已经找到满足方向的合法四边形，可以提前结束
+                break;
+            }
+        }
+    }
+
+    // 如果连一个非沙漏的都没有（极端退化情况），退回第一个候选
+    const Candidate& chosen = candidates[best];
+
+    // ------- 重新赋值 ABCD -------
+    POINT_I temp[4];
+    temp[0] = corners[0];
+    temp[1] = corners[1];
+    temp[2] = corners[2];
+    temp[3] = corners[3];
+    corners[0] = temp[chosen.idx[0]];  // A：开口边
+    corners[1] = temp[chosen.idx[1]];  // B：开口边
+    corners[2] = temp[chosen.idx[2]];  // C：闭口边
+    corners[3] = temp[chosen.idx[3]];  // D：闭口边
 }
 
 void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED) {
