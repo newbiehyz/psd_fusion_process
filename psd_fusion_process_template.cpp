@@ -761,7 +761,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 11262058 emos10.0.1 FOR 1128 RELEASE. add psd2apahandle.innerobtype for targetslot existance");
+    LOGD("PSD Version: 12181852 emos10.0.1 FOR 1225 RELEASE. hardcode for ADAS-6260, new adjustRectOrder");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -1226,6 +1226,10 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
                 // ***************************车位不释放策略***************************
                 // ***************************1 车位的中心点是否在允许释放的区域
                 //限制范围（前后、左右）
+                // **************************************20251218 不修改config.json直接硬编码*******************************************
+                float FARAWAY_SLOTS_LEFT[2] = {-7.500,-2.5}; 
+                float FARAWAY_SLOTS_RIGHT[2] = {2.5,7.500};
+                // **************************************20251218 不修改config.json直接硬编码*******************************************
                 LOGD("[VCU NOTRELEASE1 range] FARAWAY_FILTER: %d, Rear-Front: [%f, %f], Left: [%f, %f], Right:[%f, %f]",
                     FARAWAY_FILTER,FARAWAY_SLOTS_REAR,FARAWAY_SLOTS_FRONT,FARAWAY_SLOTS_LEFT[0],FARAWAY_SLOTS_LEFT[1],FARAWAY_SLOTS_RIGHT[0],FARAWAY_SLOTS_RIGHT[1])
                 if (FARAWAY_FILTER){
