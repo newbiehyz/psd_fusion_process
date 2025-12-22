@@ -988,7 +988,6 @@ void PSD_FusionModuleIF::adjustRectOrder_KF(bool isleft, std::array<Eigen::Vecto
 
 void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
 {
-    // 获取corners引用，方便后续操作
     POINT_I* corners = rect.rectInfo.pt;
 
     // ------- 工具函数 --------
@@ -1016,7 +1015,6 @@ void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
         auto o2 = cross(p1, p2, p4);
         auto o3 = cross(p3, p4, p1);
         auto o4 = cross(p3, p4, p2);
-        // 只关心"严格相交"（不是共线重叠那种）
         return (o1 * o2 < 0.0f) && (o3 * o4 < 0.0f);
     };
 
@@ -1025,7 +1023,6 @@ void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
         const POINT_I& B = corners[i1];
         const POINT_I& C = corners[i2];
         const POINT_I& D = corners[i3];
-        // 沙漏：非相邻边相交
         if (segments_intersect(A, B, C, D)) return true;
         if (segments_intersect(B, C, D, A)) return true;
         return false;
@@ -1076,7 +1073,6 @@ void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
         int i2 = candidates[i].idx[2];
         int i3 = candidates[i].idx[3];
 
-        // 先剔除"沙漏"形状
         if (is_hourglass(i0, i1, i2, i3)) {
             continue;
         }
@@ -1099,7 +1095,6 @@ void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
             // 右侧车位 -> 顺时针
             dir_ok = true;
         } else if (side == kSlotSideUnknown) {
-            // 不知道左右，就不强制方向
             dir_ok = true;
         }
 
@@ -1107,13 +1102,11 @@ void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
             best = i;
             have_dir_match = true;
             if (side != kSlotSideUnknown) {
-                // 已经找到满足方向的合法四边形，可以提前结束
                 break;
             }
         }
     }
 
-    // 如果连一个非沙漏的都没有（极端退化情况），退回第一个候选
     const Candidate& chosen = candidates[best];
 
     // ------- 重新赋值 ABCD -------
@@ -1122,10 +1115,10 @@ void PSD_FusionModuleIF::adjustRectOrder(apaSlotInfo &rect)
     temp[1] = corners[1];
     temp[2] = corners[2];
     temp[3] = corners[3];
-    corners[0] = temp[chosen.idx[0]];  // A：开口边
-    corners[1] = temp[chosen.idx[1]];  // B：开口边
-    corners[2] = temp[chosen.idx[2]];  // C：闭口边
-    corners[3] = temp[chosen.idx[3]];  // D：闭口边
+    corners[0] = temp[chosen.idx[0]];
+    corners[1] = temp[chosen.idx[1]];
+    corners[2] = temp[chosen.idx[2]];
+    corners[3] = temp[chosen.idx[3]];
 }
 
 void PSD_FusionModuleIF::removeOverlappingSlots(apaSlotListInfo &outputSlotFUSED) {
