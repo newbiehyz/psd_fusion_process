@@ -761,7 +761,7 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
     auto current1970_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current1970).count(); //用于J5时间同步
     auto start = std::chrono::steady_clock::now(); // 用于计算TIMECOST
 
-    LOGD("PSD Version: 12181852 emos10.0.1 FOR 1225 RELEASE. hardcode for ADAS-6260, new adjustRectOrder");
+    LOGD("PSD Version: 01121308 emos10.0.1 FOR 0122 RELEASE. update stopdis while GUIDANCE");
     // GET方式获取
     rd::QuadParkingSlots rd_info;
     unsigned long long singleframeslotsID;
@@ -2041,10 +2041,21 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
             }
         }
         
-        else if (apa_status == 5){ // GUIDANCE阶段锁定目标车位，不再更新
+        else if (apa_status == 5){ // GUIDANCE阶段锁定目标车位，但继续更新stopper_Dis
             if (has_saved_target_slot) {
                 psd2planning.targetSlot = saved_target_slot;
                 target_slot_fusionSlotType = saved_target_slot_fusionSlotType;
+                
+                // 继续更新stopper_Dis
+                for (int i = 0; i < outputSlot_FUSED.slots_in_cur_frame.size(); ++i) {
+                    if (final_ID == outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.label) {
+                        psd2planning.targetSlot.stopper_Dis = outputSlot_FUSED.slots_in_cur_frame[i].rectInfo.StopperDistance;
+                        LOGD("[TARGET_SLOT_LOCKED] Updated stopper_Dis: %f for ID: %d", 
+                             psd2planning.targetSlot.stopper_Dis, saved_target_slot.slotID);
+                        break;
+                    }
+                }
+                
                 LOGD("[TARGET_SLOT_LOCKED] Using saved target slot data for ID: %d", saved_target_slot.slotID);
             }
         }
@@ -2236,5 +2247,3 @@ tResult cpsd_fusion_process::TimeTrigger_thread_100ms_1()
 
     RETURN_NOERROR;
 }
-
-
