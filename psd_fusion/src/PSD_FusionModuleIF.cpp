@@ -241,7 +241,7 @@ bool PSD_FusionModuleIF::compareDistance(int pre, int current)
 int PSD_FusionModuleIF::CalPointAndLineDistance(const POINT_I& point, const POINT_I& pta, const POINT_I& ptb)
 {
     // float threshold = EFFECTIVE_OBSTACLE_POINT_DISTANCE / LR_BIRD_PIXECL_2_WORLD;
-    float threshold = 6000; // in mm
+    float threshold = 8000; // in mm
     if((point.x != INVALID_VALUE) && (point.y != INVALID_VALUE) && 
        (CalcDistance(point, pta) <= threshold || CalcDistance(point, ptb) <= threshold)) {
         return (fabs((ptb.y - pta.y) * point.x + (pta.x - ptb.x) * point.y + ((ptb.x * pta.y) - (pta.x * ptb.y)))) / (sqrt(pow(ptb.y - pta.y, 2) + pow(pta.x - ptb.x, 2)));
